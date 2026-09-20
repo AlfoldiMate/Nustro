@@ -1,1 +1,0 @@
-../../../../../.profiles/dflt/.claude/skills/rust-expert-developer/references/serialization-and-binary-data.md

@@ -1,16 +1,18 @@
 ---
-name: completion
-description: Teach Tab a command-line tool. Builds completions/<tool>.nu for this Nushell config the way brew.nu and git.nu work - every subcommand and flag, flag values, and live positionals (branches, packages, containers, hosts) read from the tool's own data, measured in milliseconds, carapace as the fallback. Use when asked to add, generate, fix or extend completion for a CLI ("agent completion gh", "complete cargo", "make docker Tab-able", "uv install has no package completion").
+name: nustro-completion-build
+description: Teach Tab a CLI in Nustro: builds completions/<tool>.nu the way brew.nu and git.nu work - every subcommand and flag, flag values, live positionals from the tool's own data, measured in ms, carapace as fallback.
 argument-hint: <tool> [what matters most, e.g. "packages with descriptions"]
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, WebFetch, WebSearch, mcp__nu
 ---
 
 # Completion for a tool
 
-Input: `$0` is the tool; anything after it is a hint about what to get right
-first. Skill files: `${CLAUDE_SKILL_DIR}` (scripts in `scripts/`, catalogues
-in `references/`). The repo: `${CLAUDE_PROJECT_DIR}`. Its engine is
-`modules/nu-complete/engine.nu`; the two finished examples are
+Run as `/nushell:nustro-completion-build <tool> [hint]`, or from the shell
+as `agent completion <tool> [hint]`. Input: `$0` is the tool; anything after
+it is a hint about what to get right first. Skill files: `${CLAUDE_SKILL_DIR}`
+(scripts in `scripts/`, catalogues in `references/`). The repo:
+`${CLAUDE_PROJECT_DIR}`. Its engine is `modules/nu-complete/engine.nu`; the
+two finished examples are
 `completions/brew.nu` (data read from files the tool maintains, a SQLite
 cache built in the background) and `completions/git.nu` (one cheap command
 per source, memoised for seconds). Read both before writing anything: the

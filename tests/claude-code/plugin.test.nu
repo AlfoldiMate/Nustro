@@ -59,20 +59,33 @@ def "test the marketplace lists plugins that exist, each named after its module 
   }
 }
 
-def "test the nushell plugin ships the one copy of the skill, linked from .claude/skills" [] {
-  let shipped = $ROOT | path join harness claude-code nushell skills nushell
-  assert equal ($shipped | path join SKILL.md | path type) file
-  # Git checks the link out as a file holding its target on Windows (no
-  # core.symlinks there); the skill is still one copy, only the link is not one.
-  let link = $ROOT | path join .claude skills nushell
-  if $nu.os-info.name != "windows" {
-    assert equal ($link | path type) symlink $"($link) is not a symlink"
-    assert equal ($link | path expand) ($shipped | path expand)
+def "test the nushell plugin ships both skills, and the checkout tracks no .claude of its own" [] {
+  let skills = $ROOT | path join harness claude-code nushell skills
+  for name in [nushell nustro-completion-build] {
+    assert equal ($skills | path join $name SKILL.md | path type) file $name
+    let fm = open --raw ($skills | path join $name SKILL.md) | lines | where ($it starts-with "name:") | get -o 0 | default ""
+    assert equal $fm $"name: ($name)" $"($name): the frontmatter name is the directory name, the one /nushell:<name> runs"
   }
+  # The one copy is the plugin's: a `.claude/` in the checkout is a developer's
+  # own session config (gitignored), never a second home for the skills.
+  let tracked = ^git -C $ROOT ls-files .claude | complete | get stdout | str trim
+  assert equal $tracked "" ".claude/ is tracked"
   # this-setup.md is the distro's, not one machine's: no home directory in it.
-  let setup = open --raw ($shipped | path join references this-setup.md)
+  let setup = open --raw ($skills | path join nushell references this-setup.md)
   assert not ($setup | str contains "~/.config/nushell") "this-setup.md names one machine's checkout"
   assert not ($setup | str contains "Application Support") "this-setup.md names one machine's user directory"
+}
+
+def "test the completion build scripts parse, and discover reads the project from CLAUDE_PROJECT_DIR" [] {
+  let scripts = $ROOT | path join harness claude-code nushell skills nustro-completion-build scripts
+  for f in (glob ($scripts | path join "*.nu")) { assert (nu-check $f) $"($f) parses" }
+  # The skill runs from the plugin cache, so the script must not derive the
+  # checkout from its own path: the session's project directory is the config.
+  let r = with-env { CLAUDE_PROJECT_DIR: $ROOT } { ^$nu.current-exe -n ($scripts | path join discover.nu) git --json | complete }
+  assert equal $r.exit_code 0 $r.stderr
+  let existing = $r.stdout | from json | get existing
+  assert equal $existing.spec ($ROOT | path join completions git.nu)
+  assert equal $existing.wired true "git.nu is wired in conf/completions.nu"
 }
 
 def "test every hook a plugin declares is a script that exists and parses" [] {

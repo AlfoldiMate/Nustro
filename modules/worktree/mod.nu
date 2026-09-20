@@ -222,7 +222,7 @@ def build-plan [root: string, wt: string, profs: list, tracked: list<string>]: n
     let root_claude = $root | path join ".claude"
     mut plan = {}
     let claude_tracked = $tracked | any {|f| $f == ".claude" or ($f starts-with ".claude/") }
-    if ($root_claude | path type) == "dir" and not $claude_tracked {
+    if ($root_claude | path type) in ["dir" "symlink"] and not $claude_tracked {
         $plan = { ".claude": { source: $root_claude, target: ".claude", type: "symlink", override: true, profile: "(root)" } }
     }
 

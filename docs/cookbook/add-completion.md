@@ -11,7 +11,8 @@ agent completion gh                          # cobra: __complete for the tree, f
 agent completion uv "packages in the venv"   # a hint about what a positional is
 ```
 
-This runs the `completion` skill on a Claude session of its own: it finds
+This runs the nushell plugin's `nustro-completion-build` skill on a Claude
+session of its own: it finds
 where the tool's command surface lives (its own `__complete` hook, a shipped
 fish file, help text, carapace, nu_scripts), maps every positional to the
 cheapest local data, writes the module in the shape of `brew.nu` and
@@ -19,14 +20,17 @@ cheapest local data, writes the module in the shape of `brew.nu` and
 default model. The deterministic parts are scripts you can run yourself:
 
 ```nu
-nu .claude/skills/completion/scripts/discover.nu gh --online   # which sources exist, in order (≈1 s)
-nu .claude/skills/completion/scripts/cobra-tree.nu gh --at pr  # a cobra tool's tree via `gh __complete`
-nu .claude/skills/completion/scripts/fish-spec.nu uv           # a fish completion file → draft spec (uv: 3902 lines in 3 s)
-nu .claude/skills/completion/scripts/help-tree.nu cargo        # recursive --help → draft spec (clap, cobra, argparse, git layouts)
-nu .claude/skills/completion/scripts/verify.nu git --oracle carapace   # every slot through `commandline complete`, timed, diffed against carapace
+const S = "harness/claude-code/nushell/skills/nustro-completion-build/scripts"
+nu $"($S)/discover.nu" gh --online   # which sources exist, in order (≈1 s)
+nu $"($S)/cobra-tree.nu" gh --at pr  # a cobra tool's tree via `gh __complete`
+nu $"($S)/fish-spec.nu" uv           # a fish completion file → draft spec (uv: 3902 lines in 3 s)
+nu $"($S)/help-tree.nu" cargo        # recursive --help → draft spec (clap, cobra, argparse, git layouts)
+nu $"($S)/verify.nu" git --oracle carapace   # every slot through `commandline complete`, timed, diffed against carapace
 ```
 
-(Paths are relative to the checkout: `nu-config distro-root`.)
+(Paths are relative to the checkout, `nu-config distro-root`, and
+`discover.nu` reads the config it reports on from `CLAUDE_PROJECT_DIR`,
+else the current directory.)
 
 ## By hand
 

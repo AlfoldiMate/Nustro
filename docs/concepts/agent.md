@@ -16,7 +16,7 @@ agent status                  claude, session, models, caches, stale sessions
 agent commands                every skill and command the session can run
 agent checkpoint              /agmem:checkpoint now
 agent reset                   new session; the old one is checkpointed in the background
-agent completion <tool>       teach Tab a tool: the `completion` skill writes completions/<tool>.nu
+agent completion <tool>       teach Tab a tool: the `nustro-completion-build` skill writes completions/<tool>.nu
 Alt+E                         the line you are typing is the task; the proposal replaces it
 ```
 
@@ -35,9 +35,9 @@ for two things this design gets elsewhere: permission requests (not needed,
 see exec) and the command list (the init record, below).
 
 **Runs from the config repo.** Every turn does `cd ~/.config/nushell` first,
-so CLAUDE.md, the `nushell` skill (`.claude/skills/nushell`, a link to the
-copy the `nushell@nustro` plugin ships) and the agmem memory of this project
-load, and the model is grounded in 0.115 syntax. The two most reported
+so CLAUDE.md, the `nushell` skill (from the installed `nushell@nustro`
+plugin) and the agmem memory of this project load, and the model is grounded
+in 0.115 syntax. The two most reported
 failures of shell assistants are bash-in-Nushell and invented commands
 (codex discussion 296, nushell discussion 16109); the grounding plus the
 `nu` MCP server's `command_help` are the mitigation. Your actual directory
@@ -106,12 +106,17 @@ remembering and a checkpoint is a full turn on the default model.
 **`completion` is a skill, not code in the module.** Building a completer
 is research (which of a tool's seven possible sources exist), judgement
 (what each positional *is* and where the cheapest copy of that list lives)
-and verification; the module only launches `/completion <tool>` on a fresh
-session with `acceptEdits` and the tools in `AGENT_COMPLETION_TOOLS`, then
-checks the result parses and is wired. The deterministic parts are scripts
-in `.claude/skills/completion/scripts/` (discovery, help/fish/cobra
-parsers, a verifier that runs every slot through `commandline complete` in
-one login shell); the judgement is in `SKILL.md` and its references.
+and verification; the module only launches `/nushell:nustro-completion-build
+<tool>` on a fresh session with `acceptEdits` and the tools in
+`AGENT_COMPLETION_TOOLS`, then checks the result parses and is wired. The
+skill ships in the nushell plugin (`harness/claude-code/nushell/skills/
+nustro-completion-build/`), and the turn loads that directory with
+`--plugin-dir`, which overrides an installed copy of the plugin, so the
+skill that runs is the one beside the engine in the same checkout whether
+or not the plugin is installed. The deterministic parts are its `scripts/`
+(discovery, help/fish/cobra parsers, a verifier that runs every slot through
+`commandline complete` in one login shell); the judgement is in `SKILL.md`
+and its references.
 [Completion](completion.md) has the engine side.
 
 ## Measured

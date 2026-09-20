@@ -315,7 +315,7 @@ The skill's verifier runs a whole case file at once and diffs against carapace,
 which is the fastest way to find slots you forgot:
 
 ```nu
-nu .claude/skills/completion/scripts/verify.nu <tool> --oracle carapace
+nu harness/claude-code/nushell/skills/nustro-completion-build/scripts/verify.nu <tool> --oracle carapace
 ```
 
 ## Gotchas
@@ -403,4 +403,4 @@ running any completer — the fastest way to see what a slot looks like.
 | wiring | `conf/completions.nu` |
 | the design, with costs | [Completion](../concepts/completion.md) |
 | worked examples | `completions/brew.nu` (files + SQLite), `completions/git.nu` (cheap commands), `completions/cargo.nu` (lazy help parsing) |
-| generating one with an agent | `.claude/skills/completion/` |
+| generating one with an agent | `agent completion <tool>`, the `nustro-completion-build` skill in `harness/claude-code/nushell/skills/nustro-completion-build/` |

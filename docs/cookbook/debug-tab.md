@@ -93,10 +93,10 @@ is slow every time is a source that runs an external, and belongs in
 For the real thing — what the menu showed, keystroke by keystroke — drive an
 interactive `nu` in a pty: answer Reedline's cursor query (`ESC[6n`) with
 `ESC[1;1R`, set the window size, type whole lines, strip the escapes. The
-`completion` skill's `verify.nu` runs every slot of a spec through
+`nustro-completion-build` skill's `verify.nu` runs every slot of a spec through
 `commandline complete` in one login shell and diffs against carapace, which
 finds forgotten slots faster than any of this:
 
 ```nu
-nu .claude/skills/completion/scripts/verify.nu git --oracle carapace
+nu harness/claude-code/nushell/skills/nustro-completion-build/scripts/verify.nu git --oracle carapace
 ```

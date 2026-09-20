@@ -5,7 +5,7 @@
     "name": "Mate Alfoldi"
   },
   "metadata": {
-    "description": "Claude Code plugins shipped with Nustro, the Nushell distro: the nushell skill, and one plugin per module that wants a presence in a session — a client of the shell command the distro provides, so a session gets the same command, care points and guard rails a user has at the prompt.",
+    "description": "Claude Code plugins shipped with Nustro, the Nushell distro: the nushell skills, and one plugin per module that wants a presence in a session — a client of the shell command the distro provides, so a session gets the same command, care points and guard rails a user has at the prompt.",
     "version": "0.1.0"
   },
   "plugins": [
@@ -24,13 +24,14 @@
     {
       "name": "nushell",
       "source": "./harness/claude-code/nushell",
-      "description": "The nushell skill: writing, debugging and configuring Nushell 0.115 — language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. No hooks.",
+      "description": "Two skills, no hooks. nushell: writing, debugging and configuring Nushell 0.115 — language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. nustro-completion-build: teach Tab a CLI, a completions/<tool>.nu for Nustro's engine, the one `agent completion` runs.",
       "category": "development",
       "keywords": [
         "nushell",
         "nu",
         "shell",
-        "nustro"
+        "nustro",
+        "completion"
       ]
     }
   ]

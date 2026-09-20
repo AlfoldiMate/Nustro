@@ -207,6 +207,7 @@ def turn [
   --max-turns: int = 12
   --quiet                          # no text streaming (structured output, sweep)
   --session: record                # session record to use instead of this shell's
+  --plugin-dir: path               # a plugin loaded from disk for this turn (overrides an installed copy of the same name)
 ]: nothing -> record {
   let bin = (claude-bin)
   let rec = ($session | default (session-read (session-id)))
@@ -227,6 +228,7 @@ def turn [
   if $tools != null { $args ++= ["--tools" $tools] }
   if ($allow | is-not-empty) { $args ++= ["--allowedTools" ($allow | str join ",")] }
   if $schema != null { $args ++= ["--json-schema" $schema] }
+  if $plugin_dir != null { $args ++= ["--plugin-dir" $plugin_dir] }
   let cwd = (repo)
   if ($env.PWD | path expand) != ($cwd | path expand) { $args ++= ["--add-dir" $env.PWD] }
   let argv = $args
@@ -468,12 +470,16 @@ export def command [name: string@command-names, ...text: string]: any -> nothing
 
 # ── completion ────────────────────────────────────────────────────────────────
 
-# Teach Tab a tool. Runs the `completion` skill (.claude/skills/completion) on
-# a session of its own: it reads the tool's help and shipped completions,
-# maps every positional to the tool's own data, writes completions/<tool>.nu,
-# wires it in conf/completions.nu and verifies it headless. A build is a
-# long multi-turn job, so it never shares the shell's session: `agent ask`
-# afterwards stays cheap.
+# Teach Tab a tool. Runs the nushell plugin's `nustro-completion-build` skill
+# (harness/claude-code/nushell/skills/) on a session of its own: it reads the
+# tool's help and shipped completions, maps every positional to the tool's
+# own data, writes completions/<tool>.nu, wires it in conf/completions.nu and
+# verifies it headless. A build is a long multi-turn job, so it never shares
+# the shell's session: `agent ask` afterwards stays cheap. The plugin is
+# loaded from this checkout with --plugin-dir, so the skill that runs is the
+# one beside the engine it targets, whether or not nushell@nustro is
+# installed (Claude Code lets a --plugin-dir override the installed copy;
+# verified 2.1.278, 2026-09-20).
 export def completion [
   tool: string            # the command to complete (must be on PATH)
   ...hints: string        # what matters most, e.g. "packages with descriptions"
@@ -481,8 +487,9 @@ export def completion [
   if (which $tool | is-empty) { error make {msg: $"($tool) is not on PATH"} }
   let f = ($ROOT | path join completions $"($tool).nu")
   if ($f | path exists) { print $"(ansi dark_gray)completions/($tool).nu exists — it will be extended, not replaced(ansi reset)" }
-  let prompt = ($"/completion ($tool) ($hints | str join ' ')" | str trim)
+  let prompt = ($"/nushell:nustro-completion-build ($tool) ($hints | str join ' ')" | str trim)
   let r = (turn $prompt --verb completion
+    --plugin-dir ($ROOT | path join harness claude-code nushell)
     --allow (setting AGENT_COMPLETION_TOOLS ["Bash" "Read" "Write" "Edit" "Glob" "Grep" "WebFetch" "WebSearch" "mcp__nu"])
     --mode "acceptEdits"
     --max-turns (setting AGENT_COMPLETION_MAX_TURNS 150)

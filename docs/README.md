@@ -37,7 +37,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Agent](concepts/agent.md) | Claude Code inside the shell: one `claude -p` per turn, exec proposes, the checkpoint sweep |
 | [OData](concepts/odata.md) | pushing `where`/`select`/`first` to the server through a `pre_execution` hook |
 | [Worktrees](concepts/worktree.md) | one bare repository, a directory per branch, the gitignored files kept in profiles and placed into each |
-| [Agent harnesses](concepts/harness.md) | the shell inside Claude Code: `harness/`, the nushell skill as a plugin and one plugin per module as a client of the shell command, the marketplace the install registers and `nu-config upgrade` keeps current |
+| [Agent harnesses](concepts/harness.md) | the shell inside Claude Code: `harness/`, the nushell skills as a plugin and one plugin per module as a client of the shell command, the marketplace the install registers and `nu-config upgrade` keeps current |
 | [Plugins](concepts/plugins.md) | why there is no plugin manager, and what `nu-config plugins add` is instead |
 
 ## Reference

@@ -8,3 +8,11 @@
 
 .DS_Store
 *.bak
+
+# `.claude/` is a session's own: on a developer's machine it is a symlink to
+# a worktree of their Claude Code config (ctx-flow), never the checkout's.
+# The skills the distro ships for a session live in harness/claude-code/.
+.claude
+# ast-grep's registry of locally built grammars (`/ctx-grammar nu`): it names
+# a path under ~/.cache, so it is one machine's, never the checkout's.
+sgconfig.yml

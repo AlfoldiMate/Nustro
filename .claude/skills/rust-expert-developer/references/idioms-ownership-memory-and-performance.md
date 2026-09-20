@@ -1,1 +1,0 @@
-../../../../../.profiles/dflt/.claude/skills/rust-expert-developer/references/idioms-ownership-memory-and-performance.md

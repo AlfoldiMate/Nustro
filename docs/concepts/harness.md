@@ -14,10 +14,11 @@ module of this distro that wants a presence in a session:
 .claude-plugin/marketplace.json     the marketplace: Claude Code looks for it at the root, nowhere else
 harness/
 └── claude-code/
-    ├── nushell/                    the nushell skill: prose only, no hooks
+    ├── nushell/                    two skills, no hooks
     │   ├── .claude-plugin/plugin.json
     │   ├── README.md
-    │   └── skills/nushell/         SKILL.md and references/ — .claude/skills/nushell links here
+    │   ├── skills/nushell/         SKILL.md and references/: the session in Nushell, and Nustro
+    │   └── skills/nustro-completion-build/   SKILL.md, references/, scripts/: what `agent completion` runs
     └── worktree/                   one plugin, named after its module
         ├── .claude-plugin/plugin.json
         ├── README.md               the plugin's own reference page
@@ -67,17 +68,20 @@ The naming has one cost: Claude Code namespaces a plugin's skills as
 reads `/worktree:worktree`. `/worktree:add` and five siblings were the
 alternative; they would spread one set of care points over six files.
 
-The `nushell` plugin is the one that is not a module's client: it is the
-skill that keeps a session in Nushell rather than bash — the language, the
-config, and Nustro when it is the shell — and it ships nothing that runs.
-That is what lets it be a plugin of its own without breaking the rule
-above: a plugin with no module may have no hooks (the test enforces it), so
-installing it costs a session one skill line and nothing per tool call. The
-distro's own `.claude/skills/nushell` is a symlink into the plugin, so a
-session in a checkout has the skill as a project skill, Claude Code follows
-the link (verified 2026-09-20, 2.1.278), and there is one copy. On Windows
-git checks the link out as a file, and a checkout there relies on the
-installed plugin.
+The `nushell` plugin is the one that is not a module's client: the
+`nushell` skill keeps a session in Nushell rather than bash — the language,
+the config, and Nustro when it is the shell — and `nustro-completion-build`
+teaches Tab a tool by writing a spec for the completion engine. Neither
+ships anything that runs in a hook. That is what lets it be a plugin of its
+own without breaking the rule above: a plugin with no module may have no
+hooks (the test enforces it), so installing it costs a session two skill
+lines and nothing per tool call. The skills live in the plugin only: the
+checkout tracks no `.claude/` (gitignored — on a developer's machine it is
+their own session config, a symlink to a worktree of it), so a session in a
+checkout reaches them through the installed plugin, and `agent completion`
+loads the checkout's copy with `--plugin-dir`, which overrides the installed
+one (verified 2026-09-20, 2.1.278: "Plugin "nushell" from --plugin-dir
+overrides installed version" in the debug log).
 
 ## What the install does
 
@@ -119,10 +123,12 @@ the skill in the reason, context with the worktree and the profiles, silence
 for `git worktree list`, a quoted mention, a plain repository and no payload
 at all; `claude plugin validate --strict` on everything when `claude` is on
 the machine; `nu-config harness status` against a user directory of the
-test's own; the nushell plugin's skill is the one `.claude/skills/nushell`
-links to, and its `this-setup.md` names no machine's paths; `harness
-update` does nothing, quietly, when the marketplace is not the checkout
-under test.
+test's own; the nushell plugin ships both skills under the names Claude
+Code will run them by, the checkout tracks no `.claude/`, and
+`this-setup.md` names no machine's paths; the completion build scripts
+parse and `discover.nu` finds the config through `CLAUDE_PROJECT_DIR`;
+`harness update` does nothing, quietly, when the marketplace is not the
+checkout under test.
 
 A session end to end is not in the suite — it costs a model call — and was
 run by hand on 2026-09-20 from a scratch layout, `claude --plugin-dir

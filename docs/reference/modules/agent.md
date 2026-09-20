@@ -104,7 +104,9 @@ agent completion uv "packages in the venv"
 agent completion cargo
 ```
 
-The `completion` skill (`.claude/skills/completion`) discovers where the
+The `nustro-completion-build` skill (in the nushell plugin,
+`harness/claude-code/nushell/skills/nustro-completion-build/`, loaded with
+`--plugin-dir` from this checkout) discovers where the
 tool's command surface lives (its own `__complete` hook, a shipped fish
 file, help text, carapace, nu_scripts), maps every positional to the
 cheapest local data (`references/sources.md`), writes

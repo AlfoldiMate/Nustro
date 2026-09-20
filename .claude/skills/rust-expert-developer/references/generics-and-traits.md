@@ -1,1 +1,0 @@
-../../../../../.profiles/dflt/.claude/skills/rust-expert-developer/references/generics-and-traits.md

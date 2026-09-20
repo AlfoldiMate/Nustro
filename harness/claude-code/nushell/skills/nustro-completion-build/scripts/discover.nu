@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # discover.nu — where a tool's command surface can be read from, in order
 #
-#   nu discover.nu <tool> [--online]
+#   nu discover.nu <tool> [--online]     in the config directory, or with CLAUDE_PROJECT_DIR set
 #
 # Probes, cheapest first, and prints one record so the next step is a
 # lookup, not a guess:
@@ -22,8 +22,12 @@
 
 const NO_PROBE = [rm mv cp dd mkdir touch kill sudo chmod chown ln cat less more tee rmdir install unlink shred truncate]
 
-# modules/… → the repo root: scripts/completion/skills/.claude/<repo>
-const ROOT = (path self | path dirname | path dirname | path dirname | path dirname | path dirname)
+# The config the spec is built for: the session's project (Claude Code sets
+# CLAUDE_PROJECT_DIR), else the current directory. The script ships inside
+# the nushell plugin, so its own path says nothing about the checkout.
+def root []: nothing -> path {
+  $env | get -o CLAUDE_PROJECT_DIR | default $env.PWD | path expand
+}
 
 def run-in [dir: path, argv: list<string>, env_extra: record = {}]: nothing -> record {
   let r = (do { cd $dir; with-env ({ PAGER: cat, GIT_PAGER: cat, NO_COLOR: "1", TERM: dumb, COLUMNS: "200" } | merge $env_extra) { echo "" | ^$argv.0 ...($argv | skip 1) | complete } })
@@ -109,12 +113,12 @@ def probe-nu-scripts [tool: string]: nothing -> any {
 
 # What is already here for this tool.
 def existing [tool: string]: nothing -> record {
-  let spec = ($ROOT | path join completions $"($tool).nu")
-  let vendored = ($ROOT | path join completions $"($tool)-completions.nu")
+  let spec = (root | path join completions $"($tool).nu")
+  let vendored = (root | path join completions $"($tool)-completions.nu")
   {
     spec: (if ($spec | path exists) { $spec } else { null })
     vendored: (if ($vendored | path exists) { $vendored } else { null })
-    wired: (do -i { open --raw ($ROOT | path join conf completions.nu) | lines | where $it =~ $"^use ($tool)(-completions)?\\.nu" | is-not-empty } | default false)
+    wired: (do -i { open --raw (root | path join conf completions.nu) | lines | where $it =~ $"^use ($tool)\(-completions\)?\\.nu" | is-not-empty } | default false)
   }
 }
 
