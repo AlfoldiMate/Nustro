@@ -1,0 +1,23 @@
+{
+  description: "A bare repository with a sibling directory per branch; the gitignored files each checkout needs, kept in profiles"
+  docs: "docs/reference/modules/worktree.md"
+  # paid on the first `worktree`, not at startup. 68.8 ms of startup with it
+  # eager against 59.2 ms lazy, medians of 25 in three alternating rounds,
+  # 2026-09-20.
+  cost: 10ms
+  # A command for the minute a branch is started or finished, so lazy: on
+  # `worktree`, which every command starts with — no MODULES_TRIGGERS entry.
+  lazy: true
+  requires: [
+    {
+      bin: "git"
+      hard: true
+      why: "the layout is git's own: a bare repository, linked worktrees, the ignore rules that decide what a profile holds"
+      install: {
+        macos: "xcode-select --install, or brew install git"
+        linux: "your package manager: apt install git, dnf install git, pacman -S git"
+        windows: "winget install Git.Git"
+      }
+    }
+  ]
+}

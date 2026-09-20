@@ -36,6 +36,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Theming](concepts/theming.md) | one palette in roles, resolved in three tiers, rendered for every tool; the terminal as the preview; Ghostty's facts |
 | [Agent](concepts/agent.md) | Claude Code inside the shell: one `claude -p` per turn, exec proposes, the checkpoint sweep |
 | [OData](concepts/odata.md) | pushing `where`/`select`/`first` to the server through a `pre_execution` hook |
+| [Worktrees](concepts/worktree.md) | one bare repository, a directory per branch, the gitignored files kept in profiles and placed into each |
 | [Plugins](concepts/plugins.md) | why there is no plugin manager, and what `nu-config plugins add` is instead |
 
 ## Reference
@@ -54,6 +55,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [terminal](reference/modules/terminal.md) | `theme`, `ghostty`, `font`, `terminal` — every command, with costs |
 | [agent](reference/modules/agent.md) | `ask`, `exec`, `skill`, `command`, `completion`; the exec menu; the knobs |
 | [odata](reference/modules/odata.md) | every command and flag, the query-option table, completion, knobs, testing |
+| [worktree](reference/modules/worktree.md) | `init`, `add`, `remove`, `apply`, `discard`, `which`; the profile format and its hooks; the rules apply keeps |
 
 ## Cookbook
 

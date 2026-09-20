@@ -76,6 +76,7 @@ it.
 | `terminal` | `theme`, `font`, `ghostty`: one palette rendered for the terminal, tables, `ls`, bat, the prompt and the app icon | 18 ms, lazy |
 | `agent` | Claude Code at the prompt: `ask`, `exec` (proposes; you run it), `skill`, `command`, `completion` | 18 ms, lazy |
 | `odata` | OData V2/V4 services as tables, `where`/`select`/`first` pushed to the server | 97 ms, lazy |
+| `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |
 | `completions/` | brew (16k formulae with descriptions, 3 ms), git (refs by recency, changed files), cargo (workspace members, crates, features) | 10 ms for all three |
 | `themes/` | NvChad's 96 palettes and Catppuccin's four, plus Ghostty's own 463 | rendered once |
 

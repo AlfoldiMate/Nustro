@@ -41,7 +41,7 @@ interactive-only by nature — `nu -c` and scripts never fire the hook — so a
 module you use from scripts has to be eager. In `settings.nu`:
 
 ```nu
-const MODULES_LAZY = [agent odata]           # terminal always loaded; the shipped list is [terminal agent odata]
+const MODULES_LAZY = [agent odata worktree]  # terminal always loaded; the shipped list is [terminal agent odata worktree]
 ```
 
 `module list` then shows `terminal` as `lazy: false, loaded: true`, and

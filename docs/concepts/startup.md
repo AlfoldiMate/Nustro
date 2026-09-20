@@ -66,8 +66,8 @@ Step 5 is the interesting one, because not all of it happens at step 5.
 parsed at startup:
 
 ```nu
-const MODULES = [nu-config nu-complete terminal agent odata]
-const MODULES_LAZY = [terminal agent odata]
+const MODULES = [nu-config nu-complete terminal agent odata worktree]
+const MODULES_LAZY = [terminal agent odata worktree]
 ```
 
 A lazy module is loaded by a `pre_execution` hook on the first line that
@@ -84,6 +84,7 @@ What it costs, measured on this machine:
 | the guard, per Enter on a line that matches nothing | 828 ns |
 | `terminal`, `agent` | 18 ms each, at first mention |
 | `odata` | 97 ms, at first mention |
+| `worktree` | 10 ms, at first mention |
 | a cold interactive start with all three lazy | ~95 ms |
 
 Against what Nushell itself costs — minimum of nine cold starts on an

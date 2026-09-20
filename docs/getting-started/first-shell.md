@@ -51,10 +51,11 @@ to you; `git pull` updates it without touching your files
 | `theme`, `font`, `ghostty`, `terminal` | the terminal you are in: its palette, its font, its config ([reference](../reference/modules/terminal.md)) |
 | `agent` | Claude Code at the prompt: `ask`, `exec`, `skill`, `command`, `completion` ([reference](../reference/modules/agent.md)) |
 | `odata` | OData V2/V4 services as tables, with `where`/`select`/`first` run on the server ([reference](../reference/modules/odata.md)) |
+| `worktree` | a bare repository with a directory per branch, the gitignored files each checkout needs placed from profiles ([reference](../reference/modules/worktree.md)) |
 | `nu-complete` | the engine behind Tab: `status`, `cache clear` ([reference](../reference/modules/nu-complete.md)) |
 
-`theme`, `agent` and `odata` are lazy: not parsed at startup, loaded on the
-first line that mentions them (18 ms, 18 ms and 97 ms, once). That is why
+`theme`, `agent`, `odata` and `worktree` are lazy: not parsed at startup, loaded on the
+first line that mentions them (18 ms, 18 ms, 97 ms and 10 ms, once). That is why
 startup is 84 ms on an M-series Mac against 47 ms for Nushell with no config
 at all, and also why a lazy module is interactive-only — a script has to `use
 odata *` itself ([Startup](../concepts/startup.md)).

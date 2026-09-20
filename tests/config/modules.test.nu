@@ -94,7 +94,7 @@ def "test module disable and enable edit one line of settings.nu each" [] {
   let off = nu-l $dir 'nu-config module disable odata'
   assert equal $off.exit_code 0 $off.stderr
   let settings = open --raw ($dir.config | path join settings.nu) | lines | where {|l| $l =~ '^const MODULES' }
-  assert equal $settings ["const MODULES = [nu-config nu-complete terminal agent]"]
+  assert equal $settings ["const MODULES = [nu-config nu-complete terminal agent worktree]"]
   let after = nu-l $dir 'nu-config module list | where module == odata | get 0.enabled'
   assert equal ($after.stdout | str trim) "false"
 
@@ -102,7 +102,7 @@ def "test module disable and enable edit one line of settings.nu each" [] {
   assert equal $on.exit_code 0 $on.stderr
   assert ($on.stdout | ansi strip | str contains "no dependencies") $on.stdout
   let lines = open --raw ($dir.config | path join settings.nu) | lines | where {|l| $l =~ '^const MODULES' }
-  assert equal $lines ["const MODULES = [nu-config nu-complete terminal agent odata]" "const MODULES_LAZY = [terminal agent]"]
+  assert equal $lines ["const MODULES = [nu-config nu-complete terminal agent worktree odata]" "const MODULES_LAZY = [terminal agent worktree]"]
   let back = nu-l $dir 'nu-config module list | where module == odata | get 0 | select enabled lazy loaded | to nuon'
   assert equal ($back.stdout | from nuon) { enabled: true, lazy: false, loaded: true }
   let overridden = nu-l $dir 'nu-config knobs --overridden | get knob | to nuon'

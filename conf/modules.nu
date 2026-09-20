@@ -46,6 +46,10 @@ source $M_TERMINAL
 const M_ODATA = (if ("odata" in $MODULES) and ("odata" not-in $MODULES_LAZY) { ($MOD_DIR | path join odata load.nu) } else { null })
 source $M_ODATA
 
+# ── worktree ──────────────────────────────────────────────────────────────────
+const M_WORKTREE = (if ("worktree" in $MODULES) and ("worktree" not-in $MODULES_LAZY) { ($MOD_DIR | path join worktree load.nu) } else { null })
+source $M_WORKTREE
+
 # ── Lazy loading ──────────────────────────────────────────────────────────────
 # A `pre_execution` hook fires before Nushell parses the line you typed, and a
 # hook given as a STRING is parsed and merged into the global engine state —

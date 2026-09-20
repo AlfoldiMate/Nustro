@@ -142,7 +142,7 @@ $env.config.completions.partial = false
 # A module carries its OWN defaults, so its knobs are not listed in this file;
 # `nu-config knobs` reads them out of each module's meta.nuon. To add one of
 # your own, drop it in <your>/modules/ and `use` it from your settings.nu.
-const MODULES = [nu-config nu-complete terminal agent odata]
+const MODULES = [nu-config nu-complete terminal agent odata worktree]
 
 # Of those, the ones NOT parsed at startup. A lazy module is loaded by a
 # pre_execution hook on the first line that mentions it — measured at 828 ns
@@ -151,7 +151,7 @@ const MODULES = [nu-config nu-complete terminal agent odata]
 # The catch, and it is inherent: pre_execution does not fire for `nu -c` or a
 # script, so a lazy module is interactive-only and a script has to say
 # `use odata *` itself. Move a name out of this list to have it always loaded.
-const MODULES_LAZY = [terminal agent odata]
+const MODULES_LAZY = [terminal agent odata worktree]
 
 # Extra words that should also trigger a lazy module, beyond its own name.
 # `odata`'s `expand` is a pipeline stage that does not repeat the module name;

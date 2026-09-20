@@ -63,6 +63,7 @@ what Nushell loads when.
 | `theme` / `ghostty` / `font` / `terminal` | the terminal itself (lazy module) |
 | `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |
 | `odata` | OData V2/V4 services as tables (lazy) |
+| `worktree` | bare repo + a directory per branch, gitignored files from profiles: `init`, `add`, `remove`, `apply`, `discard`, `which` (lazy) |
 
 `nu-config doctor` is the first thing to run when something looks wrong: both
 roots, the layout state (`split` is the target), every derived path, a parse
@@ -78,8 +79,8 @@ check, tools, plugins, modules and startup time.
 - **Theme** whatever `theme use` rendered last into `.state/theme/` (no knob);
   tables, `ls`, bat and the starship prompt all come from it. `theme status`,
   `theme roles`
-- **Modules** `nu-config` and `nu-complete` eager; `terminal`, `agent`, `odata`
-  lazy — loaded by a `pre_execution` hook on the first line that mentions them,
+- **Modules** `nu-config` and `nu-complete` eager; `terminal`, `agent`, `odata`,
+  `worktree` lazy — loaded by a `pre_execution` hook on the first line that mentions them,
   which means they do **not** load for `nu -c` or a script
 - **`open`** left alone: it is Nushell's parser. Use `start <path>` to launch a
   file in its app, and `%open` inside completion modules in case a user aliased it
