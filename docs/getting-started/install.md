@@ -35,21 +35,21 @@ and nothing is written before you say yes to the last one:
 |---|---|
 | 1. Where | the checkout, and your config directory — Nushell's own, unless you set `XDG_CONFIG_HOME` |
 | 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
-| 3. Terminal | is Ghostty installed, are you *running* in it; if not, the install line and "install Ghostty now?" (default yes, and `--defaults` does it unasked — on macOS, the Homebrew cask; Linux and Windows get the link and nothing runs; `--skip-terminal` leaves it out). Without it the screen says what you do without — the theme stays at the ANSI tier, no `font`, no `ghostty shell`, Alt keys depend on your terminal — and offers to disable the `terminal` module (default no: it is lazy and costs nothing left on). Then whether a new window starts Nushell (default yes) |
-| 4. Theme | one of a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal, then written to Ghostty with its icon and rendered for tables, `ls`, bat and the prompt |
-| 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a Ghostty window of their own |
-| 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present. Nothing is installed here |
+| 3. Terminal | which of the two terminals — Ghostty (macOS, Linux), WezTerm (macOS, Linux, Windows) — is installed, and whether you are *running* in one. With neither: pick one to install (Enter takes the first; `--defaults` installs the platform's own unasked — Ghostty through the Homebrew cask, WezTerm through winget on Windows; where the plan is a link nothing runs; `--skip-terminal` leaves it out). With both and running in neither: which one `theme`, `font` and `terminal shell` configure (`terminal use` later). Without any the screen says what you do without — the theme stays at the ANSI tier, no `font`, no `terminal shell`, Alt keys depend on your terminal — how to get it back (install one, open a new shell), and offers to disable the `terminal` module (default no: it is lazy and costs nothing left on). Then whether a new window starts Nushell (default yes) |
+| 4. Theme | one of a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal, then written to the terminal (with its icon, on Ghostty) and rendered for tables, `ls`, bat and the prompt |
+| 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a window of the terminal's own |
+| 6. Tools | which of zoxide / atuin / carapace / vivid / starship are present, and which enabled module is missing the tool it needs (`claude` for `agent`, say) — with the install line and what follows once it is there. Nothing is installed here; a module left without its tool is lazy and its commands say what is missing until it arrives |
 | 7. The plan | every line that will be written, then one yes |
 
 ```nu
 nu install.nu              # the seven screens
-nu install.nu --defaults   # no questions, every shipped value — Ghostty included, on macOS
+nu install.nu --defaults   # no questions, every shipped value — the platform's terminal included
 nu install.nu --dry-run    # print the plan, change nothing
 nu install.nu --skip-tools --skip-plugins --skip-harness
 ```
 
 The theme preview paints the terminal and `theme reset` hands it back, so a
-cancelled installer leaves Ghostty's configuration alone. Fonts are the
+cancelled installer leaves the terminal's configuration alone. Fonts are the
 exception, because a font has to exist before it can be shown; the installer
 asks before downloading one.
 
@@ -73,8 +73,10 @@ itself, which is what makes `curl … | sh` work without a flag.
   marketplace, `nustro`, and the install line of each plugin printed
   (`claude plugin install worktree@nustro`) — a plugin adds hooks to
   every session, so that one is yours ([Agent harnesses](../concepts/harness.md))
-- with Ghostty: `command = <nu>` and the theme you chose, in a file of its own
-  that Ghostty's config includes ([Files](../reference/files.md#ghostty))
+- with a terminal: the pin (`.state/terminal/target.nuon`), and in a file of
+  its own that the terminal's config includes — Ghostty's `command = <nu>`
+  or WezTerm's `default_prog`, and the theme you chose
+  ([Files](../reference/files.md#ghostty))
 
 Nothing you own is ever written inside the checkout, and nothing the distro
 owns is written into your directory except that `config.nu`

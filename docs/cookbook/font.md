@@ -1,10 +1,16 @@
 # Pin a font
 
 ```nu
-font list                    # fifteen Nerd Fonts: installed here, current, the family Ghostty reports
-font preview FiraCode        # a new Ghostty window in that font, showing a specimen — nothing written
-font use FiraCode            # install it if it is missing, write it into Ghostty's config, reload every window
+font list                    # fifteen Nerd Fonts: installed here, current, the family the terminal reports
+font preview FiraCode        # a new window of the terminal in that font, showing a specimen — nothing written
+font use FiraCode            # install it if it is missing, write it into the terminal's config, reload every window
 ```
+
+This page was run in Ghostty. In WezTerm (`terminal target` says which one
+you are configuring) the three lines above are the same and the `ghostty …`
+lines below read `wezterm live font_family`, `wezterm settings` and
+`wezterm set { font_family: null }`; WezTerm reloads every window itself,
+on every platform.
 
 `font use` is the whole pin. It writes `font-family = FiraCode Nerd Font`
 into the file the distro owns in Ghostty's config directory — reset first,

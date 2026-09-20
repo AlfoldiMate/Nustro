@@ -1,12 +1,17 @@
-# font — pick a Nerd Font, install it, and let Ghostty render the preview
+# font — pick a Nerd Font, install it, and let the terminal render the preview
 #
 #   font                    the picker: fifteen popular Nerd Fonts, install and keep
 #   font list               what is in the registry, and what is installed here
 #   font install <name>     download and install it, after asking
-#   font preview <name>     a real Ghostty window in that font, showing a specimen
+#   font preview <name>     a real window of the terminal in that font, showing a specimen
 #   font specimen           the sample text, in the font this terminal is using now
-#   font use <name> [-s N]  install if needed, then keep it (ghostty.nu persists it), at a size
-#   font size [N|--reset]   the point size alone: show, set, or hand it back to Ghostty
+#   font use <name> [-s N]  install if needed, then keep it in the terminal's config, at a size
+#   font size [N|--reset]   the point size alone: show, set, or hand it back to the terminal
+#
+# The terminal is `terminal target` (registry.nu): Ghostty or WezTerm, whichever
+# this session runs in or was pinned. Each answers the two questions a font
+# needs — "which face does this family resolve to" (`face`) and "open a window
+# in it" (`preview`) — in its own way, and writes the family under its own key.
 #
 # Why a new window is the preview
 #
@@ -15,14 +20,13 @@
 # one you HAVE installed in the window you are sitting in without keeping it:
 # there is no escape sequence for "change font" the way OSC 4 is "change
 # colour", which is what makes the theme picker able to repaint in place, and
-# `ghostty reload` (macOS only) reloads the written configuration — a choice,
-# not a preview.
+# a reload of the written configuration is a choice, not a preview.
 #
-# What Ghostty does have is `--font-family` on its own command line, so a new
-# window can be opened in the candidate font running a specimen. That is a real
-# preview: Ghostty's own rasterizer, Ghostty's own shaper, the actual ligatures
-# and the actual Nerd Font glyphs, at the size you will use. It costs one window
-# you close again.
+# What both terminals have is the font on their own command line (Ghostty's
+# `--font-family`, WezTerm's `--config font=`), so a new window can be opened
+# in the candidate font running a specimen. That is a real preview: the
+# terminal's own rasterizer and shaper, the actual ligatures and the actual
+# Nerd Font glyphs, at the size you will use. It costs one window you close.
 #
 # The alternative the design started with was pre-rendered PNG samples pushed
 # over the Kitty graphics protocol, which Ghostty supports. It was dropped:
@@ -32,7 +36,7 @@
 # can go stale against a Nerd Fonts release, to show something less true than
 # the terminal itself already shows.
 
-use ghostty.nu *
+use registry.nu *
 
 # ── The registry ──────────────────────────────────────────────────────────────
 #
@@ -42,18 +46,18 @@ use ghostty.nu *
 #   stem    the exact file stem to install out of it. An asset holds every
 #           variant (Mono, Propo, NL, and whole sub-families), so this picks one
 #           — MesloLGS out of six Meslo variants, MonaspiceNe out of five.
-#   family  what Ghostty calls it once installed. Nerd Fonts RENAMES several
+#   family  what the terminal calls it once installed. Nerd Fonts RENAMES several
 #           fonts to avoid trademark collisions (CascadiaCode → CaskaydiaCove,
 #           SourceCodePro → SauceCodePro, Monaspace → Monaspice, Terminus →
 #           Terminess), so this is never derived from the name.
 #   cask    Homebrew's cask, which is the fast path on macOS.
 #
-# `family` is a claim about the installed font, so nothing trusts it: what gets
-# written into Ghostty's config is the family `ghostty +list-fonts` reports, and
-# this value is only the pattern used to find it.
+# `family` is a claim about the installed font, so nothing trusts it: a font
+# counts as installed only when the terminal resolves the family to itself
+# (`font face`), and this value is only the pattern used to ask.
 def registry []: nothing -> table {
   [
-    { name: "JetBrainsMono"   asset: "JetBrainsMono"   stem: "JetBrainsMonoNerdFont"   family: "JetBrainsMono Nerd Font"   cask: "font-jetbrains-mono-nerd-font"   what: "ligatures, the most installed of them all — and Ghostty's own built-in font" }
+    { name: "JetBrainsMono"   asset: "JetBrainsMono"   stem: "JetBrainsMonoNerdFont"   family: "JetBrainsMono Nerd Font"   cask: "font-jetbrains-mono-nerd-font"   what: "ligatures, the most installed of them all — and the built-in font of Ghostty and WezTerm" }
     { name: "FiraCode"        asset: "FiraCode"        stem: "FiraCodeNerdFont"        family: "FiraCode Nerd Font"        cask: "font-fira-code-nerd-font"        what: "the original programming ligatures" }
     { name: "Hack"            asset: "Hack"            stem: "HackNerdFont"            family: "Hack Nerd Font"            cask: "font-hack-nerd-font"            what: "no ligatures, very legible small" }
     { name: "Meslo"           asset: "Meslo"           stem: "MesloLGSNerdFont"        family: "MesloLGS Nerd Font"        cask: "font-meslo-lg-nerd-font"        what: "Menlo with adjustable line gap; what powerlevel10k recommends" }
@@ -87,38 +91,15 @@ const FACES = ["Regular" "Bold" "Italic" "BoldItalic"]
 
 # ── What is installed ─────────────────────────────────────────────────────────
 
-# The face Ghostty would actually use for a family, which is the only test that
-# means anything: Ghostty is what has to find the font, and it answers in the
-# spelling its own `font-family` key wants.
-#
-# It has to be `+show-face` and not `+list-fonts`. Verified on macOS 27.2 with
-# Ghostty 1.3.1: after installing Inconsolata Nerd Font into ~/Library/Fonts,
-# `+list-fonts` still reported only the five system monospace families and never
-# mentioned it, while `+show-face --font-family="Inconsolata Nerd Font"` answered
-# "found in face Inconsolata Nerd Font". A directory listing is no better — the
-# file being there is not the same as CoreText or fontconfig having it.
-#
-# The catch that makes this work at all: a family Ghostty cannot find does NOT
-# fail, it silently falls back to the configured font. So the test is whether
-# the face it names is the family we asked for. 26 ms per call.
-#
-# `font-family` is a repeatable key — a LIST of families, first found wins —
-# and Ghostty builds that list as: its default config files, then the command
-# line, then the files those include (`config-file`). So a `--font-family=X`
-# on the command line lands behind whatever the user's config set, and in
-# front of whatever our included file sets — an empty `--font-family=` reset
-# clears the user's entry but not ours, and once `font use` has written a
-# family every other font read as "not installed". `--config-default-files=
-# false` loads no configuration at all, so the answer is about X alone.
-# Verified with Ghostty 1.3.1, 2026-09-19: an installed family comes back as
-# itself, one that is not as Ghostty's built-in "JetBrains Mono", whatever
-# the user's config and ours say.
+# The face the terminal would actually use for a family, which is the only
+# test that means anything: the terminal is what has to find the font, and it
+# answers in the spelling its own font key wants. Ghostty answers through
+# `+show-face`, WezTerm through `ls-fonts` (each backend says how, and why);
+# both fall back silently to their built-in "JetBrains Mono" for a family they
+# cannot find, so the test is whether the face named is the family asked for.
+# Null without a terminal to ask.
 export def "font face" [family: string]: nothing -> any {
-  let g = (ghostty-bin)
-  if $g == null { return null }
-  ^$g +show-face --config-default-files=false $"--font-family=($family)" --string=A
-  | parse -r 'found in face .(?<face>[^“”"]+).'
-  | get -o 0.face
+  terminal face $family
 }
 
 def installed? [family: string]: nothing -> bool {
@@ -126,18 +107,21 @@ def installed? [family: string]: nothing -> bool {
   $face != null and ($face | str starts-with $family)
 }
 
-# The registry, with what is true on this machine. One Ghostty spawn per font,
-# in parallel: 15 sequential calls are 400 ms, `par-each` brings that under 100.
+# The registry, with what is true on this machine. One terminal spawn per
+# font, in parallel: 15 sequential Ghostty calls are 400 ms, `par-each` brings
+# that under 100.
 #
-# `current` is judged by what Ghostty reports it is using, not by what this
-# distro wrote: a `font-family` in the user's own config is just as current, and
+# `current` is judged by what the terminal reports it is using, not by what
+# this distro wrote: a family in the user's own config is just as current, and
 # the variant they chose ("JetBrainsMono Nerd Font Mono") is the same font.
 export def "font list" []: nothing -> table<font: string, installed: bool, current: bool, family: string, what: string> {
-  let now = (ghostty live font-family | default "")
+  let t = (terminal target)
+  let now = (if $t == null { "" } else { terminal live $t.font_key | default "" })
   registry | par-each {|f|
+    let face = (if $t == null { null } else { terminal face $f.family })
     {
       font: $f.name
-      installed: (installed? $f.family)
+      installed: ($face != null and ($face | str starts-with $f.family))
       current: ($now | str starts-with $f.family)
       family: $f.family
       what: $f.what
@@ -190,10 +174,13 @@ export def "font install" [
   } else {
     install-from-archive $f
   }
-  if not (settled? $f.family) {
-    print $"(ansi yellow)installed, but Ghostty still resolves '($f.family)' to ((font face $f.family)) — the Nerd Fonts naming may have changed(ansi reset)"
+  let t = (terminal target)
+  if $t == null {
+    print $"($name) installed into (font dir) — no terminal here to check it with"
+  } else if not (settled? $f.family) {
+    print $"(ansi yellow)installed, but ($t.name) still resolves '($f.family)' to ((font face $f.family)) — the Nerd Fonts naming may have changed(ansi reset)"
   } else {
-    print $"($name) installed — Ghostty renders it as '($f.family)'"
+    print $"($name) installed — ($t.name) renders it as '($f.family)'"
   }
 }
 
@@ -202,7 +189,7 @@ export def "font install" [
 # resolved 'Hack Nerd Font' to itself (an uninstall lags the same way). A single
 # check straight after the install therefore said "not installed", and `font
 # use` refused to write the family it had just installed. Poll instead; each
-# try is one Ghostty spawn, ~30 ms.
+# try is one terminal spawn, 30–50 ms.
 def settled? [family: string]: nothing -> bool {
   for _ in 1..50 {
     if (installed? $family) { return true }
@@ -308,84 +295,73 @@ def specimen-lines [family: string]: nothing -> list<string> {
 # Print the specimen in whatever font this terminal is using. Honest about it:
 # unless the font named IS the current one, this shows your font, not that one.
 export def "font specimen" []: nothing -> nothing {
-  let now = (ghostty settings | get -o font-family | default "your terminal's current font")
+  let t = (terminal target)
+  let now = (if $t == null { null } else { terminal settings | get -o $t.font_key } | default "your terminal's current font")
   specimen-lines $now | each {|l| print $l }
   print ""
 }
 
-# Open a new Ghostty window in this font, showing the specimen. The window is
-# yours to close; it is a separate Ghostty instance and touches no config.
+# Open a new window of the terminal in this font, showing the specimen. The
+# window is yours to close; it is a separate instance and touches no config.
 export def "font preview" [name: string@font-names]: nothing -> nothing {
   let f = (entry $name)
   let row = (font list | where font == $name | get 0)
   if not $row.installed {
     error make { msg: $"($name) is not installed, and a font cannot be rendered before it exists — `font install ($name)`" }
   }
-  let g = (ghostty-bin)
-  if $g == null { error make { msg: "ghostty is not installed — `terminal install ghostty`" } }
+  let t = (terminal require)
   let script = (specimen-lines $row.family | each {|l| $"print '($l | str replace --all "'" "''")'" } | str join "; ")
-  let argv = [
-    $"--font-family=($row.family)"
-    "--font-size=14"
-    "--window-width=78"
-    "--window-height=16"
-    "--title=font preview"
-    "-e" $nu.current-exe "-n" "-c" $"($script); print ''; input 'press Enter to close '"
-  ]
-  # On macOS Ghostty refuses to start a window from the CLI — "launching the
-  # terminal emulator from the CLI is not supported" — and says to use `open`.
-  if $nu.os-info.name == "macos" {
-    ^open -na Ghostty.app --args ...$argv
-  } else {
-    ^$g ...$argv
-  }
-  print $"opened a Ghostty window in ($row.family) — close it when you have seen enough"
+  terminal preview $row.family 14 [$nu.current-exe "-n" "-c" $"($script); print ''; input 'press Enter to close '"]
+  print $"opened a ($t.name) window in ($row.family) — close it when you have seen enough"
 }
 
 # ── Choosing one ──────────────────────────────────────────────────────────────
 
-# Keep a font: Ghostty's config, then `ghostty reload` so every open window
-# takes it — on macOS, where the AppleScript reload exists; elsewhere the
-# window you are in keeps the font it started with.
+# Keep a font: the terminal's config, then a reload so every open window
+# takes it — WezTerm always, Ghostty on macOS through AppleScript; elsewhere
+# the window you are in keeps the font it started with.
 export def "font use" [
   name: string@font-names
   --size (-s): number   # the point size as well, written next to the family
 ]: nothing -> nothing {
+  let t = (terminal require)
   let row = (font list | where font == $name | get 0)
   if not $row.installed { font install $name }
   let after = (font list | where font == $name | get 0)
   if not $after.installed { error make { msg: $"($name) is still not installed; nothing was written" } }
   if $size != null { check-size $size }
-  ghostty set ({ font-family: $after.family } | merge (if $size == null { {} } else { { font-size: $size } }))
+  terminal set (terminal font-keys $after.family $size)
   let what = ($after.family + (if $size == null { "" } else { $" at ($size)" }))
-  print (if (ghostty reload) { $"font is ($what) — every open window and new ones" } else { $"font is ($what) — new windows will use it; this one keeps the font it started with" })
+  print (if (terminal reload) { $"font is ($what) — every open ($t.name) window and new ones" } else { $"font is ($what) — new ($t.name) windows will use it; this one keeps the font it started with" })
 }
 
-# The size alone: Ghostty's `font-size`, in points, kept in our file next to the
-# family so `ghostty reset` takes it out with everything else. `--reset` removes
-# the key and Ghostty falls back to its own default (13 in 1.3.1) or to the
-# user's config. A size on the command line is the one thing ⌘+/⌘- lose on
-# the next window, which is why it is a setting and not a keystroke.
+# The size alone, in points, kept in our file next to the family so a reset
+# takes it out with everything else. `--reset` removes the key and the
+# terminal falls back to its own default (13 in Ghostty 1.3.1, 12 in WezTerm)
+# or to the user's config. A size on the command line is the one thing ⌘+/⌘-
+# lose on the next window, which is why it is a setting and not a keystroke.
 export def "font size" [
   size?: number   # points; halves are fine (14.5)
   --reset         # remove the key
 ]: nothing -> nothing {
+  let t = (terminal require)
   if $reset {
-    ghostty set { font-size: null }
-    print (if (ghostty reload) { "font size is Ghostty's own again — every open window and new ones" } else { "font size is Ghostty's own again — in new windows" })
+    terminal set { ($t.size_key): null }
+    print (if (terminal reload) { $"font size is ($t.name)'s own again — every open window and new ones" } else { $"font size is ($t.name)'s own again — in new windows" })
     return
   }
   if $size == null {
-    print (ghostty live font-size | default "Ghostty's own default")
+    print (terminal live $t.size_key | default $"($t.name)'s own default")
     return
   }
   check-size $size
-  ghostty set { font-size: $size }
-  print (if (ghostty reload) { $"font size is ($size) — every open window and new ones" } else { $"font size is ($size) — new windows will use it" })
+  terminal set (terminal font-keys null $size)
+  print (if (terminal reload) { $"font size is ($size) — every open window and new ones" } else { $"font size is ($size) — new windows will use it" })
 }
 
-# Ghostty rejects nothing here (`+validate-config` takes any number), so the
-# guard is ours: below 4 the window is unreadable, above 72 it is a poster.
+# Neither terminal rejects a size (`+validate-config` and config_builder take
+# any number), so the guard is ours: below 4 the window is unreadable, above
+# 72 it is a poster.
 def check-size [size: number]: nothing -> nothing {
   if $size < 4 or $size > 72 { error make { msg: $"font size ($size) is outside 4..72" } }
 }

@@ -181,7 +181,7 @@ def "test theme use renders the files, writes Ghostty and reports the theme" [] 
   assert equal (theme current | select name by tier) { name: onedark, by: palette, tier: palette }
   assert equal (ghostty settings | get theme) ($dir | path join ghostty onedark)
   assert equal (ghostty live theme) ($dir | path join ghostty onedark)
-  assert equal (theme status | select name ghostty_theme icon) { name: onedark, ghostty_theme: ($dir | path join ghostty onedark), icon: null }
+  assert equal (theme status | select name terminal terminal_theme icon) { name: onedark, terminal: ghostty, terminal_theme: ($dir | path join ghostty onedark), icon: null }
   if (which starship | is-not-empty) {
     let toml = open --raw ($dir | path join starship.toml) | from toml
     assert equal $toml.palette distro

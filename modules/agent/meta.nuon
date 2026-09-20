@@ -16,6 +16,7 @@
         linux: "curl -fsSL https://claude.ai/install.sh | sh"
         windows: "irm https://claude.ai/install.ps1 | iex"
       }
+      then: "open a new shell — Alt+E and every `agent` verb come alive; `nu-config harness register` then adds the Claude Code plugins"
     }
   ]
   knobs: {

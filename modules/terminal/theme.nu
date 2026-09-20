@@ -4,7 +4,11 @@
 #   ghostty themes        every theme Ghostty can find (--swatches: in colour)
 #   theme palette <name>  one Ghostty theme file as data: the sixteen and the named colours
 #   theme paint <record>  paint this session with a palette record, nothing on disk
-#   theme reset           back to what Ghostty's config says
+#   theme reset           back to what the terminal's config says
+#   theme ghostty-file    a palette record as a Ghostty theme file
+#   theme wezterm-file    the same as a WezTerm colour scheme file (TOML)
+#   theme state-dir       where `theme use` renders to
+#   theme slug <name>     the file name a theme has
 #
 # Choosing a theme — `theme`, `theme list`, `theme use`, `theme preview` — and
 # what the choice means for the shell is palette.nu, which builds on the two
@@ -19,6 +23,17 @@
 # is the theme, prompt, tables and scrollback included.
 
 use ghostty.nu *
+
+# ── Where things live ─────────────────────────────────────────────────────────
+
+export def "theme state-dir" []: nothing -> path {
+  $nu.data-dir | path join .state theme
+}
+
+# "Catppuccin Macchiato" → catppuccin-macchiato: the file name a palette has.
+export def "theme slug" [name: string]: nothing -> string {
+  $name | str lowercase | str replace -ra '[^a-z0-9]+' '-' | str trim -c '-'
+}
 
 # ── Where the themes are ──────────────────────────────────────────────────────
 
@@ -144,7 +159,32 @@ export def "theme ghostty-file" [t: record]: nothing -> string {
   $pal ++ $named ++ [""] | str join (char nl)
 }
 
-# Hand the palette back to Ghostty's configuration — the way out of a preview
+# The same record as a WezTerm colour scheme file: `[colors]` with the sixteen
+# as `ansi` and `brights`, the named colours under WezTerm's names, and the
+# `[metadata]` block that names the scheme for `color_scheme =`. Verified
+# 2026-09-20: a file of this shape under `color_scheme_dirs` loads by name.
+export def "theme wezterm-file" [t: record, name: string]: nothing -> string {
+  let hexes = ($t.palette | transpose i hex | sort-by {|r| $r.i | into int } | get hex)
+  let named = {
+    foreground: foreground, background: background, cursor-color: cursor_bg
+    selection-background: selection_bg, selection-foreground: selection_fg
+  }
+  ([
+    "# Written by Nustro (`theme use`) from a palette; rewritten at every render."
+    "[colors]"
+  ]
+  ++ ($named | transpose k v | each {|n| let v = ($t.named | get -o $n.k); if $v == null { [] } else { [$"($n.v) = ($v | to json)"] } } | flatten)
+  ++ [
+    $"ansi = ($hexes | take 8 | to json -r)"
+    $"brights = ($hexes | skip 8 | take 8 | to json -r)"
+    ""
+    "[metadata]"
+    $"name = ($name | to json)"
+    ""
+  ]) | str join (char nl)
+}
+
+# Hand the palette back to the terminal's configuration — the way out of a preview
 # you did not keep, and of a session someone left half-painted.
 export def "theme reset" []: nothing -> nothing {
   if not (is-terminal --stdout) { return }

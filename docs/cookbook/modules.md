@@ -10,7 +10,7 @@ nu-config module list        # every module: enabled, lazy, loaded in this shell
 | nu-complete | distro | true | false | true | carapace:ok | 2ms |
 | nu-config | distro | true | false | true | — | 14ms |
 | odata | distro | true | true | false | — | 97ms |
-| terminal | distro | true | true | false | ghostty:ok | 18ms |
+| terminal | distro | true | true | false | ghostty:ok wezterm:alt | 31ms |
 
 `loaded: false` on a lazy module means nothing has mentioned it yet in this
 shell. `cost` is the module's own declaration, measured the same way for all

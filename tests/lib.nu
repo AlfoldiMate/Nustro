@@ -80,6 +80,9 @@ exec ($nu.current-exe | to nuon) ($fake | to nuon) osascript "$@"
   $env.PATH = ($env.PATH | prepend $bin)
   $env.GHOSTTY_FAKE = $root
   $env.XDG_CONFIG_HOME = ($root | path join config)
+  # The terminal the commands configure, whatever the test runs in and
+  # whatever else is installed on the machine.
+  $env.NUSTRO_TERMINAL = "ghostty"
   # On macOS the module also reads ~/Library/Application Support, and the
   # fake finds a font by its files in ~/Library/Fonts (~/.local/share/fonts
   # elsewhere) — both under the run's fake home, which the file's tests
@@ -102,6 +105,49 @@ exec ($nu.current-exe | to nuon) ($fake | to nuon) osascript "$@"
 
 # The calls the fake ghostty has answered so far, as argument lists.
 export def ghostty-calls [fake: record]: nothing -> list<list<string>> {
+  if ($fake.log | path exists) { open --raw $fake.log | lines | each {|l| $l | from nuon } } else { [] }
+}
+
+# A wezterm that answers from files (tests/fixtures/wezterm/fake.nu), first
+# on PATH for the rest of the test, with a WezTerm config directory of its
+# own (XDG_CONFIG_HOME) so `wezterm set` writes there, and pinned as the
+# terminal the commands configure. Returns where things are; `log` holds
+# every call. TERM_PROGRAM is cleared so `terminal current` says "neither"
+# unless a test sets it.
+export def --env fake-wezterm []: nothing -> record {
+  let root = scratch
+  let bin = $root | path join bin
+  let fake = $ROOT | path join tests fixtures wezterm fake.nu
+  mkdir $bin ($root | path join config wezterm) ($root | path join config nushell)
+  "# placeholder\n" | save ($root | path join config nushell config.nu)
+  if $nu.os-info.name == "windows" {
+    $"@echo off\r\n\"($nu.current-exe)\" \"($fake)\" %*\r\n" | save ($bin | path join wezterm.cmd)
+  } else {
+    $"#!/bin/sh
+exec ($nu.current-exe | to nuon) ($fake | to nuon) "$@"
+" | save ($bin | path join wezterm)
+    ^chmod +x ($bin | path join wezterm)
+  }
+  $env.PATH = ($env.PATH | prepend $bin)
+  $env.WEZTERM_FAKE = $root
+  $env.XDG_CONFIG_HOME = ($root | path join config)
+  $env.NUSTRO_TERMINAL = "wezterm"
+  hide-env -i TERM_PROGRAM WEZTERM_CONFIG_FILE WEZTERM_EXECUTABLE_DIR
+  if ($nu.home-dir | str starts-with ($env.TEST_SCRATCH? | default "/nowhere")) {
+    for d in [($nu.home-dir | path join .wezterm.lua) ($nu.home-dir | path join Library Fonts) ($nu.home-dir | path join .local share fonts)] {
+      if ($d | path exists) { rm -rf $d }
+    }
+  }
+  {
+    root: $root
+    bin: $bin
+    log: ($root | path join log)
+    config: ($root | path join config wezterm)
+  }
+}
+
+# The calls the fake wezterm has answered so far, as argument lists.
+export def wezterm-calls [fake: record]: nothing -> list<list<string>> {
   if ($fake.log | path exists) { open --raw $fake.log | lines | each {|l| $l | from nuon } } else { [] }
 }
 

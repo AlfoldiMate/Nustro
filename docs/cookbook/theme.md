@@ -1,5 +1,9 @@
 # Pick a theme and make it stick
 
+This page was run in Ghostty; with WezTerm being configured (`terminal
+target`) every `theme` line is the same, the theme lands in
+`.state/theme/wezterm/` as a scheme file, and there is no app icon.
+
 ## Pick one
 
 ```nu

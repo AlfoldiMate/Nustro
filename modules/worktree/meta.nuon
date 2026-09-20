@@ -18,6 +18,7 @@
         linux: "your package manager: apt install git, dnf install git, pacman -S git"
         windows: "winget install Git.Git"
       }
+      then: "open a new shell; `worktree` works as soon as git is on PATH"
     }
   ]
 }

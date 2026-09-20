@@ -34,7 +34,7 @@ tests/
   lib.nu              what a test needs: scratch, user-dir, nu-l, skip-test
   harness.test.nu     the harness tested with itself
   completion/         engine, smart, specs, cost — the engine behind Tab
-  terminal/           ghostty, theme, font — against a fake ghostty
+  terminal/           ghostty, wezterm, registry, theme, font — against a fake ghostty and a fake wezterm
   config/             layering, modules, upgrade, install, tools — the distro's own mechanics
   pty/                harness.py and menu.test.nu — Tab in a real terminal
   claude-code/        the marketplace, the plugins' manifests and hooks against a real layout
@@ -140,7 +140,8 @@ which is the suite's long pole under `par-each`).
 | `scratch` | a fresh directory under the run's scratch root, named after the test; deleted with the run |
 | `user-dir [--settings <body>]` | a user directory: `config.nu` sourcing this checkout's `distro.nu`, a `settings.nu` if given, and an `XDG_CONFIG_HOME` / `XDG_DATA_HOME` of its own. Returns `{root, config, data, env}` |
 | `nu-l <dir> <code>` | `nu -l -c <code>` under that directory's environment; returns `complete`'s `{stdout, stderr, exit_code}` |
-| `fake-ghostty` | a `ghostty` that answers from files, first on PATH, with a Ghostty config directory of its own; returns `{root, bin, log, config, themes}`. Skips the test on Windows. `ghostty-calls <fake>` lists what it was asked |
+| `fake-ghostty` | a `ghostty` that answers from files, first on PATH, with a Ghostty config directory of its own, pinned as the terminal being configured (`NUSTRO_TERMINAL`); returns `{root, bin, log, config, themes}`. Skips the test on Windows. `ghostty-calls <fake>` lists what it was asked |
+| `fake-wezterm` | the same for `wezterm` (`tests/fixtures/wezterm/fake.nu`): answers `ls-fonts` from a `faces` file, logs `start`, reports an `error` file as WezTerm's ` ERROR ` line; returns `{root, bin, log, config}`. `wezterm-calls <fake>` lists what it was asked |
 | `skip-test <reason>` | stop the test, counted apart from the failures. Not `skip`: a module `use`d after `lib.nu` resolves names against the scope it is parsed in, and the engine's `skip $n` became the test helper |
 
 `user-dir` sets the XDG variables rather than passing `--config`: Nushell

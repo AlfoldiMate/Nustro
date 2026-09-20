@@ -54,6 +54,9 @@
 # docs/concepts/worktree.md is the design, docs/reference/modules/worktree.md
 # every command. Lazy: `worktree` is the trigger word (meta.nuon).
 
+# The error for a missing git, worded from meta.nuon.
+use ../nu-config/missing.nu *
+
 const PROFILES = ".profiles"
 const DFLT = "dflt"
 const STATE = ".state"
@@ -69,8 +72,10 @@ def fail [msg: string] { error make --unspanned { msg: $"worktree: ($msg)" } }
 def warn [msg: string] { print $"(ansi yellow)warn(ansi reset) ($msg)" }
 def note [msg: string] { print $"  ($msg)" }
 
-# Trimmed stdout, or an error carrying git's stderr.
+# Trimmed stdout, or an error carrying git's stderr. Without git the error
+# says how to get it (meta.nuon), not "command not found".
 def run-git [dir: string, ...args: string]: nothing -> string {
+    if (which git | is-empty) { missing-tool worktree git }
     let r = ^git -C $dir ...$args | complete
     if $r.exit_code != 0 { fail $"git ($args | str join ' '): ($r.stderr | str trim)" }
     $r.stdout | str trim
@@ -78,6 +83,7 @@ def run-git [dir: string, ...args: string]: nothing -> string {
 
 # Trimmed stdout, or null on failure — for probes where failing is an answer.
 def try-git [dir: string, ...args: string]: nothing -> any {
+    if (which git | is-empty) { missing-tool worktree git }
     let r = try { ^git -C $dir ...$args | complete }
     if ($r.exit_code? | default 1) == 0 { $r.stdout | str trim } else { null }
 }

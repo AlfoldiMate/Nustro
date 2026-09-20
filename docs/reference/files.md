@@ -50,8 +50,10 @@ comparing with what init would write today, never by mtime
 | `theme/starship.toml` | same | starship, through `STARSHIP_CONFIG` (`conf/prompt.nu`) |
 | `theme/ls_colors` | same, via vivid | `conf/theme.nu` → `LS_COLORS`, 0.09 ms |
 | `theme/vivid.yml` | same | vivid, when rendering |
-| `theme/ghostty/<slug>` | `theme use` of a palette with a `terminal` block | Ghostty, through `theme =` in the distro's included file |
-| `theme/icons/<slug>.png` | `theme use` (macOS) | Ghostty, through `macos-custom-icon` |
+| `theme/ghostty/<slug>` | `theme use` of a palette with a `terminal` block, Ghostty being configured | Ghostty, through `theme =` in the distro's included file |
+| `theme/wezterm/nustro-<slug>.toml` | `theme use`, WezTerm being configured | WezTerm, through `color_scheme_dirs` and `color_scheme =` in `nustro.lua` |
+| `theme/icons/<slug>.png` | `theme use` (macOS, Ghostty) | Ghostty, through `macos-custom-icon` |
+| `terminal/target.nuon` | `terminal use` (the installer does it) | `terminal target`: which terminal `theme`, `font` and `terminal shell` configure |
 | `nu-config/upgrade.nuon` | the background `git fetch` (`conf/update.nu`) | every interactive start, 0.3 ms |
 | `odata/services.nuon` | `odata service add` | the service registry, merged under `$env.ODATA_SERVICES` |
 | `agent/sessions/<id>.nuon` | every `agent` turn | the startup sweep, which checkpoints closed sessions |
@@ -72,6 +74,19 @@ here is rebuilt when missing.
 Session-scoped memos (`stor`) hold what the Tab menu asked for in the last
 seconds: `nu-complete status` and `odata status` list them. They die with the
 shell.
+
+## WezTerm
+
+`wezterm set` writes `<wezterm config dir>/nustro.lua` — a Lua table of the
+keys the distro owns and an `apply(config)` that assigns them — and puts one
+line into WezTerm's own `wezterm.lua`, before its final `return <name>`,
+after copying it to `wezterm.lua.backup-<stamp>`:
+`pcall(function() dofile(require("wezterm").config_dir .. "/nustro.lua").apply(<name>) end)`.
+When there is no `wezterm.lua` one is written. `wezterm status` shows both;
+`wezterm reset` removes ours and the two lines. The config dir is
+`~/.config/wezterm` on every platform (`%USERPROFILE%\.config\wezterm` on
+Windows), or `~/.wezterm.lua`'s directory when that is the file WezTerm
+reads; inside a WezTerm window `WEZTERM_CONFIG_FILE` says which.
 
 ## Ghostty
 

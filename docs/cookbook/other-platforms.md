@@ -47,20 +47,25 @@ Nushell's own `du`, which takes `--max-depth` everywhere.
 
 ## What is different
 
-**Ghostty.** The theme picker, `theme use`, `ghostty shell` and the font
-installer are Ghostty's. On Linux Ghostty exists and the config paths are
-derived for it, but none of it has been run there; in particular whether a
-bare `command = <nu>` starts a *login* shell on Linux has not been checked,
-only that it starts one. There is no `ghostty reload` off macOS (it is
-AppleScript), so a written theme, icon or font reaches new windows only,
-while the running window is repainted over OSC. On Windows there is no
-official Ghostty build (the port is in progress upstream, discussion #2563)
-and the distro installs none of the unofficial Win32 ports: `terminal
-install` says so and runs nothing, and the shell's colours stay at the ANSI
-tier — whatever Windows Terminal paints — until a theme can be written. If
-you install a port yourself and it puts `ghostty.exe` on PATH, the module
-finds it and writes its config under `%LOCALAPPDATA%\ghostty`; none of that
-has been run here (2026-09-19).
+**The terminal.** The theme picker, `theme use`, `terminal shell` and the
+font installer configure Ghostty or WezTerm (`terminal list` says which is
+installed, `terminal target` which one is being configured). On Linux both
+exist and the config paths are derived for them, but none of it has been
+run there; in particular whether Ghostty's bare `command = <nu>` starts a
+*login* shell on Linux has not been checked, only that it starts one. There
+is no `ghostty reload` off macOS (it is AppleScript), so a written Ghostty
+theme, icon or font reaches new windows only, while the running window is
+repainted over OSC; WezTerm reloads itself everywhere. On Windows there is
+no official Ghostty build (the port is in progress upstream, discussion
+#2563) and the distro installs none of the unofficial Win32 ports:
+`terminal install ghostty` says so and runs nothing. The Windows default is
+WezTerm: the installer offers `winget install wez.wezterm` when nothing is
+installed, writes `%USERPROFILE%\.config\wezterm\wezterm.lua` with the line
+that applies `nustro.lua`, and `terminal shell` makes a new window start
+`nu -l`. Verified on macOS against the same WezTerm release and against a
+fake in the tests; not run on Windows (2026-09-20). Until a terminal is
+there the shell's colours stay at the ANSI tier — whatever Windows Terminal
+paints.
 
 **Fonts.** `font install` on Linux downloads the Nerd Fonts `.tar.xz`, takes
 four faces into `~/.local/share/fonts` and runs `fc-cache -f` when fontconfig

@@ -73,7 +73,7 @@ it.
 |---|---|---|
 | `nu-config` | doctor, knobs, modules, tools, plugins, upgrade, startup time | 14 ms |
 | `nu-complete` | the engine behind Tab: pipeline columns, specs per tool, carapace as the fallback | 2 ms |
-| `terminal` | `theme`, `font`, `ghostty`: one palette rendered for the terminal, tables, `ls`, bat, the prompt and the app icon | 18 ms, lazy |
+| `terminal` | `theme`, `font`, `terminal shell`: one palette rendered for the terminal — Ghostty, or WezTerm on Windows too — tables, `ls`, bat, the prompt and the app icon | 31 ms, lazy |
 | `agent` | Claude Code at the prompt: `ask`, `exec` (proposes; you run it), `skill`, `command`, `completion` | 18 ms, lazy |
 | `odata` | OData V2/V4 services as tables, `where`/`select`/`first` pushed to the server | 97 ms, lazy |
 | `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |
@@ -98,7 +98,8 @@ starts in a config directory of its own ([Tests](docs/reference/tests.md)).
 ## Platforms
 
 CI runs the real installer and then loads the config for real on macOS,
-Linux and Windows, every push. That is the floor. The ceiling: Ghostty and
-fonts have been run by hand on macOS only; there is no Ghostty for Windows,
-and no `ghostty reload` off macOS. [Platforms](docs/reference/platforms.md)
+Linux and Windows, every push. That is the floor. The ceiling: Ghostty,
+WezTerm and fonts have been run by hand on macOS only; there is no Ghostty
+for Windows, so the Windows default is WezTerm, and no `ghostty reload` off
+macOS. [Platforms](docs/reference/platforms.md)
 is the exact table.

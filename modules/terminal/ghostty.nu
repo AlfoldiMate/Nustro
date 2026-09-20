@@ -348,6 +348,64 @@ def validate []: nothing -> record<ok: bool, err: string> {
   { ok: ($r.exit_code == 0), err: ([$r.stdout $r.stderr] | str join | str trim | lines | uniq | str join (char nl)) }
 }
 
+# ── fonts ─────────────────────────────────────────────────────────────────────
+
+# The face Ghostty would actually use for a family, which is the only test that
+# means anything: Ghostty is what has to find the font, and it answers in the
+# spelling its own `font-family` key wants.
+#
+# It has to be `+show-face` and not `+list-fonts`. Verified on macOS 27.2 with
+# Ghostty 1.3.1: after installing Inconsolata Nerd Font into ~/Library/Fonts,
+# `+list-fonts` still reported only the five system monospace families and never
+# mentioned it, while `+show-face --font-family="Inconsolata Nerd Font"` answered
+# "found in face Inconsolata Nerd Font". A directory listing is no better — the
+# file being there is not the same as CoreText or fontconfig having it.
+#
+# The catch that makes this work at all: a family Ghostty cannot find does NOT
+# fail, it silently falls back to the configured font. So the test is whether
+# the face it names is the family we asked for. 26 ms per call.
+#
+# `font-family` is a repeatable key — a LIST of families, first found wins —
+# and Ghostty builds that list as: its default config files, then the command
+# line, then the files those include (`config-file`). So a `--font-family=X`
+# on the command line lands behind whatever the user's config set, and in
+# front of whatever our included file sets — an empty `--font-family=` reset
+# clears the user's entry but not ours, and once `font use` has written a
+# family every other font read as "not installed". `--config-default-files=
+# false` loads no configuration at all, so the answer is about X alone.
+# Verified with Ghostty 1.3.1, 2026-09-19: an installed family comes back as
+# itself, one that is not as Ghostty's built-in "JetBrains Mono", whatever
+# the user's config and ours say.
+export def "ghostty face" [family: string]: nothing -> any {
+  let g = (ghostty-bin)
+  if $g == null { return null }
+  ^$g +show-face --config-default-files=false $"--font-family=($family)" --string=A
+  | parse -r 'found in face .(?<face>[^“”"]+).'
+  | get -o 0.face
+}
+
+# Open a new Ghostty window in a font, running a program — the font preview.
+# It is a separate Ghostty instance and touches no config.
+export def "ghostty preview" [family: string, size: number, argv: list<string>]: nothing -> nothing {
+  let g = (ghostty-bin)
+  if $g == null { error make { msg: "ghostty is not installed — `terminal install ghostty`" } }
+  let args = [
+    $"--font-family=($family)"
+    $"--font-size=($size)"
+    "--window-width=78"
+    "--window-height=16"
+    "--title=font preview"
+    "-e" ...$argv
+  ]
+  # On macOS Ghostty refuses to start a window from the CLI — "launching the
+  # terminal emulator from the CLI is not supported" — and says to use `open`.
+  if $nu.os-info.name == "macos" {
+    ^open -na Ghostty.app --args ...$args
+  } else {
+    ^$g ...$args
+  }
+}
+
 # What Ghostty itself reports for one key, which is how we know we wrote to the
 # file it actually reads. Null when Ghostty is not installed or the key is
 # unset — `+show-config` prints only keys that resolved to a value. For a

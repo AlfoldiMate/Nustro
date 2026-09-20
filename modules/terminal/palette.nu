@@ -56,8 +56,8 @@
 # Nothing here reads state at parse time: the module is lazy and the paths
 # are `$nu.data-dir`, which is the user's directory.
 
-use ghostty.nu *
 use theme.nu *
+use registry.nu *
 
 const DISTRO_ROOT = (path self | path dirname | path dirname | path dirname)
 const SHIPPED_PALETTES = ($DISTRO_ROOT | path join themes palettes)
@@ -137,15 +137,6 @@ const ICON_ROLES = { bg: bg, fg: fg, err: red, accent: blue, ok: green, warn: ye
 const RASTERIZE = (path self | path dirname | path join rasterize.js)
 
 # ── Where things live ─────────────────────────────────────────────────────────
-
-export def "theme state-dir" []: nothing -> path {
-  $nu.data-dir | path join .state theme
-}
-
-# "Catppuccin Macchiato" → catppuccin-macchiato: the file name a palette has.
-export def "theme slug" [name: string]: nothing -> string {
-  $name | str lowercase | str replace -ra '[^a-z0-9]+' '-' | str trim -c '-'
-}
 
 # Where palettes are looked for, first match wins: yours, the hand-made
 # shipped ones, then the NvChad import.
@@ -530,17 +521,6 @@ def render-icon [t: record]: nothing -> any {
   $png
 }
 
-# Ghostty's `theme =` value for a resolved theme, writing the theme file when
-# the palette carries its own sixteen.
-def ghostty-theme-value [t: record]: nothing -> string {
-  if $t.ghostty != "file" { return $t.ghostty }
-  let dir = (theme state-dir | path join ghostty)
-  mkdir $dir
-  let f = ($dir | path join (theme slug $t.name))
-  theme ghostty-file $t.terminal | save -f $f
-  $f
-}
-
 # Resolve a theme and write every rendered file. The name defaults to the one
 # rendered last time, so `theme sync` after a `git pull` picks up a changed
 # template; `--none` renders the ANSI tier and forgets the name.
@@ -600,29 +580,35 @@ export def "theme preview" [
   --ghostty   # one of Ghostty's, not a palette
 ]: nothing -> nothing {
   let t = (theme resolve $name --ghostty=$ghostty)
-  if $t.terminal == null { error make { msg: $"($name) has no colours to paint here: Ghostty is not installed and the palette has no terminal block" } }
+  if $t.terminal == null { error make { msg: $"($name) has no colours to paint here: it is a Ghostty theme name, Ghostty is not installed, and no palette carries it" } }
   theme paint $t.terminal
 }
 
-# Keep a theme: Ghostty's config for every window from now on, the app icon
-# to match, this window painted (and every open one reloaded, on macOS), and
-# the shell's own colours — tables, `ls`, bat, the prompt — rendered from it,
-# for this session and every one after.
+# Keep a theme: the terminal's config for every window from now on, the app
+# icon to match (Ghostty, macOS), this window painted (and every open one
+# reloaded, where the terminal can), and the shell's own colours — tables,
+# `ls`, bat, the prompt — rendered from it, for this session and every one
+# after. The terminal is `terminal target`; without one the shell's colours
+# are still rendered, and the message says what an install would add.
 export def --env "theme use" [
   name: string@theme-completion
   --ghostty   # one of Ghostty's 463, not a palette (`theme list --ghostty`)
   --no-icon   # leave the app icon alone
 ]: nothing -> nothing {
   let t = (theme resolve $name --ghostty=$ghostty)   # a wrong name fails here, before anything is written
-  let icon = (if $no_icon { null } else { render-icon $t })
-  ghostty set (
-    { theme: (ghostty-theme-value $t) }
-    | merge (if $icon == null { {} } else { { macos-icon: "custom", macos-custom-icon: $icon } })
-  )
+  let target = (terminal target)
+  let icon = (if $no_icon or $target == null or not $target.icon { null } else { render-icon $t })
+  if $target != null { terminal write-theme $t $icon }
   if $t.terminal != null and (is-terminal --stdout) { theme paint $t.terminal }
-  let reloaded = (ghostty reload)
+  let reloaded = (terminal reload)
   render $t --quiet
-  let windows = (if $reloaded { "every open window and new ones" } else { "this window now, new windows from Ghostty's config" })
+  let windows = (if $target == null {
+    "no terminal to write it to (`terminal list`), this window painted"
+  } else if $reloaded {
+    $"($target.name): every open window and new ones"
+  } else {
+    $"($target.name): this window now, new windows from its config"
+  })
   let icon_note = (if $icon == null { "" } else { ", icon rendered" })
   print $"theme is ($t.name) — ($windows)($icon_note); shell colours at tier ($t.tier)"
 }
@@ -643,7 +629,7 @@ export def --env theme [
   if not ((is-terminal --stdin) and (is-terminal --stdout)) {
     error make { msg: "`theme` is the interactive picker and needs a terminal on both ends; `theme use <name>` is not" }
   }
-  let before = (ghostty settings | get -o theme)
+  let before = (theme current | get -o name)
   let rows = (theme list --swatches --ghostty=$ghostty | select theme colours)
 
   mut picking = true
@@ -663,7 +649,7 @@ export def --env theme [
       _ => {
         # Esc here means the same as saying no: undo the paint.
         theme reset
-        print (if $before == null { "unchanged — Ghostty's own theme is back" } else { $"unchanged — back to ($before)" })
+        print (if $before == null { "unchanged — the terminal's own theme is back" } else { $"unchanged — back to ($before)" })
         $picking = false
       }
     }
@@ -672,10 +658,16 @@ export def --env theme [
 
 # The app icon for the current theme, rendered again (after editing
 # themes/icon.svg, say), or removed with --off so Ghostty's config decides.
+# Ghostty's alone: no other terminal here takes an icon from its config.
 export def "theme icon" [--off]: nothing -> nothing {
+  let target = (terminal target)
+  if $target == null or not $target.icon {
+    let who = (if $target == null { "none" } else { $target.name })
+    error make { msg: $"the app icon is Ghostty's; the terminal being configured is ($who)" }
+  }
   if $off {
-    ghostty set { macos-icon: null, macos-custom-icon: null }
-    ghostty reload | ignore
+    terminal set { macos-icon: null, macos-custom-icon: null }
+    terminal reload | ignore
     print "icon keys removed from the distro's Ghostty file"
     return
   }
@@ -684,8 +676,8 @@ export def "theme icon" [--off]: nothing -> nothing {
   let t = (theme resolve $cur.name --ghostty=($cur.by == "ghostty"))
   let icon = (render-icon $t)
   if $icon == null { error make { msg: "no icon: this needs macOS, and a theme with colours" } }
-  ghostty set { macos-icon: "custom", macos-custom-icon: $icon }
-  let reloaded = (ghostty reload)
+  terminal set { macos-icon: "custom", macos-custom-icon: $icon }
+  let reloaded = (terminal reload)
   print $"icon ($icon)(if $reloaded { ' — Ghostty reloaded' } else { ' — takes effect when Ghostty reloads its config' })"
 }
 
@@ -714,11 +706,12 @@ def swatch-of [v: string]: nothing -> string {
   }
 }
 
-# What is on disk, and whether it still matches what Ghostty says.
+# What is on disk, and what the terminal being configured was given.
 export def "theme status" []: nothing -> record {
   let cur = (theme current)
   let dir = (theme state-dir)
-  let settings = (ghostty settings)
+  let target = (terminal target)
+  let settings = (terminal settings)
   {
     rendered: ($cur != null)
     name: ($cur | get -o name)
@@ -727,7 +720,8 @@ export def "theme status" []: nothing -> record {
     dark: ($cur | get -o dark)
     palette: ($cur | get -o palette)
     bat: ($cur | get -o bat)
-    ghostty_theme: ($settings | get -o theme)
+    terminal: (if $target == null { null } else { $target.name })
+    terminal_theme: (if $target == null { null } else { $settings | get -o $target.theme_key })
     icon: ($settings | get -o "macos-custom-icon")
     rendered_at: ($cur | get -o rendered)
     files: (if ($dir | path exists) { ls $dir | get name | each {|f| $f | path basename } } else { [] })

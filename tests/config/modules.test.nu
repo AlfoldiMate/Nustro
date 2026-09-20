@@ -19,6 +19,17 @@ export def --env "good activate" [] { $env.GOOD_ON = ($env.GOOD_ON? | default tr
   "export def [ oops\n" | save ($broken | path join mod.nu)
   "use broken *\n" | save ($broken | path join load.nu)
   '{ description: "", cost: 0ns, requires: [{ bin: "nope" }] }' | save ($broken | path join meta.nuon)
+  # A module that needs a tool and says how to get it and what follows, so
+  # the shared error and `module check` have something to read; eager, which
+  # lint refuses for a module with a hard dependency.
+  let needy = $dir.config | path join modules needy
+  mkdir $needy
+  'use nu-config/missing.nu *
+export def "needy go" [] { if (which frobnicate | is-empty) { missing-tool needy frobnicate --command "needy go" }; "went" }
+' | save ($needy | path join mod.nu)
+  "use needy *\n" | save ($needy | path join load.nu)
+  '{ description: "needs frobnicate", docs: "README.md", cost: 1ms, lazy: false, requires: [{ bin: "frobnicate", hard: true, why: "it frobnicates", install: { macos: "brew install frobnicate", linux: "apt install frobnicate", windows: "winget install frobnicate" }, then: "open a new shell; `needy go` goes" }] }' | save ($needy | path join meta.nuon)
+  "# needy\n" | save ($needy | path join README.md)
   $dir
 }
 
@@ -27,7 +38,7 @@ def "test module list shows yours beside the shipped ones" [] {
   let ran = nu-l $dir 'nu-config module list | select module from enabled lazy | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let rows = $ran.stdout | from nuon
-  assert equal ($rows | where from == yours | get module | sort) [broken good]
+  assert equal ($rows | where from == yours | get module | sort) [broken good needy]
   assert equal ($rows | where module == nu-config | get 0 | select enabled lazy) { enabled: true, lazy: false }
   assert equal ($rows | where module == odata | get 0 | select enabled lazy) { enabled: true, lazy: true }
   assert equal ($rows | where module == good | get 0.enabled) false "not in MODULES, so not enabled"
@@ -57,21 +68,56 @@ def "test module lint names every break of the contract and nothing else" [] {
   let ran = nu-l $dir 'nu-config module lint | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let problems = $ran.stdout | from nuon
-  assert equal ($problems | where module != broken) [] "the shipped modules and `good` are clean"
+  assert equal ($problems | where module not-in [broken needy]) [] "the shipped modules and `good` are clean"
   assert equal ($problems | where module == broken | get problem) [
     "meta.nuon has no description"
     "meta.nuon has no measured cost"
     "meta.nuon has no docs"
     "load.nu does not parse — the module would fail on first use"
     "requires nope has no why"
+    "has a hard dependency but is not lazy — a missing tool would cost every startup"
   ]
+  # A tool that is missing must never cost a startup.
+  assert equal ($problems | where module == needy | get problem) ["has a hard dependency but is not lazy — a missing tool would cost every startup"]
 }
 
-def "test module check reports a dependency that is missing" [] {
+def "test module check reports a dependency that is missing, and the way back" [] {
   let dir = modules-dir
   let ran = nu-l $dir 'nu-config module check broken'
   assert equal $ran.exit_code 0 $ran.stderr
   assert ($ran.stdout | ansi strip | str contains "!! nope") $ran.stdout
+  let ran = nu-l $dir 'nu-config module check needy'
+  let out = $ran.stdout | ansi strip
+  assert ($out | str contains "!! frobnicate it frobnicates") $out
+  assert ($out | str contains $"install: (match $nu.os-info.name { macos => 'brew', windows => 'winget', _ => 'apt' })") $out
+  assert ($out | str contains "then:    open a new shell; `needy go` goes") $out
+}
+
+def "test a command whose tool is missing says what to install and what follows" [] {
+  let dir = modules-dir
+  let ran = nu-l $dir 'use needy *; needy go'
+  assert equal $ran.exit_code 1
+  let err = $ran.stderr | ansi strip
+  assert ($err | str contains "needy go needs frobnicate, which is not installed") $err
+  assert ($err | str contains "install:") $err
+  assert ($err | str contains "then:") $err
+  assert ($err | str contains "`needy go` goes") $err
+}
+
+def "test a group of dependencies is satisfied by any one member" [] {
+  let dir = modules-dir
+  # The shipped terminal module wants ghostty OR wezterm. With neither on
+  # PATH both are missing; with one, the other is `alt`.
+  let ran = nu-l $dir '$env.PATH = []; hide-env -i GHOSTTY_BIN_DIR WEZTERM_EXECUTABLE_DIR; nu-config module info terminal | get requires | select bin group state | to nuon'
+  assert equal $ran.exit_code 0 $ran.stderr
+  let states = $ran.stdout | from nuon
+  assert equal ($states | get group) [terminal terminal]
+  let both_missing = ($states | get state) == [missing missing]
+  let one_present = ($states | where state == ok | length) >= 1 and ($states | where state == missing | is-empty)
+  assert ($both_missing or $one_present) ($states | to nuon)
+  if $one_present and ($states | where state == alt | is-not-empty) {
+    assert equal ($states | where state == alt | length) (2 - ($states | where state == ok | length))
+  }
 }
 
 def "test the knobs of a module of yours are listed with it as owner" [] {

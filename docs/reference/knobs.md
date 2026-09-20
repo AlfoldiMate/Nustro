@@ -81,7 +81,7 @@ A `const` is shadowed by a `const` of the same name in `settings.nu`; an
 | `$env.config.shell_integration.osc633` | `true` | VS Code's extension of osc133 |
 | `$env.config.use_ansi_coloring` | `"auto"` | |
 | `$env.config.bracketed_paste` | `true` | |
-| `$env.config.use_kitty_protocol` | `false` | `true` lets Tab and Ctrl+I be bound separately, which needs a terminal that speaks the Kitty keyboard protocol (Ghostty does). Left off because a shell started somewhere else would lose the keys |
+| `$env.config.use_kitty_protocol` | `false` | `true` lets Tab and Ctrl+I be bound separately, which needs a terminal that speaks the Kitty keyboard protocol (Ghostty and WezTerm do). Left off because a shell started somewhere else would lose the keys |
 | `$env.PAGER` | `"less"` | |
 | `$env.LESS` | `"-RFX"` | keeps colour, quits when it fits on one screen, leaves output visible |
 
@@ -99,7 +99,7 @@ A `const` is shadowed by a `const` of the same name in `settings.nu`; an
 |---|---|---|
 | `const MODULES` | `[nu-config nu-complete terminal agent odata worktree]` | which modules this shell has; `nu-config module enable\|disable` edits it for you |
 | `const MODULES_LAZY` | `[terminal agent odata worktree]` | of those, the ones not parsed at startup — loaded by a `pre_execution` hook on the first line that mentions them (828 ns per Enter to check, against 18 ms for `agent` and 97 ms for `odata` to load). Interactive-only: a script has to `use odata *` itself |
-| `const MODULES_TRIGGERS` | `{ odata: [expand], terminal: [theme ghostty font] }` | extra words that load a lazy module, for commands that do not repeat its name |
+| `const MODULES_TRIGGERS` | `{ odata: [expand], terminal: [theme ghostty wezterm font] }` | extra words that load a lazy module, for commands that do not repeat its name |
 
 ## Updates
 

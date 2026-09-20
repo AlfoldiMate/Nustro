@@ -22,7 +22,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 1. [Install](getting-started/install.md) — the two bootstrap lines, the seven screens, what is written where
 2. [Your first shell](getting-started/first-shell.md) — `nu-config doctor`, the keys, the two directories
 3. [Your first setting](getting-started/first-setting.md) — `settings.nu`, knobs, values against behaviour
-4. [Your first theme](getting-started/first-theme.md) — `theme`, `font`, `ghostty shell`
+4. [Your first theme](getting-started/first-theme.md) — `theme`, `font`, `terminal shell`
 5. [Updating](getting-started/updating.md) — `nu-config upgrade`, the notice, after a Nushell upgrade
 
 ## Concepts
@@ -74,7 +74,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Debug Tab](cookbook/debug-tab.md) | `commandline complete --detailed`, `nu-complete smart`, the error the `try` hides |
 | [Test a change to the distro before it is live](cookbook/test-a-change.md) | `nu-check`, `doctor`, `module lint`, a scratch `config.nu` for a second checkout |
 | [Run on Linux and Windows](cookbook/other-platforms.md) | what is the same, what is different, what has not been run |
-| [Undo the whole thing](cookbook/uninstall.md) | `ghostty reset`, `rm config.nu`, the checkout; what is yours and stays |
+| [Undo the whole thing](cookbook/uninstall.md) | `terminal reset`, `rm config.nu`, the checkout; what is yours and stays |
 
 ## Writing a page
 

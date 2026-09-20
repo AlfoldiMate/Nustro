@@ -1,19 +1,23 @@
 # Undo the whole thing
 
 Nothing the distro did is hidden. It wrote one file into Nushell's config
-directory, one file plus one line into Ghostty's, and everything else it
+directory, one file plus one line into the terminal's, and everything else it
 owns is under the checkout or under `.state/`. Undoing it is removing those,
 in this order.
 
-## 1. Ghostty, if you let it in
+## 1. The terminal, if you let it in
 
 ```nu
-ghostty status               # what the distro wrote: theme, icon, command, font
-ghostty reset                # remove its file and the one include line; your config is left byte-identical
+terminal status              # what the distro wrote: theme, icon, command, font — and into which terminal
+terminal reset               # remove its file and the include line(s); your config is left byte-identical
 ```
 
-The distro's settings live in `nustro.ghostty` next to Ghostty's
-config, included from it by one `config-file = ?nustro.ghostty` line.
+For Ghostty the distro's settings live in `nustro.ghostty` next to
+Ghostty's config, included from it by one `config-file = ?nustro.ghostty`
+line; for WezTerm in `nustro.lua` next to `wezterm.lua`, applied by one
+`pcall(… dofile(… "/nustro.lua").apply(config) end)` line before its
+`return`. `terminal reset` acts on the one being configured; `ghostty
+reset` and `wezterm reset` name one, for a machine that had both.
 `reset` removes both and nothing else; the `<config>.backup-<stamp>` it made
 when it first added the line stays for you to compare. Do this while the
 module is still loadable — it is the distro's command.

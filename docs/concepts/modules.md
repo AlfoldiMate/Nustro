@@ -104,8 +104,43 @@ requires: [
 ```
 
 `hard: false` means the module works without it, worse. `nu-config module check
-<name>` reports; `nu-config doctor` flags a missing hard dependency. Nothing
-here ever runs an installer.
+<name>` reports; `nu-config doctor` flags a missing hard dependency; the
+installer's Tools screen lists every enabled module whose tool is missing.
+Nothing here ever runs an installer.
+
+Three more things a hard dependency carries, so that choosing not to install
+a tool is a choice made with the consequence in view, and the way back is
+always stated:
+
+- `then:` — one line saying what to do once the tool is installed (`open a
+  new shell — Alt+E and every `agent` verb come alive; …`). `module check`,
+  the installer and the error below print it; `lint` requires it.
+- A module with a hard dependency must be `lazy: true` — `lint` refuses
+  otherwise. A missing tool must never cost a startup: the module loads on
+  first use, where its command says what is missing.
+- The command says it in one voice. `modules/nu-config/missing.nu` exports
+  `missing-tool <module> [bin] [--command <what was typed>]`, which raises
+  the error from the module's own `meta.nuon` — the `why`, the install line
+  for this platform, the `then`. A shipped module imports it by path (`use
+  ../nu-config/missing.nu *`; forty lines, where `use nu-config` is 34 ms of
+  parse — measured 2026-09-20), one of yours as `use nu-config/missing.nu *`
+  through `NU_LIB_DIRS`. `agent` calls it for `claude`, `worktree` for
+  `git`; the `terminal` module has its own `terminal require` because its
+  need is a group.
+
+A `group:` names one need with several answers — `terminal` wants Ghostty
+*or* WezTerm:
+
+```nu
+requires: [
+  { bin: "ghostty", group: "terminal", hard: true, … }
+  { bin: "wezterm", group: "terminal", hard: true, … }
+]
+```
+
+With either present the other's state is `alt`, not `missing`: nothing is
+broken, there is a second terminal to be had, and `module check` still
+prints its install line and `then`.
 
 ## Cost
 

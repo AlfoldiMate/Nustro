@@ -20,6 +20,9 @@
 
 # modules/agent/mod.nu → the repo, for files in it.
 const ROOT = (path self | path dirname | path dirname | path dirname)
+# The error for a missing claude, worded from meta.nuon (nu-config's file, by
+# path: forty lines, not the whole module).
+use ../nu-config/missing.nu *
 
 # Where claude runs. Claude Code keys its project (sessions, memory dir) by
 # the cwd string, so this must be the path you use yourself: the config path
@@ -86,9 +89,7 @@ def pid-alive [pid: int]: nothing -> bool {
 
 def claude-bin []: nothing -> path {
   let c = (which claude | get -o 0.path)
-  if $c == null {
-    error make {msg: "claude (Claude Code) is not on PATH", help: "https://code.claude.com/docs/en/quickstart"}
-  }
+  if $c == null { missing-tool agent claude }
   $c
 }
 

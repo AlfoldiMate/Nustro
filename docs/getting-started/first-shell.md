@@ -48,7 +48,7 @@ to you; `git pull` updates it without touching your files
 | command | |
 |---|---|
 | `nu-config` | `doctor`, `knobs`, `module`, `tools`, `plugins`, `upgrade`, `startup-time`, `edit` — the maintenance set ([reference](../reference/modules/nu-config.md)) |
-| `theme`, `font`, `ghostty`, `terminal` | the terminal you are in: its palette, its font, its config ([reference](../reference/modules/terminal.md)) |
+| `theme`, `font`, `terminal`, `ghostty`, `wezterm` | the terminal you are in: its palette, its font, its config ([reference](../reference/modules/terminal.md)) |
 | `agent` | Claude Code at the prompt: `ask`, `exec`, `skill`, `command`, `completion` ([reference](../reference/modules/agent.md)) |
 | `odata` | OData V2/V4 services as tables, with `where`/`select`/`first` run on the server ([reference](../reference/modules/odata.md)) |
 | `worktree` | a bare repository with a directory per branch, the gitignored files each checkout needs placed from profiles ([reference](../reference/modules/worktree.md)) |

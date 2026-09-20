@@ -1,25 +1,45 @@
 {
-  description: "The terminal itself: which one you have (`terminal`), its theme (`theme`), its configuration (`ghostty`)"
+  description: "The terminal itself: which one you have (`terminal`), its theme (`theme`), its font (`font`), its configuration (`ghostty`, `wezterm`)"
   docs: "docs/reference/modules/terminal.md"
-  # paid on the first `theme`, `ghostty` or `font`, not at startup. 78.4 ms of
-  # startup with it eager against 60.1 ms lazy, medians of 25, 2026-09-19.
-  cost: 18ms
-  # For commands a shell uses once in a while, so lazy: on `theme`, `ghostty` or
-  # `font` (MODULES_TRIGGERS) — the words its commands start with.
+  # paid on the first `theme`, `ghostty`, `wezterm` or `font`, not at startup.
+  # 93.1 ms of startup with it eager against 61.8 ms lazy, medians of 25,
+  # 2026-09-20, with the WezTerm backend and the registry (18 ms the day
+  # before, with Ghostty alone).
+  cost: 31ms
+  # For commands a shell uses once in a while, so lazy: on `theme`, `ghostty`,
+  # `wezterm` or `font` (MODULES_TRIGGERS) — the words its commands start with.
   lazy: true
+  # One need with two answers: a terminal the module can configure. `group`
+  # says so — with either one present the other is `alt`, not `missing`.
+  # `terminal target` (registry.nu) picks between them.
   requires: [
     {
       bin: "ghostty"
+      group: "terminal"
       hard: true
-      why: "the themes, their files and the config being written are all Ghostty's"
+      why: "a terminal to configure: the theme and font written into its config, the app icon, its own 463 themes — macOS and Linux"
       # Ghostty on macOS is an app bundle: the binary is on PATH only inside a
       # Ghostty window, where its shell integration prepends GHOSTTY_BIN_DIR.
       paths: ["/Applications/Ghostty.app/Contents/MacOS/ghostty" "~/Applications/Ghostty.app/Contents/MacOS/ghostty"]
       install: {
         macos: "brew install --cask ghostty"
         linux: "your package manager, or https://ghostty.org/download"
-        windows: "no Windows build yet — https://ghostty.org/download"
+        windows: "no official Windows build yet (ghostty-org/ghostty discussion #2563) — WezTerm instead"
       }
+      then: "open a new shell; `terminal list` shows it found, `terminal shell` starts Nushell in it, `theme` and `font` configure it (`terminal use ghostty` if WezTerm is there too)"
+    }
+    {
+      bin: "wezterm"
+      group: "terminal"
+      hard: true
+      why: "a terminal to configure: the theme and font written into its config, reloaded by itself — macOS, Linux and Windows"
+      paths: ["/Applications/WezTerm.app/Contents/MacOS/wezterm" "~/Applications/WezTerm.app/Contents/MacOS/wezterm" "C:/Program Files/WezTerm/wezterm.exe"]
+      install: {
+        macos: "brew install --cask wezterm"
+        linux: "your package manager, or https://wezterm.org/install/linux.html"
+        windows: "winget install wez.wezterm"
+      }
+      then: "open a new shell; `terminal list` shows it found, `terminal shell` starts Nushell in it, `theme` and `font` configure it (`terminal use wezterm` if Ghostty is there too)"
     }
   ]
   knobs: {

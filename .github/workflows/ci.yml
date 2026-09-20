@@ -5,8 +5,8 @@
 # written on. So the matrix runs the real installer and then loads the config
 # for real — `nu -c` deliberately loads no config and would prove nothing.
 #
-# What this does NOT cover, and it is most of the interesting part: Ghostty is
-# not installed on any runner, so the theme picker, the font installer and the
+# What this does NOT cover, and it is most of the interesting part: neither
+# Ghostty nor WezTerm is installed on any runner, so the theme picker, the font installer and the
 # terminal registry are exercised only to the point of reporting "not
 # installed". docs/reference/platforms.md says which platforms those have actually been run
 # on. A green matrix here means the configuration parses, installs and loads.
@@ -49,7 +49,8 @@ jobs:
       # install.nu takes every default by itself when there is no terminal on
       # stdin and stdout, so --defaults is belt and braces. Plugins are skipped:
       # the runner's nu has no plugin binaries beside it to register. The
-      # terminal too: --defaults would brew-install Ghostty on the macOS runner.
+      # terminal too: --defaults would brew-install Ghostty on the macOS runner
+      # and winget-install WezTerm on the Windows one.
       - name: install
         run: nu install.nu --defaults --skip-plugins --skip-terminal
 

@@ -2,7 +2,7 @@
 # install.nu — point Nushell at this distro, and give you a directory of your own
 #
 #   nu install.nu                 the interactive installer
-#   nu install.nu --defaults      every shipped default, no questions (Ghostty included, on macOS)
+#   nu install.nu --defaults      every shipped default, no questions (the platform's terminal included)
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --skip-tools --skip-plugins --skip-terminal --skip-harness
 #
@@ -42,7 +42,7 @@ const ROOT = path self | path dirname
 const NU_LIB_DIRS = [($ROOT | path join modules)]
 use nu-config
 # The pickers. They are the same ones the installed shell gets — `theme`,
-# `font`, `ghostty set`, `terminal list` — so the installer is a demonstration
+# `font`, `terminal shell`, `terminal list` — so the installer is a demonstration
 # of the thing it installs rather than a second implementation of it.
 use terminal *
 # The shipped values, so a choice can be compared against them and only the
@@ -54,7 +54,7 @@ def main [
   --defaults      # no questions; every shipped default
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
-  --skip-terminal # do not install Ghostty (CI, the tests)
+  --skip-terminal # do not install a terminal (CI, the tests)
   --skip-harness  # do not register the checkout with Claude Code (the tests)
 ] {
   print $"(ansi cyan_bold)Nustro(ansi reset)  ($ROOT)"
@@ -74,8 +74,14 @@ def main [
     | merge (screen-where --ask=$ask)
     | merge (screen-modules --ask=$ask)
     | merge (screen-terminal --ask=$ask --dry-run=$dry_run --skip=$skip_terminal)
-    | merge (screen-theme --ask=$ask)
-    | merge (screen-font --ask=$ask --dry-run=$dry_run)
+  )
+  # Screens 4 and 5 configure the terminal screen 3 chose, through `terminal
+  # target` like every command; screen 3 set NUSTRO_TERMINAL for this process
+  # so they agree, and nothing is pinned on disk until the plan is applied.
+  let plan = (
+    $plan
+    | merge (screen-theme --ask=$ask --terminal=$plan.terminal)
+    | merge (screen-font --ask=$ask --dry-run=$dry_run --terminal=$plan.terminal)
   )
   # Screen 3 may have turned the terminal module off; that lands in the
   # MODULES line of screen 2's answer, whichever it was.
@@ -83,7 +89,7 @@ def main [
     let enabled = (($plan.modules? | default null | get -o enabled | default $MODULES) | where $it != "terminal")
     $plan | upsert modules { enabled: $enabled, lazy: ($MODULES_LAZY | where {|m| $m in $enabled }) }
   } else { $plan })
-  screen-tools
+  screen-tools --modules (($plan.modules? | default null | get -o enabled) | default $MODULES)
   if $ask and (not (confirm $plan)) {
     print "nothing was changed"
     return
@@ -161,100 +167,147 @@ def screen-modules [--ask]: nothing -> record {
 }
 
 # ── 3. Terminal ───────────────────────────────────────────────────────────────
+#
+# Which terminal the distro configures. Two are known (`terminal list`):
+# Ghostty, the one the theme, icon and font work were built on, and WezTerm,
+# the same features on Windows too. The one this session runs in is the
+# answer when it is one of them; otherwise the choice is made here and pinned
+# with `terminal use`, and `--defaults` takes the platform's own (Ghostty,
+# WezTerm on Windows) — installing it when nothing is installed and the plan
+# is a command, because the theme, the font and the shell are all the
+# terminal's, so a distro without one is half a distro.
 
-def screen-terminal [--ask, --dry-run, --skip]: nothing -> record {
+def --env screen-terminal [--ask, --dry-run, --skip]: nothing -> record {
   print $"(ansi cyan_bold)3. Terminal(ansi reset)"
-  let t = (terminal list | get 0)
+  let rows = (terminal list)
+  for t in $rows {
+    let state = (if $t.installed { $"installed at ($t.path)" } else { "not installed" })
+    let mark = (if $t.running { $"  (ansi green)← you are running in it(ansi reset)" } else { "" })
+    print $"  ($t.terminal | fill --width 10) ($state)($mark)"
+  }
   let here = (terminal current)
-  print $"  ($t.terminal | fill --width 10) (if $t.installed { $"installed at ($t.path)" } else { "not installed" })"
   if $here != null {
-    print $"  (ansi green)you are running in it(ansi reset) — the theme preview below will be real"
+    print $"  (ansi green)the theme preview below will be real(ansi reset)"
   } else {
-    print $"  (ansi yellow)this session is not Ghostty(ansi reset) — a theme can still be chosen and written,"
+    print $"  (ansi yellow)this session is in neither(ansi reset) — a theme can still be chosen and written,"
     print $"  (ansi yellow)but the live preview would paint a terminal that is not the one being(ansi reset)"
     print $"  (ansi yellow)configured, so it is a lie and it is skipped(ansi reset)"
   }
-  if not $t.installed {
-    let plan = (terminal install-plan)
-    print $"  install:  ($plan.command | default $plan.note)"
-    # Default yes, and `--defaults` (so `curl … | sh`) does it unasked: the
-    # theme, the icon, the font and `ghostty shell` are all Ghostty's, so a
-    # distro without it is half a distro. Only where the plan is a command
-    # (macOS: the Homebrew cask); `--skip-terminal` is for CI and the tests.
-    if (not $dry_run) and (not $skip) and $plan.runnable and ((not $ask) or (yes-no "install Ghostty now?")) {
-      terminal install --yes
+
+  # Nothing installed: offer the platform's default, or a named one.
+  if ($rows | where installed | is-empty) {
+    let want = (if $ask {
+      let options = ($rows | each {|t| $"($t.terminal) — ($t.what)" } | append "neither")
+      let pick = ($options | input list "install a terminal? (Enter takes the first)")
+      if $pick == null or $pick == "neither" { null } else { $pick | split row " — " | first }
+    } else { terminal default })
+    if $want != null {
+      let plan = (terminal install-plan $want)
+      print $"  install ($want):  ($plan.command | default $plan.note)"
+      if (not $dry_run) and (not $skip) and $plan.runnable {
+        terminal install $want --yes
+      }
     }
   }
-  # Re-read: the install above may just have changed the answer.
-  let installed = (terminal list | get 0.installed)
-  let disable = (if $installed { false } else {
-    print $"  (ansi yellow)without Ghostty(ansi reset)"
-    for l in (without-ghostty-lines) { print $"    ($l)" }
+
+  # Re-read: the install above may just have changed the answer. Then decide
+  # which one is configured: the one we are in, else the only one, else ask.
+  let installed = (terminal list | where installed | get terminal)
+  let chosen = (
+    if ($installed | is-empty) { null }
+    else if $here != null and ($here.terminal in $installed) { $here.terminal }
+    else if ($installed | length) == 1 { $installed | first }
+    else if $ask { $installed | input list "which one should `theme`, `font` and `terminal shell` configure?" | default ($installed | first) }
+    else if ((terminal default) in $installed) { terminal default }
+    else { $installed | first }
+  )
+  if $chosen != null and ($installed | length) > 1 { print $"  configuring ($chosen)" }
+  # For the rest of this process; `apply` pins it with `terminal use`.
+  if $chosen != null { $env.NUSTRO_TERMINAL = $chosen }
+
+  let disable = (if $chosen != null { false } else {
+    print $"  (ansi yellow)without a terminal this distro knows(ansi reset)"
+    for l in (without-terminal-lines) { print $"    ($l)" }
+    print $"  (ansi dark_gray)later: install one \(`terminal install`\), open a new shell, `terminal shell` and `theme`(ansi reset)"
     # The module is lazy, so leaving it on costs nothing at startup; turning
-    # it off only takes `theme`, `font` and `ghostty` out of the way.
-    $ask and (yes-no "disable the terminal module? (it loads only when you type theme, font or ghostty; nothing is saved at startup)" --default-no)
+    # it off only takes `theme`, `font` and `terminal` out of the way.
+    $ask and (yes-no "disable the terminal module? (it loads only when you type theme, font, ghostty, wezterm or terminal; nothing is saved at startup)" --default-no)
   })
-  { ghostty: $installed, in_ghostty: ($here != null), shell: (screen-shell --ask=$ask --installed=$installed), disable_terminal: $disable }
+  { terminal: $chosen, in_terminal: ($here != null), shell: (screen-shell --ask=$ask --terminal=$chosen), disable_terminal: $disable }
 }
 
-# What a shell without Ghostty does not get, stated once so the choice is made
-# with it in view. Everything else — Tab, the prompt, the modules — is the same.
-def without-ghostty-lines []: nothing -> list<string> {
+# What a shell without a known terminal does not get, stated once so the
+# choice is made with it in view. Everything else — Tab, the prompt, the
+# modules — is the same.
+def without-terminal-lines []: nothing -> list<string> {
   [
     "theme    stays at the ANSI tier: the shell uses your terminal's own sixteen colours by name; `theme use` can still"
-    "         render a palette for tables, ls, bat and the prompt, but only Ghostty gets it written into its config,"
-    "         painted into every open window and drawn as the app icon — and Ghostty's own 463 themes need Ghostty"
-    "font     nothing: the fifteen Nerd Fonts are installed, previewed and kept through Ghostty's config"
-    "shell    nothing: `ghostty shell` is what makes a new window start Nushell; here your terminal decides"
+    "         render a palette for tables, ls, bat and the prompt, but only Ghostty or WezTerm gets it written into its"
+    "         config and painted into every open window; the app icon is Ghostty's, and Ghostty's own 463 themes need it"
+    "font     nothing: the fifteen Nerd Fonts are installed, previewed and kept through the terminal's config"
+    "shell    nothing: `terminal shell` is what makes a new window start Nushell; here your terminal decides"
     "alt      on macOS, Alt+E / Alt+Enter / Alt+arrows depend on your terminal sending Option as Alt"
   ]
 }
 
-# What a new Ghostty window starts. Left alone, Ghostty runs SHELL, then the
-# passwd shell — zsh on a stock Mac — so a Nushell distro that has configured
-# the terminal and then leaves it opening zsh has not installed anything. This
+# What a new window starts. Left alone, Ghostty runs SHELL and then the
+# passwd shell — zsh on a stock Mac — and WezTerm the platform's default —
+# PowerShell on Windows — so a Nushell distro that has configured the terminal
+# and then leaves it opening something else has not installed anything. This
 # is why it is the one question here whose default is yes, and why `--defaults`
-# and a `curl … | sh` run do it unasked: it is the distro's own file in
-# Ghostty's config (`ghostty shell --reset` takes it out again), not an override
-# in settings.nu, so the "no overrides" test the other screens live by is not
-# touched. Returns the nu to write, or null when there is nothing to do.
-def screen-shell [--ask, --installed]: nothing -> any {
-  if not $installed { print ""; return null }
-  let now = ((ghostty status).shell | default "your login shell")
-  let want = (ghostty nu-path)
-  print $"  shell      a new window starts ($now)"
-  # `nu` by whichever path: theirs already does the job, so nothing is written.
-  if ($now | path basename | str replace -r '\.exe$' '') == "nu" { print ""; return null }
+# and a `curl … | sh` run do it unasked: it is the distro's own file in the
+# terminal's config (`terminal shell --reset` takes it out again), not an
+# override in settings.nu, so the "no overrides" test the other screens live
+# by is not touched. Returns true when the shell is to be written.
+def screen-shell [--ask, --terminal: any]: nothing -> bool {
+  if $terminal == null { print ""; return false }
+  let want = (terminal nu-path)
+  # `nu` by whichever path: what is there already does the job, so nothing is
+  # asked. Ghostty reports the resolved `command`, their config included;
+  # WezTerm's `default_prog` is a list, ours or nothing.
+  let now = (terminal live (terminal-shell-key $terminal))
+  let now_s = (if $now == null { null } else if ($now | describe) =~ '^list' { $now | first } else { $now })
+  if $now_s != null and ($now_s | path basename | str replace -r '\.exe$' '') == "nu" {
+    print $"  shell      a new ($terminal) window starts ($now_s) already"
+    print ""
+    return false
+  }
+  print $"  shell      a new ($terminal) window starts its own default shell"
   let yes = if $ask { yes-no $"start Nushell instead? \(($want)\)" } else { true }
   print ""
-  if $yes { $want } else { null }
+  $yes
+}
+
+# The key each terminal keeps its start-up program under, for the check above.
+def terminal-shell-key [terminal: string]: nothing -> string {
+  match $terminal { "wezterm" => "default_prog", _ => "command" }
 }
 
 # ── 4. Theme ──────────────────────────────────────────────────────────────────
 #
-# One theme for everything: a palette is written to Ghostty as a theme and an
-# icon, and rendered for the shell — tables, `ls`, bat and the prompt — by
-# `theme use`, which is what `apply` runs for the choice made here. Nothing
-# chosen means the ANSI tier: the shell follows whatever sixteen colours the
-# terminal paints.
+# One theme for everything: a palette is written to the terminal as a theme
+# (and an icon, for Ghostty), and rendered for the shell — tables, `ls`, bat
+# and the prompt — by `theme use`, which is what `apply` runs for the choice
+# made here. Nothing chosen means the ANSI tier: the shell follows whatever
+# sixteen colours the terminal paints.
 
-def screen-theme [--ask]: nothing -> record {
+def screen-theme [--ask, --terminal: any]: nothing -> record {
   print $"(ansi cyan_bold)4. Theme(ansi reset)"
   print $"  (ansi dark_gray)a hundred palettes \(NvChad's and Catppuccin\), rendered for the terminal, its icon, Nushell, ls, bat and the prompt; `theme` changes it later, `theme --ghostty` picks among Ghostty's own 463(ansi reset)"
-  if not $ask { print ""; return { ghostty_theme: null } }
+  if not $ask { print ""; return { theme: null } }
 
-  mut ghostty_theme = null
-  if (terminal list | get 0.installed) {
+  mut theme = null
+  if $terminal != null {
     # Default no, like every question here but the shell: pressing Enter
     # through the whole installer has to end with nothing written.
     if (yes-no "pick a theme?" --default-no) {
-      $ghostty_theme = (pick-ghostty-theme)
+      $theme = (pick-theme)
     }
   } else {
-    print $"  (ansi dark_gray)no Ghostty: the shell uses the terminal's sixteen colours by name(ansi reset)"
+    print $"  (ansi dark_gray)no terminal to write it to: the shell uses the terminal's sixteen colours by name(ansi reset)"
   }
   print ""
-  { ghostty_theme: $ghostty_theme }
+  { theme: $theme }
 }
 
 # The theme picker, but choosing only: nothing is written here, because the
@@ -262,12 +315,12 @@ def screen-theme [--ask]: nothing -> record {
 # terminal and `theme reset` hands it back, so the preview costs nothing either.
 # The list is the palettes — NvChad's and the hand-made ones — the same list
 # `theme` shows; Ghostty's own 463 are a `theme --ghostty` away afterwards.
-def pick-ghostty-theme []: nothing -> any {
+def pick-theme []: nothing -> any {
   let rows = (theme list --swatches | select theme colours)
   mut chosen = null
   mut picking = true
   while $picking {
-    let pick = ($rows | input list --fuzzy --display {|r| $"($r.theme) ($r.colours)" } "Ghostty theme")
+    let pick = ($rows | input list --fuzzy --display {|r| $"($r.theme) ($r.colours)" } "theme")
     if $pick == null { $picking = false; continue }
     theme preview $pick.theme
     match ([$"keep ($pick.theme)" "pick another" "leave it as it was"] | input list $"($pick.theme) — this is it") {
@@ -277,24 +330,24 @@ def pick-ghostty-theme []: nothing -> any {
     }
   }
   # The paint is left on the screen when a theme was kept; the write happens in
-  # `apply`, so a cancelled confirmation still leaves Ghostty's config alone.
+  # `apply`, so a cancelled confirmation still leaves the terminal's config alone.
   if $chosen == null { theme reset }
   $chosen
 }
 
 # ── 5. Font ───────────────────────────────────────────────────────────────────
 
-def screen-font [--ask, --dry-run]: nothing -> record {
+def screen-font [--ask, --dry-run, --terminal: any]: nothing -> record {
   print $"(ansi cyan_bold)5. Font(ansi reset)"
-  if not ((terminal list | get 0.installed)) {
-    print "  Ghostty is not installed, so there is nothing to set a font on"
+  if $terminal == null {
+    print "  no terminal to set a font on"
     print ""
     return { font: null }
   }
   let rows = (font list)
-  # What Ghostty is using, whoever configured it — not only what we wrote.
-  let now = (ghostty live font-family)
-  print $"  current   ($now | default "Ghostty's own built-in JetBrains Mono")"
+  # What the terminal is using, whoever configured it — not only what we wrote.
+  let now = (terminal live (terminal target | get font_key))
+  print $"  current   ($now | default "the terminal's own built-in JetBrains Mono")"
   print $"  installed ((($rows | where installed | get font) | str join ', ') | default 'none of the fifteen')"
   if (not $ask) or $dry_run {
     if $dry_run { print $"  (ansi dark_gray)a font has to be downloaded to be seen, so the picker is skipped on a dry run(ansi reset)" }
@@ -333,9 +386,12 @@ def screen-font [--ask, --dry-run]: nothing -> record {
 # Reporting only. Nothing here is installed by this script: these are other
 # people's package managers, and a tool that appears later is picked up by
 # re-running `nu-config tools setup`, which is the whole point of installation
-# being the switch.
+# being the switch. The second half is the modules' own dependencies: a module
+# left enabled without its tool costs nothing (every such module is lazy —
+# `module lint` insists) and its commands say what is missing; this is where
+# the choice not to install one is made with the consequence in view.
 
-def screen-tools []: nothing -> nothing {
+def screen-tools [--modules: list<string>]: nothing -> nothing {
   print $"(ansi cyan_bold)6. Tools(ansi reset)"
   for t in (nu-config tools status) {
     let mark = (if $t.installed { $"(ansi green)ok(ansi reset)" } else { $"(ansi dark_gray)--(ansi reset)" })
@@ -353,6 +409,23 @@ def screen-tools []: nothing -> nothing {
   }
   if (which vivid | is-empty) {
     print $"  (ansi dark_gray)-- vivid      `ls` colours from the theme; without it Nushell's own apply(ansi reset)"
+  }
+  # The modules' dependencies. `missing` only: a group's spare member (the
+  # other terminal) is not a gap.
+  let gaps = (
+    nu-config module list
+    | where module in $modules
+    | each {|m| nu-config module info $m.module | get requires | where state == "missing" | insert module $m.module }
+    | flatten
+  )
+  if ($gaps | is-not-empty) {
+    print ""
+    print $"  (ansi yellow)modules whose tool is not installed(ansi reset) — enabled, lazy, and their commands will say so until it is:"
+    for g in $gaps {
+      print $"  (ansi yellow)!!(ansi reset) ($g.bin | fill --width 9) ($g.module): ($g.why)"
+      if ($g.install | is-not-empty) { print $"     (ansi dark_gray)install:(ansi reset) ($g.install)" }
+      if ($g.then | is-not-empty) { print $"     (ansi dark_gray)then:(ansi reset)    ($g.then)" }
+    }
   }
   print ""
 }
@@ -379,9 +452,10 @@ def plan-lines [plan: record]: nothing -> list<string> {
   ]
   ++ ($settings | each {|l| $"  ($l)" })
   ++ [
-    (if ($plan.shell? | default null) != null { $"Ghostty command = ($plan.shell) — a new window starts Nushell" })
-    (if ($plan.ghostty_theme? | default null) != null { $"theme ($plan.ghostty_theme) — Ghostty, its icon, and the shell's colours" })
-    (if ($plan.font? | default null) != null { $"Ghostty font-family = ($plan.font)" })
+    (if ($plan.terminal? | default null) != null { $"terminal use ($plan.terminal) — what `theme`, `font` and `terminal shell` configure" })
+    (if ($plan.shell? | default false) { $"terminal shell — a new ($plan.terminal) window starts Nushell \((terminal nu-path)\)" })
+    (if ($plan.theme? | default null) != null { $"theme ($plan.theme) — ($plan.terminal), its icon on Ghostty, and the shell's colours" })
+    (if ($plan.font? | default null) != null { $"font use ($plan.font) — ($plan.terminal)'s font" })
     "render the theme, generate tool init files, register plugins"
   ]) | compact
 }
@@ -408,19 +482,6 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
   let migrated = (unlink-old-layout $user --dry-run=$dry_run)
   make-user-dir $user (settings-block $plan) --dry-run=$dry_run --fresh=$migrated
 
-  # The theme is not set here: `theme use`, in the child below, writes it
-  # together with the icon and the rendered shell colours.
-  if ($plan.shell? | default null) != null or ($plan.font? | default null) != null {
-    print $"(ansi cyan_bold)Ghostty(ansi reset)"
-    let settings = (
-      {}
-      | merge (if ($plan.shell? | default null) != null { { command: $plan.shell } } else { {} })
-      | merge (if ($plan.font? | default null) != null { { font-family: $plan.font } } else { {} })
-    )
-    for s in ($settings | transpose k v) { print $"  ($s.k) = ($s.v)" }
-    if not $dry_run { ghostty set $settings }
-    print ""
-  }
 
   # Everything below depends on $nu.data-dir and $nu.plugin-path, which this
   # process computed BEFORE the user dir existed. A fresh `nu` sees it, so the
@@ -430,8 +491,24 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
   # this window, and renders tables, ls, bat and the prompt from it. No theme
   # chosen re-renders whatever was chosen before, or the ANSI tier on a first
   # install — never a reset.
-  let theme_name = (if ($plan.ghostty_theme? | default null) != null { $plan.ghostty_theme | to nuon } else { "" })
+  let theme_name = (if ($plan.theme? | default null) != null { $plan.theme | to nuon } else { "" })
+  # The terminal first: the pin (`terminal use`), which `theme use` below
+  # writes through; then the shell and the font, in the terminal's own
+  # vocabulary through the same commands a user types.
+  let terminal_step = (if ($plan.terminal? | default null) == null { null } else {
+    let name = ($plan.terminal | to nuon)
+    let lines = ([
+      $"print $\"\(ansi cyan_bold\)Terminal\(ansi reset\)  ($plan.terminal)\""
+      "use terminal *"
+      (if $dry_run { $"print '  terminal use ($plan.terminal)'" } else { $"terminal use ($name)" })
+      (if ($plan.shell? | default false) { (if $dry_run { "print '  terminal shell — a new window starts Nushell'" } else { "terminal shell" }) })
+      (if ($plan.font? | default null) != null { (if $dry_run { $"print '  font use ($plan.font)'" } else { $"font use ($plan.font | to nuon)" }) })
+      "print ''"
+    ] | compact)
+    $lines | str join "; "
+  })
   let steps = ([
+    $terminal_step
     (if $dry_run {
       'print $"(ansi cyan_bold)Theme(ansi reset)"; use terminal *; theme resolve ' + (if $theme_name == "" { "(theme current | default {} | get -o name)" } else { $theme_name }) + ' | select name tier bat | print; print ""'
     } else {

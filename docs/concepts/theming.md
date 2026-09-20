@@ -13,12 +13,14 @@ theme icon [--off]             # the app icon again, or none
 ```
 
 There is one theme and everything is rendered from it. `theme use` hands
-Ghostty a theme and an app icon, repaints the window you are in (and reloads
-every open one, on macOS), and renders the shell's own colours from the same
-palette, so a table separator, a `ls` directory, a `bat` keyword, a prompt
-segment and the icon in the dock all come from the theme you named — in this
-window now and in every shell after, because the render is a file. No `THEME`
-knob: what was rendered last is the theme.
+the terminal a theme (and Ghostty an app icon), repaints the window you are
+in (and reloads every open one, where the terminal can), and renders the
+shell's own colours from the same palette, so a table separator, a `ls`
+directory, a `bat` keyword, a prompt segment and the icon in the dock all
+come from the theme you named — in this window now and in every shell after,
+because the render is a file. No `THEME` knob: what was rendered last is the
+theme. The terminal is Ghostty or WezTerm, whichever you are in or pinned
+with `terminal use` ([the registry](#two-terminals-one-registry)).
 
 Every command and flag, with what each costs, is in the
 [terminal reference](../reference/modules/terminal.md); picking a theme and
@@ -78,8 +80,8 @@ what ANSI has no word for, and `theme roles` shows which is which.
 
 | key | means | shipped |
 |---|---|---|
-| `terminal: {…}` | the palette **is** a terminal theme: its own sixteen, background, foreground, cursor, selection. `theme use` writes it as a Ghostty theme file under the state dir and points `theme =` at it (Ghostty takes an absolute path) | NvChad's 96 |
-| `ghostty: "Name"` | the palette **extends** a theme Ghostty ships, whose file supplies the sixteen | Catppuccin ×4 |
+| `terminal: {…}` | the palette **is** a terminal theme: its own sixteen, background, foreground, cursor, selection. `theme use` writes it as a theme file under the state dir — Ghostty's format, pointed at by `theme =` (an absolute path is accepted), or a WezTerm scheme named by `color_scheme =` | NvChad's 96 |
+| `ghostty: "Name"` | the palette **extends** a theme Ghostty ships, whose file supplies the sixteen. Needs Ghostty installed to resolve; a WezTerm target is then given the sixteen as a scheme file | Catppuccin ×4 |
 
 Both carry `colours` (any names) and `roles` (role → a colour name or a colour),
 plus optional `bat` / `vivid` naming themes those tools ship and `dark`.
@@ -105,6 +107,7 @@ keys back out. Off macOS nothing happens.
 | `starship.toml` | `themes/starship.toml`, `[palettes.distro]` filled in | `conf/prompt.nu` sets `STARSHIP_CONFIG` to it |
 | `ls_colors` | vivid, on `themes/vivid.yml` or the palette's named vivid theme | `conf/theme.nu` → `LS_COLORS` |
 | `ghostty/<slug>` | a palette's `terminal` block as a Ghostty theme file | Ghostty, through `theme =` in the distro's included file |
+| `wezterm/nustro-<slug>.toml` | the sixteen and the named colours as a WezTerm colour scheme | WezTerm, through `color_scheme_dirs` and `color_scheme =` in `nustro.lua` |
 | `icons/<slug>.png` | `icon.svg` with the roles filled in | Ghostty, through `macos-custom-icon` |
 
 Rendered rather than resolved at every start because a resolve may spawn
@@ -144,11 +147,55 @@ Trying a theme without keeping it is `theme preview <name>` and `theme reset`
 
 ## How the terminal side works
 
+### Two terminals, one registry
+
+`modules/terminal/registry.nu` is a table of what the distro knows about
+each terminal — name, what `TERM_PROGRAM` says inside it, how to install it
+per platform, which keys it uses for the theme, the font and the size — and
+a verb per thing the theme and font commands need (`terminal set`, `terminal
+shell`, `terminal face`, `terminal preview`, `terminal write-theme`, …),
+each a `match` on the target's name calling that terminal's own backend
+(`ghostty.nu`, `wezterm.nu`). `theme use` and `font use` call the verbs and
+never name a terminal, so a third one is a row, a backend file and one arm
+in each verb.
+
+Which terminal is `terminal target`, in this order: `NUSTRO_TERMINAL` in the
+environment when it names an installed one (the installer sets it for its
+own process; a test for a shell); the terminal this session runs in, when
+it is installed; the one pinned by `terminal use` (which the installer does
+for the choice made on its terminal screen); the first installed one in
+registry order. A session inside Ghostty configures Ghostty even when
+WezTerm is pinned, because painting the window you look at is only a
+preview of the terminal you are in. Without any, `theme use` still renders
+the shell's colours and says there was nothing to write to; `font use` and
+`terminal shell` error with what to install and what follows.
+
+The first registry was a table of closures — `set: {|s| ghostty set $s }`
+and thirty-three more — and it cost 130 ms of startup with the module eager
+(2026-09-20, against 20 ms for the module the day before): Nushell analyses
+every closure for captures against everything in scope when it parses the
+file, and the file is parsed with `nu-config` and the rest of the distro in
+scope. A `match` arm is a block, and thirty of them cost nothing measurable
+in the same test. So the registry is data and the dispatch is verbs.
+
+Why WezTerm, chosen 2026-09-20: it is the one popular terminal that runs on
+Windows and can carry everything the module does for Ghostty — a font query
+(`wezterm ls-fonts`), a preview window (`wezterm --config font=… start`),
+theme files loaded by name from a directory (`color_scheme_dirs`), the OSC
+repaint, a `default_prog` to start Nushell — and it reloads its
+configuration by itself on every platform, which Ghostty does only on
+macOS. Alacritty was the alternative: actively released, the simplest
+config, but no font query, no built-in themes, no ligatures, and its
+`import` loses to the user's own keys. WezTerm's cost is a stable release
+from February 2024 (nightlies since), and a Lua config that cannot be
+appended to — see [WezTerm's facts](#wezterm-a-file-of-our-own-applied-by-one-line-before-return).
+
 ### The terminal is the preview
 
 A Ghostty theme file is exactly `palette = N=#hex` for 0-15 plus `background`,
 `foreground`, `cursor-color` and the two selection colours — and every one of
-those can be set at runtime over OSC:
+those can be set at runtime over OSC (WezTerm answers every one of them the
+same way; verified 2026-09-20 by setting each and querying it back):
 
 ```
 OSC 4;N;#hex  palette entry N        OSC 104  reset every palette entry
@@ -290,10 +337,11 @@ preview if it is the terminal being configured; from Terminal.app or an SSH
 session it is a lie. `TERM_PROGRAM` answers the second in one environment-variable
 read, no processes.
 
-Detection is a registry rather than three `if`s, the same shape as the tool
-registry in `modules/nu-config/tools.nu` where "installed" is likewise the
-switch, so adding WezTerm or Kitty later is a record and not a refactor.
-Ghostty is the only entry, deliberately.
+Detection is the registry, the same shape as the tool registry in
+`modules/nu-config/tools.nu` where "installed" is likewise the switch. Two
+entries, Ghostty and WezTerm; the installer's terminal screen offers to
+install the platform's default (WezTerm on Windows, where Ghostty has no
+build) when neither is there, and asks which to configure when both are.
 
 ### Ghostty is not on PATH
 
@@ -337,7 +385,57 @@ created, even on macOS where `ghostty +edit-config` would have picked Applicatio
 Support: a file under `~/.config` is the one a dotfiles repo can keep, and
 Ghostty reads it as long as Application Support holds nothing.
 
-### Nushell is the shell because Ghostty is told so, not `chsh`
+### WezTerm: a file of our own, applied by one line before `return`
+
+The same arrangement as Ghostty's, in Lua. `wezterm set` writes
+`<wezterm dir>/nustro.lua` — a table of the keys we own and an `apply(config)`
+that assigns them — and puts one line into the user's `wezterm.lua`:
+
+```lua
+pcall(function() dofile(require("wezterm").config_dir .. "/nustro.lua").apply(config) end)
+```
+
+Lua has no include, and nothing can follow `return` in a chunk, so the line
+cannot be appended the way Ghostty's `config-file =` is: it goes in front of
+the last `return <name>` line, with `<name>` whatever their file returns
+(`config` from `wezterm.config_builder()` nearly always), after a backup. A
+file that ends any other way is left alone and the line is printed to add by
+hand. When there is no config at all — a fresh Windows machine — one is
+written, with the line in it. Verified against WezTerm 20240203 on macOS,
+2026-09-20, with `XDG_CONFIG_HOME` pointed at a scratch directory:
+
+- `wezterm.config_dir` is the directory of the config that *was* loaded —
+  `~/.config/wezterm` for `wezterm.lua` there, `~` for `~/.wezterm.lua` — so
+  the `dofile` finds our file in either layout. `require("nustro")` would
+  not: `package.path` holds `~/.config/wezterm` and `~/.wezterm`, never the
+  home directory.
+- `pcall` makes a missing `nustro.lua` a silent no-op, so deleting our file
+  is a complete uninstall even with the line in place — Ghostty's `?`.
+- WezTerm watches its config and reloads every open window on every write,
+  on every platform: rewriting `nustro.lua` recoloured a running window with
+  nothing else done. `wezterm reload` is therefore a fact, not an act, and
+  a theme or font reaches open windows on Linux and Windows too.
+- A config error — a syntax error, a key `config_builder` does not know, a
+  `color_scheme` that does not exist — is an ` ERROR ` line on stderr from
+  any CLI verb that loads the config, and the exit code stays 0.
+  `wezterm set` runs `ls-fonts` for that reason, reads stderr, and puts our
+  file back when it complains; 50 ms.
+- `color_scheme_dirs` takes a directory of `<name>.toml` scheme files with
+  `[metadata] name` naming each, and `color_scheme = <name>` selects one; the
+  files live under `.state/theme/wezterm/`, like Ghostty's.
+- `--config key=value` overrides the files for one process: `wezterm
+  --config 'font=wezterm.font("X")' ls-fonts` names the face X resolves to,
+  or warns "Unable to load a font" and names the built-in JetBrains Mono —
+  the `+show-face` question, answered in 50 ms. Without the override,
+  `ls-fonts` on the loaded config names the family in use, the user's own
+  `font` included (116 ms), which is what `font list` marks as current.
+- `default_prog = { <nu>, "-l" }` starts nu; a bare path gave no login
+  shell (`$nu.is-login` was false), unlike Ghostty's `command`, which goes
+  through `login -flp`.
+- Inside a window `TERM_PROGRAM=WezTerm`, and `WEZTERM_CONFIG_FILE` names the
+  config it loaded, which `wezterm config-path` prefers over guessing.
+
+### Nushell is the shell because the terminal is told so, not `chsh`
 
 Ghostty starts `SHELL`, and failing that the passwd shell — zsh on a stock Mac —
 so a freshly installed distro would open a terminal that runs something else.
@@ -364,7 +462,8 @@ every shell does, so the window gets a login nu (`$nu.is-login == true`) with
 
 ### Why it is lazy
 
-Loading these files costs 18 ms, for commands a shell uses once in a while,
-so `theme`, `ghostty` and `font` are trigger words
-(`MODULES_TRIGGERS` in `defaults.nu`). Typing `ghostty +list-themes` loads the
+Loading these files costs 31 ms (2026-09-20, with the WezTerm backend; 18 ms
+the day before), for commands a shell uses once in a while, so `theme`,
+`ghostty`, `wezterm` and `font` are trigger words (`MODULES_TRIGGERS` in
+`defaults.nu`). Typing `ghostty +list-themes` or `wezterm ls-fonts` loads the
 module too, which is harmless.
