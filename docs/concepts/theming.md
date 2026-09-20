@@ -308,8 +308,8 @@ makes `nu-config doctor` agree.
 
 ### One included file, never their config
 
-`ghostty set` writes `<ghostty dir>/nushell-distro.ghostty` and appends exactly
-one line — `config-file = ?nushell-distro.ghostty` — to the user's own config,
+`ghostty set` writes `<ghostty dir>/nustro.ghostty` and appends exactly
+one line — `config-file = ?nustro.ghostty` — to the user's own config,
 once, after copying it to `config.backup-<timestamp>`. `ghostty reset` removes
 both and leaves their config byte-identical.
 

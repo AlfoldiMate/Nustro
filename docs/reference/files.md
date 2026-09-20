@@ -75,10 +75,13 @@ shell.
 
 ## Ghostty
 
-`ghostty set` writes `<ghostty config dir>/nushell-distro.ghostty` and appends
-one line — `config-file = ?nushell-distro.ghostty` — to Ghostty's own config,
+`ghostty set` writes `<ghostty config dir>/nustro.ghostty` and appends
+one line — `config-file = ?nustro.ghostty` — to Ghostty's own config,
 after copying it to `config.backup-<stamp>`. `ghostty status` shows both;
-`ghostty reset` removes ours and the line ([Theming](../concepts/theming.md#one-included-file-never-their-config)).
+`ghostty reset` removes ours and the line. A machine set up before the
+rename to Nustro (2026-09-20) has `nushell-distro.ghostty` and the old
+include line: the first `ghostty` command after the upgrade moves the file
+and rewrites the two lines in place, nothing else in the config touched ([Theming](../concepts/theming.md#one-included-file-never-their-config)).
 
 ## Formats
 

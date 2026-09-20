@@ -1,6 +1,6 @@
 ---
 name: nushell
-description: Use when writing, debugging, or configuring Nushell (`nu`) — .nu scripts, modules, plugins, custom completions, `config.nu`/`env.nu`, `$env.config` settings, themes, Reedline keybindings and menus, overlays, hooks, the standard library, or the built-in MCP server (`nu --mcp`); also when converting bash/zsh/PowerShell to Nu, working with Nu's structured-data pipelines (tables, records, lists, cell-paths), or troubleshooting parse-time vs run-time errors. Covers this machine's config: the Nushell distro at ~/.config/nushell and the user layer next to it.
+description: Use when writing, debugging, or configuring Nushell (`nu`) — .nu scripts, modules, plugins, custom completions, `config.nu`/`env.nu`, `$env.config` settings, themes, Reedline keybindings and menus, overlays, hooks, the standard library, or the built-in MCP server (`nu --mcp`); also when converting bash/zsh/PowerShell to Nu, working with Nu's structured-data pipelines (tables, records, lists, cell-paths), or troubleshooting parse-time vs run-time errors. Covers this machine's config: Nustro, the Nushell distro, at ~/.config/nushell and the user layer next to it.
 ---
 
 # Nushell

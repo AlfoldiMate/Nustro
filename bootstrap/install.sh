@@ -1,7 +1,7 @@
 #!/bin/sh
 # install.sh — get Nushell, get this distro, hand over to install.nu
 #
-#   curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.sh | sh
 #   sh install.sh --yes                     take every default, ask nothing
 #   sh install.sh --dir ~/src/nu-distro     clone somewhere else
 #
@@ -14,13 +14,13 @@
 # shell should be able to, which is why it is this short.
 #
 # Overridable with environment variables as well as flags:
-#   NUSHELL_DISTRO_REPO  NUSHELL_DISTRO_DIR  NUSHELL_DISTRO_REF  NUSHELL_VERSION
+#   NUSTRO_REPO  NUSTRO_DIR  NUSTRO_REF  NUSHELL_VERSION
 
 set -eu
 
-REPO="${NUSHELL_DISTRO_REPO:-https://github.com/AlfoldiMate/nushell-config.git}"
-DIR="${NUSHELL_DISTRO_DIR:-$HOME/.local/share/nushell-distro}"
-REF="${NUSHELL_DISTRO_REF:-}"
+REPO="${NUSTRO_REPO:-https://github.com/AlfoldiMate/Nustro.git}"
+DIR="${NUSTRO_DIR:-$HOME/.local/share/nustro}"
+REF="${NUSTRO_REF:-}"
 # Only used for the release-tarball path; resolved from GitHub when empty.
 NU_VERSION="${NUSHELL_VERSION:-}"
 BIN_DIR="${NUSHELL_BIN_DIR:-$HOME/.local/bin}"
@@ -158,7 +158,7 @@ clone() {
 # ── Hand over ─────────────────────────────────────────────────────────────────
 
 main() {
-  printf '%sNushell distro%s  %s\n\n' "$C" "$R" "$REPO"
+  printf '%sNustro%s  %s\n\n' "$C" "$R" "$REPO"
   ensure_nu
   printf '\n'
   clone

@@ -13,7 +13,7 @@ nu-config distro-root        # what your config.nu sources
 
 If that is the directory you are editing, every command below works as
 written. If you develop in a second clone (say `~/.config/nushell` while
-`~/.local/share/nushell-distro` is live — the case this page was written
+`~/.local/share/nustro` is live — the case this page was written
 from), `nu -l` keeps loading the live one, and nothing you run in it says
 anything about your edit. Point a scratch `config.nu` at yours:
 

@@ -1,29 +1,29 @@
 # Install
 
 Two lines, one per platform. Each makes sure `nu` exists, clones this repo to
-`~/.local/share/nushell-distro`, and hands over to `install.nu`:
+`~/.local/share/nustro`, and hands over to `install.nu`:
 
 ```sh
 # macOS, Linux
-curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.ps1 | iex
+irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.ps1 | iex
 ```
 
 Read either script before running it; they are short on purpose, and each
 asks before installing anything. `sh install.sh --yes` takes every default;
-`--dir` clones somewhere else; `NUSHELL_DISTRO_REPO`, `_DIR`, `_REF` and
+`--dir` clones somewhere else; `NUSTRO_REPO`, `_DIR`, `_REF` and
 `NUSHELL_VERSION` do the same from the environment. Re-running one is a
 `git pull`.
 
 Already have Nushell (0.115 or later) and a checkout? Skip them:
 
 ```nu
-git clone https://github.com/AlfoldiMate/nushell-config ~/.local/share/nushell-distro
-nu ~/.local/share/nushell-distro/install.nu
+git clone https://github.com/AlfoldiMate/Nustro ~/.local/share/nustro
+nu ~/.local/share/nustro/install.nu
 ```
 
 ## The seven screens

@@ -56,7 +56,7 @@ def main [
   --skip-plugins  # do not register plugins
   --skip-terminal # do not install Ghostty (CI, the tests)
 ] {
-  print $"(ansi cyan_bold)Nushell distro(ansi reset)  ($ROOT)"
+  print $"(ansi cyan_bold)Nustro(ansi reset)  ($ROOT)"
   print ""
 
   # A terminal on both ends is what the pickers need. A script is never
@@ -549,7 +549,7 @@ def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh] {
       mkdir $user
       open --raw ($ROOT | path join templates config.nu)
       # `to nuon`, not the bare path: a DOUBLE-quoted Nushell string processes
-      # escapes, so a Windows checkout at D:\a\nushell-config turned \a into
+      # escapes, so a Windows checkout at D:\a\Nustro turned \a into
       # BEL and \n into a newline and the sourced path did not exist. CI found
       # it on the first Windows run. `to nuon` emits a valid literal, quotes
       # included, and handles an apostrophe in the path too.

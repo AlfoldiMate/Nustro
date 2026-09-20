@@ -1,6 +1,6 @@
 # install.ps1 — get Nushell, get this distro, hand over to install.nu
 #
-#   irm https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.ps1 | iex
 #   .\install.ps1 -Yes                      take every default, ask nothing
 #   .\install.ps1 -Dir C:\src\nu-distro     clone somewhere else
 #
@@ -9,14 +9,14 @@
 # Nushell — install.nu is the installer, written in the shell it installs.
 #
 # Piped into `iex` there are no parameters, so every one of them also reads an
-# environment variable: NUSHELL_DISTRO_REPO, NUSHELL_DISTRO_DIR,
-# NUSHELL_DISTRO_REF, NUSHELL_VERSION, NUSHELL_BIN_DIR.
+# environment variable: NUSTRO_REPO, NUSTRO_DIR,
+# NUSTRO_REF, NUSHELL_VERSION, NUSHELL_BIN_DIR.
 
 [CmdletBinding()]
 param(
-  [string] $Repo    = $env:NUSHELL_DISTRO_REPO,
-  [string] $Dir     = $env:NUSHELL_DISTRO_DIR,
-  [string] $Ref     = $env:NUSHELL_DISTRO_REF,
+  [string] $Repo    = $env:NUSTRO_REPO,
+  [string] $Dir     = $env:NUSTRO_DIR,
+  [string] $Ref     = $env:NUSTRO_REF,
   [string] $Version = $env:NUSHELL_VERSION,
   [string] $BinDir  = $env:NUSHELL_BIN_DIR,
   [switch] $Yes,
@@ -25,8 +25,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-if (-not $Repo)   { $Repo   = 'https://github.com/AlfoldiMate/nushell-config.git' }
-if (-not $Dir)    { $Dir    = Join-Path $env:LOCALAPPDATA 'nushell-distro' }
+if (-not $Repo)   { $Repo   = 'https://github.com/AlfoldiMate/Nustro.git' }
+if (-not $Dir)    { $Dir    = Join-Path $env:LOCALAPPDATA 'nustro' }
 if (-not $BinDir) { $BinDir = Join-Path $env:LOCALAPPDATA 'Programs\nu' }
 
 function Step($m) { Write-Host $m -ForegroundColor Cyan }
@@ -126,7 +126,7 @@ function Get-Distro {
 
 # ── Hand over ─────────────────────────────────────────────────────────────────
 
-Write-Host "Nushell distro  $Repo" -ForegroundColor Cyan
+Write-Host "Nustro  $Repo" -ForegroundColor Cyan
 Write-Host ''
 $nu = Ensure-Nu
 Write-Host ''

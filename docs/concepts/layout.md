@@ -4,7 +4,7 @@ This configuration is two directories, not one.
 
 ```
 YOUR config directory                     THE DISTRO (a git checkout)
-~/Library/Application Support/nushell     ~/.local/share/nushell-distro
+~/Library/Application Support/nushell     ~/.local/share/nustro
   config.nu        3 lines, points here ──▶  distro.nu     entrypoint
   settings.nu      every knob, commented     defaults.nu   every knob, shipped value
   README.md        what is here, and whose   conf/         behaviour
@@ -47,7 +47,7 @@ at the checkout is the `config.nu` in that directory. Three lines, written by
 `install.nu`:
 
 ```nu
-const DISTRO = "/home/you/.local/share/nushell-distro"
+const DISTRO = "/home/you/.local/share/nustro"
 source ($DISTRO | path join distro.nu)
 ```
 

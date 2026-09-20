@@ -1,4 +1,4 @@
-# Nushell distro
+# Nustro
 
 <p align="center"><img src="docs/assets/demo.gif" width="960" alt="One Ghostty window: Tab offers the columns of a pipeline, brew formulae with descriptions and crates; theme use recolours the window live, font use swaps the font, an OData query is pushed to the server, agent exec turns a sentence into a pipeline"></p>
 
@@ -13,10 +13,10 @@ and `$top`; and `agent exec` turns a sentence into a pipeline that you run
 with Enter. Every keystroke is real; the shell is the one this repo installs,
 on its shipped defaults, recorded 2026-09-19.
 
-A [Nushell](https://www.nushell.sh) configuration you **install** rather than
-copy. The distro is a git checkout you never edit; your settings live in your
-own config directory, in a file the distro does not ship, and a `const` there
-shadows the one here. So `git pull` never conflicts, a knob you never mention
+Nustro is a [Nushell](https://www.nushell.sh) distro: a configuration you
+**install** rather than copy. The distro is a git checkout you never edit;
+your settings live in your own config directory, in a file the distro does
+not ship, and a `const` there shadows the one here. So `git pull` never conflicts, a knob you never mention
 keeps tracking the distro, and nothing you own is ever written inside the
 checkout. Nushell **0.115**; macOS, Linux and Windows, by CI on every push.
 
@@ -24,12 +24,12 @@ checkout. Nushell **0.115**; macOS, Linux and Windows, by CI on every push.
 
 ```sh
 # macOS, Linux
-curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.ps1 | iex
+irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.ps1 | iex
 ```
 
 Each has two jobs — make sure `nu` exists, clone this repo — and hands over to
@@ -37,10 +37,10 @@ Each has two jobs — make sure `nu` exists, clone this repo — and hands over 
 short on purpose. Already have Nushell and a checkout?
 
 ```nu
-git clone https://github.com/AlfoldiMate/nushell-config ~/.local/share/nushell-distro
-nu ~/.local/share/nushell-distro/install.nu          # seven screens, every one skippable
-nu ~/.local/share/nushell-distro/install.nu --defaults   # no questions
-nu ~/.local/share/nushell-distro/install.nu --dry-run    # print the plan, change nothing
+git clone https://github.com/AlfoldiMate/Nustro ~/.local/share/nustro
+nu ~/.local/share/nustro/install.nu          # seven screens, every one skippable
+nu ~/.local/share/nustro/install.nu --defaults   # no questions
+nu ~/.local/share/nustro/install.nu --dry-run    # print the plan, change nothing
 ```
 
 Nothing is written before you say yes to the last screen. Undo at any time:

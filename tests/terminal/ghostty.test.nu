@@ -7,7 +7,7 @@ use std/assert
 use terminal *
 
 def config-of [fake: record]: nothing -> string { open --raw ($fake.config | path join config.ghostty) }
-def ours-of [fake: record]: nothing -> string { open --raw ($fake.config | path join nushell-distro.ghostty) }
+def ours-of [fake: record]: nothing -> string { open --raw ($fake.config | path join nustro.ghostty) }
 
 # ── config-path ───────────────────────────────────────────────────────────────
 
@@ -39,10 +39,28 @@ def "test config-path reads Application Support before XDG on macOS" [] {
 
 # ── set · settings · reset ────────────────────────────────────────────────────
 
+def "test a config written before the rename is migrated in place, once" [] {
+  let fake = fake-ghostty
+  # What an install from before 2026-09-20 left: the old file, and the two
+  # lines under a setting of the user's own.
+  "theme = Zenburned\n" | save ($fake.config | path join nushell-distro.ghostty)
+  "font-size = 13\n\n# Added by the Nushell distro; `ghostty reset` removes it again.\nconfig-file = ?nushell-distro.ghostty\n"
+    | save ($fake.config | path join config.ghostty)
+  assert equal (ghostty settings) { theme: Zenburned } "read through the migration"
+  assert not ($fake.config | path join nushell-distro.ghostty | path exists)
+  assert equal (ours-of $fake) "theme = Zenburned\n"
+  assert equal (config-of $fake) "font-size = 13\n\n# Added by Nustro; `ghostty reset` removes it again.\nconfig-file = ?nustro.ghostty\n"
+  assert equal (ls $fake.config | get name | path basename | where $it =~ 'backup' | length) 0 "our own lines, no backup needed"
+  ghostty set { font-size: 14 }
+  assert equal (config-of $fake | lines | where $it =~ 'config-file' | length) 1 "not appended a second time"
+  ghostty reset
+  assert equal (config-of $fake) "font-size = 13\n"
+}
+
 def "test set creates the config with the include when there is none" [] {
   let fake = fake-ghostty
   ghostty set { theme: Zenburned }
-  assert ((config-of $fake) | str contains "config-file = ?nushell-distro.ghostty")
+  assert ((config-of $fake) | str contains "config-file = ?nustro.ghostty")
   assert equal (ghostty settings) { theme: Zenburned }
   assert ((ours-of $fake) | lines | any {|l| $l == "theme = Zenburned" })
   assert equal (ghostty status | select included live_theme) { included: true, live_theme: Zenburned }
@@ -54,7 +72,7 @@ def "test set appends the include to an existing config once, after a backup" []
   ghostty set { theme: Zenburned }
   ghostty set { font-size: 14 }
   let cfg = config-of $fake | lines
-  assert equal ($cfg | where $it == "config-file = ?nushell-distro.ghostty" | length) 1
+  assert equal ($cfg | where $it == "config-file = ?nustro.ghostty" | length) 1
   assert equal ($cfg | first) "font-size = 13"
   assert equal (ls $fake.config | get name | path basename | where $it =~ '^config\.ghostty\.backup-' | length) 1
   let backup = ls $fake.config | get name | where {|f| ($f | path basename) =~ '^config\.ghostty\.backup-' } | first
@@ -96,7 +114,7 @@ def "test set removes our file when a first write is rejected" [] {
   let fake = fake-ghostty
   let err = try { ghostty set { theme: Nope }; null } catch {|e| $e.msg }
   assert equal $err "Ghostty rejected that configuration"
-  assert not ($fake.config | path join nushell-distro.ghostty | path exists)
+  assert not ($fake.config | path join nustro.ghostty | path exists)
   assert equal (ghostty settings) {}
 }
 
@@ -112,7 +130,7 @@ def "test reset removes our file and the two lines, keeps the backup" [] {
   "font-size = 13\n" | save ($fake.config | path join config.ghostty)
   ghostty set { theme: Zenburned }
   ghostty reset
-  assert not ($fake.config | path join nushell-distro.ghostty | path exists)
+  assert not ($fake.config | path join nustro.ghostty | path exists)
   assert equal (config-of $fake) "font-size = 13\n"
   assert equal (ls $fake.config | get name | path basename | where $it =~ 'backup' | length) 1
   assert equal (ghostty status | get included) false

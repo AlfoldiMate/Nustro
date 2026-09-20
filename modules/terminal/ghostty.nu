@@ -5,8 +5,8 @@
 # configures the terminal has one more thing to say to it: start Nushell
 # (`ghostty shell`). Both are done without ever rewriting the user's own config:
 #
-#   <ghostty dir>/nushell-distro.ghostty    ours, rewritten freely
-#   config-file = ?nushell-distro.ghostty   one line appended to theirs, once
+#   <ghostty dir>/nustro.ghostty    ours, rewritten freely
+#   config-file = ?nustro.ghostty   one line appended to theirs, once
 #
 # Removing that one line undoes everything, `git diff` of a dotfiles repo shows
 # exactly what changed, and the user's config is backed up before the append.
@@ -31,9 +31,15 @@
 
 # Our file, and the line that pulls it in. Relative, so it resolves next to
 # whichever config Ghostty reads.
-const OURS = "nushell-distro.ghostty"
-const INCLUDE = "config-file = ?nushell-distro.ghostty"
-const MARK = "# Added by the Nushell distro; `ghostty reset` removes it again."
+const OURS = "nustro.ghostty"
+const INCLUDE = "config-file = ?nustro.ghostty"
+const MARK = "# Added by Nustro; `ghostty reset` removes it again."
+# The names before the distro was called Nustro (2026-09-20). A machine that
+# installed under them keeps working: `migrate` moves the file and rewrites
+# the two lines the first time a command here touches the configuration.
+const OLD_OURS = "nushell-distro.ghostty"
+const OLD_INCLUDE = "config-file = ?nushell-distro.ghostty"
+const OLD_MARK = "# Added by the Nushell distro; `ghostty reset` removes it again."
 # Keys Ghostty treats as a LIST: every assignment appends, and the first entry
 # wins where one is used. Our file is applied after the user's, so for these a
 # plain `key = value` would sit behind whatever they set and lose — verified
@@ -93,7 +99,37 @@ export def "ghostty config-path" []: nothing -> path {
 }
 
 def ours-path []: nothing -> path {
+  migrate
   ghostty config-path | path dirname | path join $OURS
+}
+
+# The rename, once: the old file becomes the new one (unless the new one
+# already exists — then the old is a leftover and is left alone), and the two
+# lines we appended to their config are rewritten in place, nothing else in
+# it touched. Every command that names our file goes through `ours-path`, so
+# this runs before any of them reads or writes.
+def migrate []: nothing -> nothing {
+  let cfg = (ghostty config-path)
+  let dir = ($cfg | path dirname)
+  let old = ($dir | path join $OLD_OURS)
+  if ($old | path exists) and not ($dir | path join $OURS | path exists) {
+    mv $old ($dir | path join $OURS)
+    print $"renamed ($OLD_OURS) to ($OURS)"
+  }
+  if not ($cfg | path exists) { return }
+  let text = (open --raw $cfg)
+  let lines = ($text | lines)
+  if not ($lines | any {|l| ($l | str trim) in [$OLD_INCLUDE $OLD_MARK] }) { return }
+  let tail = (if ($text | str ends-with (char nl)) { (char nl) } else { "" })
+  $lines
+  | each {|l|
+    let t = ($l | str trim)
+    if $t == $OLD_INCLUDE { $INCLUDE } else if $t == $OLD_MARK { $MARK } else { $l }
+  }
+  | str join (char nl)
+  | $in + $tail
+  | save -f $cfg
+  print $"($cfg | path basename): the include line now names ($OURS)"
 }
 
 # The settings the distro currently owns. Our file is ours alone, so parsing it
@@ -118,7 +154,7 @@ export def "ghostty set" [
 ]: nothing -> nothing {
   let merged = (ghostty settings | merge $settings | transpose key value | where value != null)
   let body = ([
-    "# Written by the Nushell distro (`ghostty set`), which owns this file and"
+    "# Written by Nustro (`ghostty set`), which owns this file and"
     "# rewrites it whole, so put your own settings in your Ghostty config, not"
     "# here — it is included from there, and an included file is applied last, so"
     "# only the keys below are taken out of your hands. `ghostty reset` undoes"

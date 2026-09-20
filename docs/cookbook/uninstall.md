@@ -12,8 +12,8 @@ ghostty status               # what the distro wrote: theme, icon, command, font
 ghostty reset                # remove its file and the one include line; your config is left byte-identical
 ```
 
-The distro's settings live in `nushell-distro.ghostty` next to Ghostty's
-config, included from it by one `config-file = ?nushell-distro.ghostty` line.
+The distro's settings live in `nustro.ghostty` next to Ghostty's
+config, included from it by one `config-file = ?nustro.ghostty` line.
 `reset` removes both and nothing else; the `<config>.backup-<stamp>` it made
 when it first added the line stays for you to compare. Do this while the
 module is still loadable — it is the distro's command.
@@ -37,7 +37,7 @@ the way back to it.
 ## 3. The checkout
 
 ```nu
-rm -rf ~/.local/share/nushell-distro     # or wherever `nu-config distro-root` said
+rm -rf ~/.local/share/nustro     # or wherever `nu-config distro-root` said
 ```
 
 ## 4. What is left, and yours

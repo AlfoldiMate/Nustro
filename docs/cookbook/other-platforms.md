@@ -10,17 +10,17 @@ different, what is not run there, and what to do about it.
 
 ```sh
 # Linux
-curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/AlfoldiMate/nushell-config/main/bootstrap/install.ps1 | iex
+irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.ps1 | iex
 ```
 
 Each makes sure `nu` exists — from a release tarball into `~/.local/bin` when
 it does not, `NUSHELL_BIN_DIR` to choose — clones to
-`~/.local/share/nushell-distro` (`NUSHELL_DISTRO_DIR`), and runs `install.nu`.
+`~/.local/share/nustro` (`NUSTRO_DIR`), and runs `install.nu`.
 `install.sh` is exercised by hand on macOS, including the tarball path with
 `nu` off PATH; on Linux only `sh -n` has run it. `install.ps1` has been parsed,
 not run. Both are short enough to read first, and both fall back to asking.
