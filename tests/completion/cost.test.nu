@@ -34,8 +34,8 @@ def "test quote rewrites two thousand values with spaces within its budget" [] {
 }
 
 def "test filter narrows two thousand values within its budget" [] {
-  # prefix 9.7 ms, fuzzy 8.3 ms.
-  let items = 1..2000 | each {|i| { value: $"formula-($i)" } }
+  # prefix 4.4 ms, fuzzy 15 ms with descriptions (ranked in tiers, column-wise).
+  let items = 1..2000 | each {|i| { value: $"formula-($i)", description: $"the ($i)th formula" } }
   $env.config.completions.algorithm = "prefix"
   let prefix = fastest 3 { $items | nu-complete filter "formula-19" }
   assert ($prefix < 100ms) $"prefix filter took ($prefix)"

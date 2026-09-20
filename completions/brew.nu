@@ -22,8 +22,16 @@ use nu-complete *
 
 # ── Where Homebrew keeps things ───────────────────────────────────────────────
 
+# `which brew` answers with this file: the extern below shadows the binary, and
+# an extern's `path` is the module it was declared in. `-a` lists both, and
+# the binary is the one that is not a `.nu` file. Found 2026-09-20: `brew
+# uninstall <Tab>` had offered nothing since the extern was named `brew`,
+# while `brew install` kept working because the API cache lives elsewhere.
 def prefix []: nothing -> path {
-  $env.HOMEBREW_PREFIX? | default (which brew | get -o 0.path | default "/opt/homebrew/bin/brew" | path dirname | path dirname)
+  $env.HOMEBREW_PREFIX? | default (
+    which -a brew | where ($it.path | path parse | get extension) != "nu"
+    | get -o 0.path | default "/opt/homebrew/bin/brew" | path dirname | path dirname
+  )
 }
 
 def api-dir []: nothing -> path {
@@ -44,7 +52,8 @@ def helper-source [helper: string]: nothing -> string {
   match $helper {
     "__brew_formulae" => "formulae"
     "__brew_casks" => "casks"
-    "__brew_installed_formulae" | "__brew_outdated_formulae" | "__brew_services" => "installed_formulae"
+    "__brew_installed_formulae" | "__brew_outdated_formulae" => "installed_formulae"
+    "__brew_services" => "services"
     "__brew_installed_casks" | "__brew_outdated_casks" => "installed_casks"
     "__brew_any_tap" | "__brew_tapped" | "__brew_official_taps" => "taps"
     "__brew_internal_commands" | "__brew_commands" => "commands"
@@ -54,18 +63,47 @@ def helper-source [helper: string]: nothing -> string {
   }
 }
 
+# One `_arguments` body (a subcommand's, or one arm of a nested `case`) as a
+# node: its flags, and the source of its `*:` slot and of its `1:` slot.
+def node-from-body [body: list<string>, desc: string]: nothing -> record {
+  let flags = ($body
+    | parse --regex r#''(?:\([^)]*\))?(?<name>--[\w-]+)=?\[(?<desc>.*)\]''#
+    | uniq-by name
+    | each {|f| { name: $f.name, description: ($f.desc | str replace -a "'\\''" "'") } })
+  let pos = ($body | parse --regex r#''(?<slot>\*|\d+):[\w-]*:(?<helper>__brew_\w+|_files|_directories)''#)
+  let rest_kinds = ($pos | where slot == "*" | get helper | each {|h| helper-source $h } | uniq | where $it != "none")
+  let rest = (match $rest_kinds {
+    [] => null
+    [$one] => $one
+    _ => (if ("formulae" in $rest_kinds and "casks" in $rest_kinds) { "packages" }
+          else if ("installed_formulae" in $rest_kinds and "installed_casks" in $rest_kinds) { "installed" }
+          else { $rest_kinds | first })
+  })
+  let node = ({ description: $desc, flags: $flags } | merge (if $rest == null { {} } else { { rest: $rest } }))
+  # A command like `brew help` completes other commands; `1:` slots.
+  let firsts = ($pos | where slot == "1" | get helper | each {|h| helper-source $h } | where $it != "none")
+  if ($firsts | is-empty) { $node } else { $node | insert positionals [($firsts | first)] }
+}
+
+# The `'name:desc'` entries of a zsh array literal that starts at `$start`.
+def described-list [lines: list<string>, start: int]: nothing -> record {
+  $lines | skip ($start + 1) | take while {|l| $l !~ '^\s*\)' }
+  | parse --regex r#'^\s+'(?<name>[\w.-]+):(?<desc>.*)'\s*$'#
+  | reduce -f {} {|r, acc| $acc | upsert $r.name ($r.desc | str replace -a "'\\''" "'") }
+}
+
+# Bump when the parser's output changes shape: a cached spec is regenerated
+# when Homebrew's zsh file is newer, or when it was written by an older parser
+# (2: nested subcommands, `services`).
+const PARSER = 2
+
 # Parse the zsh completion into a serialisable spec (sources by name).
 export def "nu-complete brew spec-from-zsh" [file: path]: nothing -> record {
   let lines = (%open --raw $file | lines)
-  let n = ($lines | length)
 
   # `__brew_internal_commands` holds every subcommand with its description.
   let cmd_start = ($lines | enumerate | where item =~ '^__brew_internal_commands\(\)' | get -o 0.index | default (-1))
-  let descs = if $cmd_start < 0 { {} } else {
-    $lines | skip ($cmd_start + 1) | take while {|l| $l !~ '^\}' }
-    | parse --regex r#'^\s+'(?<name>[\w.-]+):(?<desc>.*)'\s*$'#
-    | reduce -f {} {|r, acc| $acc | upsert $r.name ($r.desc | str replace -a "'\\''" "'") }
-  }
+  let descs = if $cmd_start < 0 { {} } else { described-list $lines $cmd_start }
 
   # One `_brew_<name>() { ... }` block per subcommand.
   # (`_brew_--taps`-style blocks are flags of `brew` itself, not subcommands.)
@@ -73,29 +111,37 @@ export def "nu-complete brew spec-from-zsh" [file: path]: nothing -> record {
   let subcommands = ($starts | reduce -f {} {|s, acc|
     let name = ($s.item | parse --regex '^_brew_(?<n>[\w-]+)' | get 0.n | str replace -a "_" "-")
     let body = ($lines | skip ($s.index + 1) | take while {|l| $l !~ '^\}' })
-    let flags = ($body
-      | parse --regex r#''(?:\([^)]*\))?(?<name>--[\w-]+)=?\[(?<desc>.*)\]''#
-      | uniq-by name
-      | each {|f| { name: $f.name, description: ($f.desc | str replace -a "'\\''" "'") } })
-    let pos = ($body | parse --regex r#''(?<slot>\*|\d+):[\w-]*:(?<helper>__brew_\w+|_files|_directories)''#)
-    let rest_kinds = ($pos | where slot == "*" | get helper | each {|h| helper-source $h } | uniq | where $it != "none")
-    let rest = (match $rest_kinds {
-      [] => null
-      [$one] => $one
-      _ => (if ("formulae" in $rest_kinds and "casks" in $rest_kinds) { "packages" }
-            else if ("installed_formulae" in $rest_kinds and "installed_casks" in $rest_kinds) { "installed" }
-            else { $rest_kinds | first })
-    })
-    let node = ({ description: ($descs | get -o $name | default ""), flags: $flags } | merge (if $rest == null { {} } else { { rest: $rest } }))
-    # A command like `brew help` completes other commands; `1:` slots.
-    let firsts = ($pos | where slot == "1" | get helper | each {|h| helper-source $h } | where $it != "none")
-    let node = if ($firsts | is-empty) { $node } else { $node | insert positionals [($firsts | first)] }
+    let desc = ($descs | get -o $name | default "")
+    # `brew bundle`, `brew services`: a `subcommands=( 'name:desc' … )` list,
+    # then one `name)` … `;;` arm per subcommand under `case "$words[1]"`.
+    # The block's own flags come before that `case`; each arm repeats the
+    # common ones, so an arm's node is complete on its own. Aliases share a
+    # description (`stop`/`unload`/`terminate`/`term`/`t`/`u`): the first
+    # name is offered, the rest resolve but stay `hidden`.
+    let sub_start = ($body | enumerate | where item =~ '^\s*subcommands=\(' | get -o 0.index)
+    let node = if $sub_start == null { node-from-body $body $desc } else {
+      let names = (described-list $body $sub_start)
+      let own = ($body | take while {|l| $l !~ '^\s*case "\$state"' })
+      let arms = ($body | enumerate | where item =~ '^[a-z][\w|-]*\)\s*$' | select index item)
+      let by_arm = ($arms | reduce -f {} {|a, acc|
+        let arm_body = ($body | skip ($a.index + 1) | take while {|l| $l !~ '^\s*;;\s*$' })
+        $a.item | str trim | str replace --regex '\)$' '' | split row "|"
+        | reduce -f $acc {|n, acc2| $acc2 | upsert $n $arm_body }
+      })
+      let nested = ($names | transpose name desc | reduce -f { subs: {}, seen: [] } {|r, acc|
+        let n = (node-from-body ($by_arm | get -o $r.name | default []) $r.desc)
+        let n = if $r.desc in $acc.seen { $n | insert hidden true } else { $n }
+        { subs: ($acc.subs | upsert $r.name $n), seen: ($acc.seen ++ [$r.desc]) }
+      } | get subs)
+      node-from-body $own $desc | insert subcommands $nested
+    }
     $acc | upsert $name $node
   })
 
   {
     description: "The missing package manager for macOS"
     generated_from: $file
+    parser: $PARSER
     subcommands: $subcommands
   }
 }
@@ -109,10 +155,13 @@ def spec-file []: nothing -> path { nu-complete cache-dir | path join brew-spec.
 export def "nu-complete brew spec-data" []: nothing -> record {
   let zsh = (prefix | path join completions zsh _brew)
   let f = (spec-file)
-  if (nu-complete stale $f $zsh) and ($zsh | path exists) {
-    nu-complete brew spec-from-zsh $zsh | to json | save -f $f
-  }
-  if ($f | path exists) { %open $f } else {
+  let cached = if ($f | path exists) { %open $f } else { null }
+  let outdated = ($cached == null) or (($cached.parser? | default 0) != $PARSER) or (nu-complete stale $f $zsh)
+  if $outdated and ($zsh | path exists) {
+    let spec = (nu-complete brew spec-from-zsh $zsh)
+    $spec | to json | save -f $f
+    $spec
+  } else if $cached != null { $cached } else {
     # No zsh file (unusual install): subcommands only, from `brew commands`.
     { description: "Homebrew", subcommands: (^brew commands --quiet --include-aliases | lines | reduce -f {} {|c, acc| $acc | upsert $c {} }) }
   }
@@ -174,10 +223,18 @@ def ensure-db []: nothing -> bool {
 # database is ready. `kinds` ⊆ [formula cask].
 def packages [partial: string, kinds: list<string>]: nothing -> list<record> {
   if (ensure-db) {
-    let pat = if $env.config.completions.algorithm == "prefix" { $"($partial)%" } else { $"%($partial)%" }
+    # The same tiers as `nu-complete filter` (prefix, substring, letters in
+    # order, then the description, contains before letters in order), so the
+    # 2000 rows the query keeps are the best ones and the engine's own pass
+    # over them only confirms the order.
+    let algo = $env.config.completions.algorithm
+    let pre = $"($partial)%"
+    let sub = $"%($partial)%"
+    let fz = if $algo == "fuzzy" { "%" + ($partial | split chars | str join "%") + "%" } else { $sub }
     let ks = ($kinds | each {|k| $"'($k)'" } | str join ", ")
+    let hit = if $algo == "prefix" { "name like :pre" } else { "(name like :fz or desc like :fz)" }
     %open (db-file)
-    | query db $"select name as value, desc as description from packages where kind in \(($ks)\) and name like :p order by name limit 2000" -p { p: $pat }
+    | query db $"select name as value, desc as description from packages where kind in \(($ks)\) and ($hit) order by case when name like :pre then 0 when name like :sub then 1 when name like :fz then 2 when desc like :sub then 3 else 4 end, case when name like :fz and name not like :sub then length\(name\) else 0 end, name limit 2000" -p { pre: $pre, sub: $sub, fz: $fz }
   } else {
     let api = (api-dir)
     let names = (
@@ -205,6 +262,14 @@ def installed [kind: string]: nothing -> list<record> {
   }
 }
 
+# Formulae that ship a service: `<Cellar>/<name>/<version>/*.service`, the
+# way Homebrew's own `__brew_services` finds them (`brew services` takes only
+# these, not every installed formula).
+def services []: nothing -> list<record> {
+  let dir = (prefix | path join Cellar | str replace -a '\' '/')
+  glob ($dir + "/*/*/*.service") | each {|p| $p | path dirname | path dirname | path basename } | uniq | sort | wrap value
+}
+
 def taps []: nothing -> list<record> {
   let dir = (prefix | path join Library Taps)
   if not ($dir | path exists) { return [] }
@@ -215,8 +280,28 @@ def taps []: nothing -> list<record> {
 
 # ── The spec with its sources, as the engine wants it ─────────────────────────
 
+# Where Homebrew's own completion is less than it could be: these slots take
+# only installed packages (`brew outdated ripgrep` says nothing about a
+# formula that is not there), and `brew help`, which has no block in the zsh
+# file, takes a command.
+const REFINED = {
+  outdated: { rest: installed }
+  cleanup: { rest: installed }
+  help: { description: "Show help for a command", positionals: [commands] }
+  # Shares `install`'s arm and description, but is a verb of its own.
+  bundle: { subcommands: { upgrade: { hidden: false } } }
+}
+
 export def "nu-complete brew spec" []: nothing -> record {
-  nu-complete brew spec-data | merge {
+  let data = (nu-complete brew spec-data)
+  # A fix with a description is a whole node (`help`); the others refine a
+  # node the zsh file has, and are skipped where it does not.
+  let subs = ($REFINED | transpose name fix | reduce -f $data.subcommands {|r, acc|
+    if $r.name in ($acc | columns) or $r.fix.description? != null {
+      $acc | upsert $r.name { $in | default {} | merge deep $r.fix }
+    } else { $acc }
+  })
+  $data | update subcommands $subs | merge {
     fallback: "external"
     flags: [
       { name: "--help", short: "-h", description: "Show this message" }
@@ -234,6 +319,7 @@ export def "nu-complete brew spec" []: nothing -> record {
       }
       installed_formulae: {|ctx| installed formula }
       installed_casks: {|ctx| installed cask }
+      services: {|ctx| services }
       taps: {|ctx| taps }
       commands: {|ctx| nu-complete brew spec-data | get subcommands | transpose name s | each {|r| { value: $r.name, description: ($r.s.description? | default "") } } }
       none: []

@@ -25,7 +25,8 @@
 #                                             # or a closure returning that list
 #     positionals: [ <source> <source> ]      # 1st, 2nd ... positional
 #     rest: <source>                          # every positional after those
-#     subcommands: { install: { <spec> } }    # nested, same shape
+#     subcommands: { install: { <spec> } }    # nested, same shape; `hidden: true`
+#                                             # on one resolves it but never offers it (an alias)
 #     fallback: "external"                    # ask carapace when the spec has no answer
 #   }
 #
@@ -82,22 +83,45 @@ export def "nu-complete normalize" []: any -> list<record> {
 }
 
 # Keep the candidates matching `partial` the way the user's completion
-# settings say (prefix | substring | fuzzy, case-sensitive or not).
+# settings say (prefix | substring | fuzzy, case-sensitive or not), best
+# first: a value that starts with the partial, then one that contains it,
+# then (fuzzy) one that has its letters in that order, and last a candidate
+# matched only through its description, again contains before letters in
+# order — `brew install "silver sea` finds ripgrep ("Search tool like grep
+# and The Silver Searcher") after every formula named *silver sea*.
+# Descriptions count under substring and fuzzy, never under prefix.
+# Ties keep the source's order (`sort-by` is stable), which is what keeps
+# branches by recency by recency — except among letters-in-order matches,
+# where the shortest value wins: `rgrep` is ripgrep before frege-repl.
+#
+# Written column-wise on purpose: `str starts-with` over a list of 2000
+# strings takes 0.2 ms, the same test inside a per-item closure 9 ms. 2000
+# candidates with descriptions: prefix 4 ms, substring 9 ms, fuzzy 15 ms
+# (measured 2026-09-20; the per-item version was 9 ms for prefix alone).
 export def "nu-complete filter" [partial: string]: list<record> -> list<record> {
   let items = $in
-  if ($partial | is-empty) { return $items }
+  if ($partial | is-empty) or ($items | is-empty) { return $items }
   let cfg = $env.config.completions
   let cs = $cfg.case_sensitive
+  let algo = $cfg.algorithm
   let p = if $cs { $partial } else { $partial | str lowercase }
-  let fuzzy = ($p | split chars | each {|c| $c | str escape-regex } | str join '.*')
-  $items | where {|it|
-    let v = if $cs { $it.value | into string } else { $it.value | into string | str lowercase }
-    match $cfg.algorithm {
-      "substring" => ($v | str contains $p)
-      "fuzzy" => ($v =~ $fuzzy)
-      _ => ($v | str starts-with $p)
-    }
+  let vals = ($items | get value | into string)
+  let vals = if $cs { $vals } else { $vals | str lowercase }
+  let starts = ($vals | str starts-with $p)
+  if $algo == "prefix" {
+    return ($items | wrap item | merge ($starts | wrap keep) | where keep | get item)
   }
+  let fuzzy = ($p | split chars | each {|c| $c | str escape-regex } | str join '.*')
+  let descs = ($items | get -o description | default "" | into string)
+  let descs = if $cs { $descs } else { $descs | str lowercase }
+  let within = ($vals | str contains $p)
+  let inorder = if $algo == "fuzzy" { $vals | each {|v| $v =~ $fuzzy } } else { $within }
+  let d_within = ($descs | str contains $p)
+  let d_inorder = if $algo == "fuzzy" { $descs | each {|d| $d =~ $fuzzy } } else { $d_within }
+  let lens = ($vals | str length)
+  let ranks = ($starts | zip $within | zip $inorder | zip $d_within | zip $d_inorder | zip $lens
+    | each {|r| if $r.0.0.0.0.0 { 0 } else if $r.0.0.0.0.1 { 1000 } else if $r.0.0.0.1 { 2000 + $r.1 } else if $r.0.0.1 { 3000 } else if $r.0.1 { 4000 } else { 9000 } })
+  $items | wrap item | merge ($ranks | wrap rank) | where rank < 9000 | sort-by rank | get item
 }
 
 # Quote every value the line editor would otherwise split or misparse:
@@ -183,7 +207,10 @@ export def "nu-complete external" [spans: list<string>]: nothing -> any {
 # Returns null when the slot wants Nushell's file completion.
 export def "nu-complete run" [spec: record, spans: list<string>]: nothing -> any {
   let spans = if ($spans | length) < 2 { $spans ++ [""] } else { $spans }
-  let partial = ($spans | last)
+  # A quote the user opened to type a space (`brew install "silver sea`) is
+  # not part of what is matched; the candidate replaces the whole token,
+  # quotes included, and `nu-complete quote` re-quotes what needs it.
+  let partial = ($spans | last | str replace --regex r##'^["'`]'## "" | str replace --regex r##'["'`]$'## "")
   let args = ($spans | skip 1 | drop 1)
 
   mut node = $spec
@@ -227,8 +254,10 @@ export def "nu-complete run" [spec: record, spans: list<string>]: nothing -> any
     { items: $items, answered: (($path | is-empty) or (resolve-flags ($node.flags? | default []) | is-not-empty)) }
   } else {
     let subs = ($node.subcommands? | default {})
+    # A `hidden` subcommand (an alias) resolves when typed but is not offered.
     let sub_items = if ($positionals | is-empty) {
-      $subs | transpose name s | each {|r| { value: $r.name, description: ($r.s.description? | default "") } }
+      $subs | transpose name s | where {|r| not ($r.s.hidden? | default false) }
+      | each {|r| { value: $r.name, description: ($r.s.description? | default "") } }
     } else { [] }
     let nth = ($node.positionals? | default [] | get -o ($positionals | length))
     let src = if $nth == null { $node.rest? | default null } else { $nth }

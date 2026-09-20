@@ -2,8 +2,9 @@
 #autoload
 
 # A trimmed copy of Homebrew's generated zsh completion (brew 4.6, 2026-09-19):
-# five commands, a handful of flags each, every kind of positional the parser
-# in completions/brew.nu knows. The real file is 175 kB and 3000 lines; this
+# six commands, a handful of flags each, every kind of positional the parser
+# in completions/brew.nu knows, and one (`services`) with subcommands of its
+# own and aliases among them. The real file is 175 kB and 3000 lines; this
 # one keeps the shapes, not the contents.
 
 __brew_internal_commands() {
@@ -12,6 +13,7 @@ __brew_internal_commands() {
     'alias:Show an alias'\''s command'
     'install:Install a formula or cask'
     'list:List all installed formulae and casks'
+    'services:Manage background services'
     'tap:Tap a repository containing formulae, casks, or external commands'
     'uninstall:Uninstall a formula or cask'
   )
@@ -51,6 +53,57 @@ _brew_list() {
     - installed_cask \
     '(--formula --multiple)--cask[List only casks, or treat all named arguments as casks]' \
     '*:installed_cask:__brew_installed_casks'
+}
+
+_brew_services() {
+  local state
+  local -a subcommands
+  subcommands=(
+    'stop:Stop the service formula immediately'
+    'unload:Stop the service formula immediately'
+    't:Stop the service formula immediately'
+    'start:Start the service formula immediately'
+    'list:List information about all managed services'
+    'ls:List information about all managed services'
+  )
+
+  _arguments -C \
+    '--help[Show this message]' \
+    '--sudo-service-user[When run as root on macOS, run the service(s) as this user]' \
+    '1:subcommand:->subcommand' \
+    '*::arg:->args'
+
+  case "$state" in
+    subcommand)
+      _describe -t subcommands 'subcommand' subcommands
+      ;;
+    args)
+      case "$words[1]" in
+stop|unload|t)
+        _arguments \
+          '--all[Stop all services]' \
+          '--help[Show this message]' \
+          '--keep[When stopped, don'\''t unregister the service]' \
+          - service \
+          '*:service:__brew_services'
+        ;;
+start)
+        _arguments \
+          '--all[Start all services]' \
+          '--file[Use the service file from this location]' \
+          '--help[Show this message]' \
+          - service \
+          '*:service:__brew_services'
+        ;;
+list|ls)
+        _arguments \
+          '--help[Show this message]' \
+          '--json[Output as JSON]'
+        ;;
+        *) ;;
+      esac
+      ;;
+  esac
 }
 
 _brew_tap() {

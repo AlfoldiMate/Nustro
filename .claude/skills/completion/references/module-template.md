@@ -105,8 +105,12 @@ export def "nu-complete <tool> spec" []: nothing -> record {
   `{|ctx| …}` with `ctx = {spans, partial, args, positionals, path}`, the
   string `"files"` (Nushell's path completion), or a **name in `sources`**.
   An unknown name silently yields `[]`: names must exist.
-- The engine filters by the user's algorithm/case setting; sources return
-  everything (or pre-filter big lists on `$ctx.partial` for speed).
+- The engine filters by the user's algorithm/case setting and ranks in tiers
+  (starts with, contains, letters in order, description only); sources return
+  everything (or pre-filter big lists on `$ctx.partial` for speed, keeping the
+  same tiers so a `limit` keeps the best — brew's SQL does).
+- A subcommand with `hidden: true` resolves when typed but is never offered
+  (an alias: `brew services unload` for `stop`).
 - `flags` may be a closure (no params) for lists that are slow to build.
 - `fallback: "external"` on the root (or a node) asks carapace when the spec
   has no opinion, and also when a typed flag matches nothing (git -h lists

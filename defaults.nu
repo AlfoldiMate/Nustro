@@ -101,8 +101,8 @@ $env.config.shell_integration.osc633 = true    # VS Code's extension of osc133
 $env.config.use_ansi_coloring = "auto"
 $env.config.bracketed_paste = true
 # true lets Tab and Ctrl+I be bound separately, which needs a terminal that
-# implements the Kitty keyboard protocol. Ghostty does; `terminal current` is
-# how you tell what you are in. Left false because it is a behaviour change and
+# implements the Kitty keyboard protocol. Ghostty and WezTerm do; `terminal
+# current` is how you tell what you are in. Left false because it is a behaviour change and
 # a shell started somewhere else would lose the keys.
 $env.config.use_kitty_protocol = false
 
@@ -134,6 +134,15 @@ $env.NU_COMPLETE_EVAL = "safe"
 # filed as nushell/nushell#19053, and #45 here is the flip back once it lands.
 $env.config.completions.partial = false
 
+# How a candidate matches what is typed. "fuzzy": its letters in that order
+# (`gsw` is `git switch`, `rgrep` is ripgrep), which Nushell ranks by match
+# quality for its own candidates and the engine ranks in tiers for a spec's
+# — starts with it, contains it, letters in order, and last a match only in
+# the description (`brew install "silver searcher"` finds ripgrep). "prefix"
+# and "substring" are Nushell's other two; the engine follows the same
+# setting, and searches descriptions under substring too, never under prefix.
+$env.config.completions.algorithm = "fuzzy"
+
 # ── Modules ───────────────────────────────────────────────────────────────────
 # Which modules this shell has. Each is a directory under modules/ with a
 # mod.nu, a load.nu and a meta.nuon — docs/concepts/modules.md is the
@@ -156,9 +165,9 @@ const MODULES_LAZY = [terminal agent odata worktree]
 # Extra words that should also trigger a lazy module, beyond its own name.
 # `odata`'s `expand` is a pipeline stage that does not repeat the module name;
 # most of `terminal` is not called "terminal" — `terminal list` is, but the rest
-# of its commands start with `theme`, `ghostty` or `font`, which is also why
-# typing `ghostty +list-themes` loads it.
-const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty font] }
+# of its commands start with `theme`, `ghostty`, `wezterm` or `font`, which is
+# also why typing `ghostty +list-themes` or `wezterm ls-fonts` loads it.
+const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty wezterm font] }
 
 # ── Updates ───────────────────────────────────────────────────────────────────
 # How often an interactive shell checks whether the distro checkout is behind

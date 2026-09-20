@@ -105,6 +105,9 @@ sample. Memoised 30 s per prefix. `odata People | where ⌶` answers in
 | `ps \| where ` | 150 ms (`ps` itself is slow) | 2 ms |
 | `brew install rip` | 3-5 ms (after a one-off 0.7 s cache build, in the background) | 3 ms |
 | `brew install ` (2000 candidates) | 14 ms | |
+| `brew install rgrep` (fuzzy: 809 candidates ranked, ripgrep first) | 28 ms | |
+| `brew install "terminal emu` (fuzzy, matched in descriptions) | 13 ms | |
+| `brew uninstall ` (107 installed, versions read from the Cellar) | 28 ms | |
 | `git ` | 32 ms (`git help -a`) | 4 ms |
 | `git checkout ` | 15-220 ms (`git status`, repo size) | 5 ms |
 | `git log --one` | 60 ms (carapace) | |
@@ -119,11 +122,39 @@ The menu source runs again on every keystroke while the menu is open, which
 is why everything is memoised and why the source never runs an external
 itself.
 
+### Filtering
+
+Nushell does not filter what a command-wide completer returns, so the engine
+filters a spec's candidates itself, by `$env.config.completions.algorithm`
+and `case_sensitive` — `fuzzy` in [defaults.nu](../reference/knobs.md) — and
+ranks them in tiers, best first:
+
+1. the value starts with what is typed;
+2. it contains it;
+3. its letters appear in that order (`fuzzy` only; among these the shortest
+   value wins, so `rgrep` is ripgrep before frege-repl);
+4. only the description matches, contains before letters in order —
+   `brew install "silver sea` finds ripgrep, `brew install --cask "terminal
+   emu` the terminals. A quote opened to type a space is not part of what is
+   matched; the candidate replaces the whole token.
+
+Descriptions count under `substring` and `fuzzy`, never under `prefix`.
+Within a tier the source's order is kept (`sort-by` is stable), which is what
+keeps `git checkout` branches by recency. The pass is written column-wise —
+`str starts-with` over a list of 2000 strings takes 0.2 ms, the same test in
+a per-item closure 9 ms — and costs 4 ms (`prefix`), 9 ms (`substring`) or
+15 ms (`fuzzy`) over 2000 candidates with descriptions (measured 2026-09-20).
+A source with more candidates than that pre-ranks the same way where it
+lives: brew's SQLite query orders by the same tiers before its `limit 2000`.
+
+Nushell ranks its own candidates (commands, flags, paths) by match quality
+under `fuzzy`; that part is not the engine's.
+
 ## Tools with a spec
 
 | Tool | Module | Subcommands and flags | Positionals and flag values | Left to carapace |
 |---|---|---|---|---|
-| brew | `completions/brew.nu` | Homebrew's zsh completion, parsed once to JSON | formulae and casks with descriptions (SQLite from the API cache), installed, taps | nothing it knows better |
+| brew | `completions/brew.nu` | Homebrew's zsh completion, parsed once to JSON — nested ones too (`services`, `bundle`, `analytics`…), their aliases hidden | formulae and casks with descriptions (SQLite from the API cache), installed, services, taps, commands (`help`) | nothing it knows better |
 | git | `completions/git.nu` | `git help -a`, `git <cmd> -h` | refs by recency, changed files, remotes, stashes | config keys, rev ranges, uncommon flags |
 | cargo | `completions/cargo.nu` | `cargo --list` (aliases too), `cargo <cmd> --help` parsed lazily, nested `Commands:` (report, nextest …) | `-p`/`--bin`/`--example`/`--test`/`--bench`/`-F` from `cargo metadata --no-deps`, `--profile` from Cargo.toml, `--target` from rustup, `add`/`install` crate names from the registry cache, `remove` deps, `update`/`tree -i` lockfile, `uninstall` from `.crates.toml`, `+toolchain` | `--config`, `test <name>` (offers nothing), anything else undefined |
 

@@ -24,7 +24,8 @@ def --env brew-fixture [] {
 def "test brew lists its subcommands with descriptions from the zsh file" [] {
   brew-fixture
   let got = detailed "brew "
-  assert equal ($got | get value) [alias install list tap uninstall]
+  assert equal ($got | get value) [alias install list services tap uninstall help]
+  assert equal (values-of "brew help ") [alias install list services tap uninstall]
   assert equal ($got | where value == install | get 0.description) "Install a formula or cask"
   # zsh's '\'' is an apostrophe.
   assert equal ($got | where value == alias | get 0.description) "Show an alias's command"
@@ -36,6 +37,16 @@ def "test brew install offers formulae and casks, narrowed by --cask and --formu
   assert equal (values-of "brew install gho") [ghostty]
   assert equal (values-of "brew install --cask ") [firefox ghostty]
   assert equal (values-of "brew install --formula ") [bat fd ripgrep ripgrep-all]
+}
+
+# (Named so that no line completed here is a subsequence of the name: under
+# fuzzy, Nushell offers a command whose name the whole line matches.)
+def "test brew fuzzy: rgrp finds ripgrep" [] {
+  brew-fixture
+  $env.config.completions.algorithm = "fuzzy"
+  assert equal (values-of "brew install rgrp") [ripgrep ripgrep-all]
+  $env.config.completions.algorithm = "prefix"
+  assert equal (values-of "brew install rgrp") []
 }
 
 def "test brew flags are the subcommand flags from the zsh file plus the root ones" [] {
@@ -54,6 +65,41 @@ def "test brew uninstall and list offer what is installed, with versions" [] {
   assert equal (values-of "brew uninstall --formula ") [bat ripgrep]
 }
 
+# The prefix comes from PATH when HOMEBREW_PREFIX is unset, and `which brew`
+# there answers with completions/brew.nu itself, the extern that shadows the
+# binary; the binary is the other `which -a` row.
+def "test brew finds its prefix past the extern that shadows the binary" [] {
+  if $nu.os-info.name == "windows" { skip-test "which needs an executable bit"; return }
+  # A prefix of the test's own: the fixture, plus a bin/brew two levels down.
+  let prefix = scratch | path join brew
+  cp -r ($ROOT | path join tests fixtures brew) $prefix
+  let bin = $prefix | path join bin
+  mkdir $bin
+  "#!/bin/sh\n" | save ($bin | path join brew)
+  chmod +x ($bin | path join brew)
+  let got = with-env { HOMEBREW_CACHE: ($prefix | path join cache), PATH: ([$bin] ++ $env.PATH) } {
+    hide-env -i HOMEBREW_PREFIX
+    values-of "brew uninstall "
+  }
+  assert equal $got [bat ripgrep ghostty]
+}
+
+# `_brew_services` in the zsh file is a `subcommands=( … )` list and one
+# `case` arm per subcommand: each becomes a node of its own, aliases (a
+# repeated description) resolve but are not offered, the slot is the formulae
+# with a `.service` file in their keg.
+def "test brew services has its subcommands, hides their aliases, offers the services" [] {
+  brew-fixture
+  let got = detailed "brew services "
+  assert equal ($got | get value) [stop start list]
+  assert equal ($got | where value == stop | get 0.description) "Stop the service formula immediately"
+  assert equal (values-of "brew services stop ") [bat]
+  assert equal (values-of "brew services unload ") [bat]
+  assert equal (values-of "brew services stop --") [--all --help --keep --verbose --debug --quiet]
+  assert equal (values-of "brew services list --") [--help --json --verbose --debug --quiet]
+  assert equal (values-of "brew services --") [--help --sudo-service-user --verbose --debug --quiet]
+}
+
 def "test brew tap offers the tapped repositories" [] {
   brew-fixture
   assert equal (values-of "brew tap ") [homebrew/core someone/tools]
@@ -65,7 +111,7 @@ def "test brew spec is parsed once and cached in the run cache dir" [] {
   let f = nu-complete cache-dir | path join brew-spec.json
   assert ($f | path exists) $f
   assert ($f | str starts-with $env.XDG_CACHE_HOME) "the cache is not under the run's XDG_CACHE_HOME"
-  assert equal (open $f | get subcommands | columns) [alias install list tap uninstall]
+  assert equal (open $f | get subcommands | columns) [alias install list services tap uninstall]
 }
 
 # ── git ───────────────────────────────────────────────────────────────────────

@@ -154,7 +154,7 @@ at half its budget.
 ## The spec format
 
 A spec is a plain record, meant to be read and edited by a person.
-`engine.nu` is 220 lines and is the truth; this is what it means.
+`engine.nu` is 280 lines and is the truth; this is what it means.
 
 ```nu
 {
@@ -163,6 +163,7 @@ A spec is a plain record, meant to be read and edited by a person.
   positionals: [ <source> <source> ]     # the 1st, 2nd … positional
   rest: <source>                         # every positional after those
   subcommands: { install: { <same shape> } }
+  hidden: true                           # on a subcommand: resolves when typed, never offered
   fallback: "external"                   # carapace, when the spec has no answer
   sources: { formulae: {|ctx| … } }      # named sources, so the rest can be JSON
 }
@@ -196,13 +197,18 @@ build and only needed once a `-` is typed. Build such a node as a record
 literal — `{ flags: {|| flags-of $c } }` — because `insert` would run the
 closure instead of storing it. `completions/git.nu` does this per subcommand.
 
-Two things the engine does not do. It has no notion of **aliases**: add the
-alias as its own subcommand node copied from the target, with the description
-rewritten (`co: ($subs.checkout | update description "alias of checkout")`). And
-Nushell does not filter a command-wide completer's output, so the engine filters
-itself, honouring the user's `completions.algorithm` and `case_sensitive` — your
-sources return everything, or pre-filter on `$ctx.partial` when the list is big
-enough that filtering it in Nu is the slow part.
+An **alias** is a subcommand node of its own, copied from the target: with
+the description rewritten when it should show up in the menu
+(`co: ($subs.checkout | update description "alias of checkout")`), or with
+`hidden: true` when it should not (`brew services unload` resolves, `stop` is
+what the menu lists). Nushell does not filter a command-wide completer's
+output, so the engine filters itself, honouring the user's
+`completions.algorithm` and `case_sensitive` and ranking in tiers — starts
+with, contains, letters in order, description only
+([Completion](../concepts/completion.md#filtering)) — your sources return
+everything, or pre-filter on `$ctx.partial` when the list is big enough that
+filtering it in Nu is the slow part; a source that pre-filters should keep the
+same tiers (brew's SQL does) so its `limit` keeps the best candidates.
 
 ## Choosing a source
 

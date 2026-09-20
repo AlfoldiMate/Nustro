@@ -55,9 +55,9 @@ theme resolve Example | select name by tier               # by palette, tier pal
 Run on 2026-09-19 with `XDG_CONFIG_HOME` pointed at a scratch directory, in
 a pty: all six as shown, `"hello greet " | commandline complete` listing the
 home directories on the machine in 2.5 ms — with one thing worth knowing.
-The drop-in sets `completions.algorithm = "fuzzy"`, and with it on Nushell's
-own command matching adds `nu-complete hello spec` to the `hello ` list, the
-module's exported spec command; prefix matching, the default, does not.
+Under `completions.algorithm = "fuzzy"`, the default, Nushell's own command
+matching adds `nu-complete hello spec` to the `hello ` list, the module's
+exported spec command; `"prefix"` does not.
 `cp`, not `mv`, so that `user status` still reads the `.off` file as `present`;
 `settings.nu` reads `edited` from here on, which it is.
 

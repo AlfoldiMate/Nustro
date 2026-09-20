@@ -48,7 +48,10 @@ def session [--partial]: nothing -> record {
   if $nu.os-info.name == "windows" { skip-test "no pty on Windows" }
   if (which python3 | is-empty) { skip-test "python3 is not installed" }
   if (which -a git | where type == external | is-empty) { skip-test "git is not installed" }
-  let settings = ["const UPDATE_CHECK_EVERY = 0sec"] ++ (if $partial { ['$env.config.completions.partial = true'] } else { [] }) | str join "\n"
+  # The partial session also goes back to prefix matching: under fuzzy `bits r`
+  # has candidates with nothing in common past `bits ` (rol, ror, shr…), so
+  # there is no partial insert and nothing for the bug to corrupt.
+  let settings = ["const UPDATE_CHECK_EVERY = 0sec"] ++ (if $partial { ['$env.config.completions.partial = true' '$env.config.completions.algorithm = "prefix"'] } else { [] }) | str join "\n"
   let dir = user-dir --settings $settings
   let cwd = repo
   let args = $CASES | each {|c| ["--case" $"($c.line)|($c.keys)"] } | flatten

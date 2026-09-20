@@ -29,5 +29,5 @@ $env.config.keybindings ++= [{
 
 # One $env.config leaf the distro's defaults.nu never mentions, so it is not a
 # knob: nothing lists it, nothing will overwrite it, and this is where it goes.
-# Fuzzy matching means `gsw` finds `git switch`.
-$env.config.completions.algorithm = "fuzzy"
+# Case-sensitive matching means `Ma` no longer finds `main`.
+$env.config.completions.case_sensitive = true

@@ -66,6 +66,35 @@ def "test filter follows the completion algorithm" [] {
   assert equal (items | nu-complete filter "" | length) 3
 }
 
+def "test filter ranks by tier: prefix, substring, letters in order, description" [] {
+  $env.config.completions.case_sensitive = false
+  $env.config.completions.algorithm = "fuzzy"
+  let items = [
+    { value: zeta, description: "has beta inside" }
+    { value: eta, description: "b, e, t, a — in order only" }
+    { value: "b-e-t-a-long" }
+    { value: gamma-beta }
+    { value: bxexta }
+    { value: Beta }
+    { value: alpha, description: "the first" }
+  ]
+  # Tiers, and within the letters-in-order tier the shortest first.
+  assert equal ($items | nu-complete filter "beta" | get value) [Beta gamma-beta bxexta "b-e-t-a-long" zeta eta]
+  # A description matches under substring too, never under prefix.
+  $env.config.completions.algorithm = "substring"
+  assert equal ($items | nu-complete filter "beta" | get value) [Beta gamma-beta zeta]
+  $env.config.completions.algorithm = "prefix"
+  assert equal ($items | nu-complete filter "beta" | get value) [Beta]
+  assert equal ([] | nu-complete filter "x") []
+}
+
+def "test filter keeps the source order within a tier" [] {
+  $env.config.completions.algorithm = "fuzzy"
+  let by_recency = [{ value: feature/b } { value: main } { value: feature/a }]
+  assert equal ($by_recency | nu-complete filter "fe" | get value) [feature/b feature/a]
+  assert equal ($by_recency | nu-complete filter "ur" | get value) [feature/b feature/a]
+}
+
 def "test filter honours case sensitivity" [] {
   $env.config.completions.algorithm = "prefix"
   $env.config.completions.case_sensitive = true
@@ -123,6 +152,7 @@ def spec [] {
         rest: "files"
       }
       run: { description: "run it", positionals: [[one two]] }
+      r: { description: "run it", positionals: [[one two]], hidden: true }
     }
     sources: { named: {|ctx| [{ value: n1, description: first } n2] } }
   }
@@ -135,6 +165,11 @@ def "test run offers subcommands and the first positional together" [] {
   assert equal ($got | get value) [build run alpha beta]
   assert equal ($got | where value == build | get 0.description) "build it"
   assert equal (walk tool b | get value) [build beta]
+}
+
+def "test run resolves a hidden subcommand but never offers it" [] {
+  assert equal (walk tool r | get value) [run]
+  assert equal (walk tool r "" | get value) [one two]
 }
 
 def "test run offers flags with their shorts, and no shorts after --" [] {
@@ -194,6 +229,13 @@ def "test run filters the way the settings say and quotes what it hands out" [] 
   $env.config.completions.algorithm = "prefix"
   let s = { positionals: [[{ value: "a b" } plain]] }
   assert equal (nu-complete run $s [tool ""] | get value) ['"a b"' plain]
+}
+
+def "test run matches past a quote the user opened" [] {
+  $env.config.completions.algorithm = "fuzzy"
+  let s = { positionals: [[{ value: "a b" } { value: ab } other]] }
+  assert equal (nu-complete run $s [tool '"a b'] | get value) ['"a b"']
+  assert equal (nu-complete run $s [tool "'a b'"] | get value) ['"a b"']
 }
 
 def "test run treats a lone command as a fresh slot" [] {

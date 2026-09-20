@@ -91,6 +91,7 @@ A `const` is shadowed by a `const` of the same name in `settings.nu`; an
 |---|---|---|
 | `const SMART_TAB` | `true` | Tab runs the pipeline-aware engine in `modules/nu-complete`; `false` is Nushell's stock completion menu |
 | `$env.NU_COMPLETE_EVAL` | `"safe"` | to offer columns and values the engine runs the pipeline typed so far in a subprocess: `"safe"` only when every command is a read-only built-in, `"all"` your own commands too (~80 ms instead of ~20), `"off"` never — Tab still filters and deduplicates. Declared again by the module's `meta.nuon`, which is why `nu-config knobs` lists it twice |
+| `$env.config.completions.algorithm` | `"fuzzy"` | how a candidate matches what is typed: its letters in that order. Nushell ranks its own candidates by match quality; the engine ranks a spec's in tiers — starts with it, contains it, letters in order, matched only in the description — and searches descriptions under `"substring"` too, never under `"prefix"` ([Completion](../concepts/completion.md#filtering)) |
 | `$env.config.completions.partial` | `false` | Tab first inserts what every candidate shares, then opens the menu. Off because Nushell main (0.115.2, reedline c9e7035) corrupts the line after that insert in a sourced menu; 0.115.1 is clean and may turn it back on ([Completion](../concepts/completion.md#known-limits)) |
 
 ## Modules

@@ -1,12 +1,11 @@
 # completions.nu — completion behaviour, the engine behind Tab, tool specs
 
 # ── Behaviour ─────────────────────────────────────────────────────────────────
-# Nushell's defaults are in effect (prefix matching, case-insensitive, quick
-# and partial completion, external commands from PATH). To change one, set a
-# leaf key here, e.g.:
-#   $env.config.completions.algorithm = "fuzzy"   # `gsw` finds `git switch`
-# `config nu --doc` documents every completions.* key. The engine below
-# honours algorithm and case_sensitive in its own filtering.
+# defaults.nu sets `completions.algorithm` (fuzzy) and `completions.partial`;
+# the rest is Nushell's (case-insensitive, quick completion, external
+# commands from PATH). `config nu --doc` documents every completions.* key.
+# The engine below honours algorithm and case_sensitive in its own filtering
+# and ranks what it finds (docs/concepts/completion.md, "Filtering").
 
 # ── The engine ────────────────────────────────────────────────────────────────
 # modules/nu-complete: docs/concepts/completion.md explains it. In short, three layers:
