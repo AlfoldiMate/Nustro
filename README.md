@@ -79,6 +79,7 @@ it.
 | `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |
 | `completions/` | brew (16k formulae with descriptions, 3 ms), git (refs by recency, changed files), cargo (workspace members, crates, features) | 10 ms for all three |
 | `themes/` | NvChad's 96 palettes and Catppuccin's four, plus Ghostty's own 463 | rendered once |
+| `harness/` | Claude Code plugins, one per module, each a client of the shell command: `worktree` today — `/worktree:worktree`, a hook that denies raw `git worktree add` in a layout. The checkout is the marketplace; the install registers it | 14 ms per Bash call |
 
 ## Documentation
 
@@ -87,7 +88,7 @@ it.
 | | |
 |---|---|
 | [Getting started](docs/README.md#getting-started) | install, the first shell, the first setting, the first theme, updating |
-| [Concepts](docs/README.md#concepts) | how it works and why — the two directories, startup, modules, completion, theming, the agent, OData, plugins — with every measured number |
+| [Concepts](docs/README.md#concepts) | how it works and why — the two directories, startup, modules, completion, theming, the agent, OData, worktrees, agent harnesses, plugins — with every measured number |
 | [Reference](docs/README.md#reference) | every command, every knob, every file; one page per module |
 | [Cookbook](docs/README.md#cookbook) | one task per page: add a completion, override one, write a drop-in, make a palette, pin a font, debug Tab, test a change, uninstall |
 

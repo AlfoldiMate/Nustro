@@ -58,7 +58,7 @@ what Nushell loads when.
 
 | | |
 |---|---|
-| `nu-config` | `doctor`, `knobs`, `module list\|lint\|enable\|disable`, `tools setup\|status`, `plugins list\|add`, `startup-time`, `loaded-files`, `fetch completion`, `edit`, `edit user` |
+| `nu-config` | `doctor`, `knobs`, `module list\|lint\|enable\|disable`, `tools setup\|status`, `plugins list\|add`, `harness status\|register`, `startup-time`, `loaded-files`, `fetch completion`, `edit`, `edit user` |
 | `nu-complete` | the Tab engine: `status`, `cache clear`, `run`, `smart` |
 | `theme` / `ghostty` / `font` / `terminal` | the terminal itself (lazy module) |
 | `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |

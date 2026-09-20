@@ -12,6 +12,8 @@ YOUR config directory                     THE DISTRO (a git checkout)
   completions/     what you fetched          templates/user/  the scaffold of the left-hand side
   themes/          your themes               docs/
                                              tests/           the suite: nu tests/run.nu
+                                             harness/         Claude Code plugins, one per module
+                                             .claude-plugin/  the marketplace listing them
   plugins/         plugins you built
   history.sqlite3, plugin.msgpackz, vendor/, .state/
 ```
@@ -173,6 +175,7 @@ itself lives in ([Plugins](plugins.md)).
 | Wire up a tool that emits a Nushell init file | add it to the registry in `modules/nu-config/tools.nu`, run `nu-config tools setup` |
 | Wire up a tool that does not | a file in your `autoload/`, guarded with `which` |
 | Add a plugin | put the binary in your `plugins/`, `plugin add <name>`, restart ([Plugins](plugins.md)) |
+| Use a module from a Claude Code session | `claude plugin install <module>@nustro` — the checkout is a marketplace, registered by the install ([Agent harnesses](harness.md)) |
 
 `nu-config doctor` reports the layout as `split` (the target), `in-place` (the
 checkout is still doubling as the config directory — run `nu install.nu`) or

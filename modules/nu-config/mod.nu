@@ -7,6 +7,7 @@
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
 #   nu-config startup-time        time cold starts
 #   nu-config upgrade             pull the distro; `upgrade check | status` around it
+#   nu-config harness register    register the checkout as a Claude Code plugin marketplace
 #   nu-config edit                open the distro in $EDITOR
 #   nu-config edit user           open your own config directory
 #   nu-config user init           (re)generate your directory's READMEs, examples and settings.nu
@@ -19,6 +20,8 @@ export use tools.nu *
 export use user.nu *
 # Is the checkout behind its remote: `nu-config upgrade | check | status`
 export use upstream.nu *
+# The Claude Code marketplace this checkout is: `nu-config harness status | register`
+export use harness.nu *
 # Completion caches, for `doctor`.
 use nu-complete *
 
@@ -171,6 +174,28 @@ export def doctor []: nothing -> nothing {
     }
     if ($pl | where not registered and name not-in $DEV_PLUGINS | is-not-empty) {
       print $"  (ansi dark_gray)register with: nu-config plugins add(ansi reset)"
+    }
+  }
+  print ""
+
+  # The harness side: is this checkout registered with Claude Code as a
+  # plugin marketplace, and does each plugin match its module. Two `claude`
+  # calls, 2026-09-20: 0.35 s together, the one slow line here — and skipped
+  # entirely when claude is not on PATH.
+  print $"(ansi cyan_bold)Claude Code(ansi reset)"
+  if (which claude | is-empty) {
+    print $"  (ansi dark_gray)-- claude not on PATH; the marketplace in .claude-plugin/ waits for it(ansi reset)"
+  } else {
+    let h = (harness status)
+    match $h.registered {
+      true => { print $"  ($ok) marketplace ($h.marketplace) is this checkout" }
+      false => { print $"  (ansi dark_gray)--(ansi reset) marketplace ($h.marketplace) not registered — nu-config harness register" }
+      $other => { print $"  (ansi yellow)??(ansi reset) marketplace ($h.marketplace) is another checkout: ($other) — nu-config harness register" }
+    }
+    for p in $h.plugins {
+      let m = (if $p.installed and ($p.enabled != false) { $ok } else if $p.installed { $"(ansi yellow)??(ansi reset)" } else { $"(ansi dark_gray)--(ansi reset)" })
+      let how = (if $p.installed and ($p.enabled == false) { $"installed ($p.version), module disabled" } else if $p.installed { $"installed ($p.version)" } else if $p.enabled == false { "module disabled; not installed" } else { $p.install })
+      print $"  ($m) ($p.plugin | fill --width 12) ($how)"
     }
   }
   print ""

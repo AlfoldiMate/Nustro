@@ -97,6 +97,17 @@ reads it from the current directory.
 
 `nu-config module check worktree`.
 
+## From a Claude Code session
+
+The `worktree` plugin (`harness/claude-code/worktree/`, installed with
+`claude plugin install worktree@nustro` once the checkout is
+registered as a marketplace — the install does that) gives a session
+`/worktree:worktree <sub> [args]`, which runs `nu -l -c "use worktree *;
+worktree …"` with the care points above, `/worktree:doctor`, a hook that
+denies raw `git worktree add/remove/move` in a layout, and one line at
+session start naming the root, the worktree and the profiles
+([its README](../../../harness/claude-code/worktree/README.md)).
+
 ## Design
 
 Why a bare repository, why profiles rather than a script per project, why

@@ -45,7 +45,7 @@ and nothing is written before you say yes to the last one:
 nu install.nu              # the seven screens
 nu install.nu --defaults   # no questions, every shipped value — Ghostty included, on macOS
 nu install.nu --dry-run    # print the plan, change nothing
-nu install.nu --skip-tools --skip-plugins
+nu install.nu --skip-tools --skip-plugins --skip-harness
 ```
 
 The theme preview paints the terminal and `theme reset` hands it back, so a
@@ -69,6 +69,10 @@ itself, which is what makes `curl … | sh` work without a flag.
 - the init files for whichever of zoxide, atuin and carapace are installed
   (`vendor/autoload/`)
 - the plugins that ship next to `nu`, into the plugin registry
+- with `claude` on PATH: the checkout registered as a Claude Code plugin
+  marketplace, `nustro`, and the install line of each plugin printed
+  (`claude plugin install worktree@nustro`) — a plugin adds hooks to
+  every session, so that one is yours ([Agent harnesses](../concepts/harness.md))
 - with Ghostty: `command = <nu>` and the theme you chose, in a file of its own
   that Ghostty's config includes ([Files](../reference/files.md#ghostty))
 

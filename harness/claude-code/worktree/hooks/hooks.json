@@ -1,0 +1,21 @@
+{
+  "description": "worktree layout: tell a session that starts inside a bare-worktree layout where it is, and deny raw `git worktree add/remove/move` there — the shell's `worktree` command applies the profiles those would skip. Both hooks are Nushell scripts run with `nu -n` (no config loaded), so they cost the script and one `git rev-parse`.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          { "type": "command", "command": "nu -n --stdin \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start-layout.nu\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "nu -n --stdin \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-worktree-guard.nu\"", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}

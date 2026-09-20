@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "worktree",
+  "displayName": "worktree layout",
+  "description": "A bare repository with a sibling directory per branch, driven from a Claude Code session: /worktree:worktree runs Nustro's `worktree` command with its care points, a PreToolUse hook denies raw `git worktree add/remove/move` inside a layout, and a SessionStart hook names the root, the worktree and the profiles a session starts in.",
+  "version": "0.1.0",
+  "author": { "name": "Mate Alfoldi" },
+  "homepage": "https://github.com/AlfoldiMate/Nustro/tree/main/harness/claude-code/worktree",
+  "repository": "https://github.com/AlfoldiMate/Nustro",
+  "keywords": ["git", "worktree", "nushell", "profiles", "bare"]
+}

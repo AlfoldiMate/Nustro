@@ -37,6 +37,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Agent](concepts/agent.md) | Claude Code inside the shell: one `claude -p` per turn, exec proposes, the checkpoint sweep |
 | [OData](concepts/odata.md) | pushing `where`/`select`/`first` to the server through a `pre_execution` hook |
 | [Worktrees](concepts/worktree.md) | one bare repository, a directory per branch, the gitignored files kept in profiles and placed into each |
+| [Agent harnesses](concepts/harness.md) | the shell inside Claude Code: `harness/`, one plugin per module as a client of the shell command, the marketplace the install registers |
 | [Plugins](concepts/plugins.md) | why there is no plugin manager, and what `nu-config plugins add` is instead |
 
 ## Reference
@@ -56,6 +57,8 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [agent](reference/modules/agent.md) | `ask`, `exec`, `skill`, `command`, `completion`; the exec menu; the knobs |
 | [odata](reference/modules/odata.md) | every command and flag, the query-option table, completion, knobs, testing |
 | [worktree](reference/modules/worktree.md) | `init`, `add`, `remove`, `apply`, `discard`, `which`; the profile format and its hooks; the rules apply keeps |
+| **Claude Code plugins** | |
+| [worktree](../harness/claude-code/worktree/README.md) | `/worktree:worktree`, `/worktree:doctor`, the two hooks; install with `claude plugin install worktree@nustro` |
 
 ## Cookbook
 

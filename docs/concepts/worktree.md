@@ -143,5 +143,7 @@ and the `.claude` symlink. The script imported nothing from its surroundings
 so that it could move into a shell config unchanged; this module is that move,
 with the commands under `worktree`, Tab completion for worktree and profile
 names, and the module contract around it. What a Claude Code session in such a
-project needs — the deny hook, the command's care points — stays with that
-project's `.claude/`; the shell command is what both call.
+project needs — the deny hook, the command's care points, the layout named at
+session start — ships as the `worktree` plugin under `harness/claude-code/`,
+a client of this command rather than a copy of it
+([Agent harnesses](harness.md)).

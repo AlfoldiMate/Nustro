@@ -15,13 +15,14 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 
 | Command | Does |
 |---|---|
-| `doctor` | health check: both roots, layout state, files, search paths, parse, tools, plugins, completion caches, modules |
+| `doctor` | health check: both roots, layout state, files, search paths, parse, tools, plugins, Claude Code (the marketplace, each plugin beside its module), completion caches, modules |
 | `knobs [--overridden]` | every knob from `defaults.nu` and every module's `meta.nuon`, with whether your `settings.nu` sets it |
 | `module list \| info \| check \| enable \| disable \| lint` | the module system — [Modules](../../concepts/modules.md) |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
 | `upgrade` | `git pull --ff-only` in the checkout, then the commits that came in, then `user init` for any scaffold file the new version ships and your directory lacks (a README, an example — never a file you have) |
 | `upgrade check \| status \| notice \| stale <every>` | fetch now; the last result; the startup line; is the result older than `every` — `conf/update.nu` wires the last two |
 | `plugins list \| add` | the plugin registry |
+| `harness status \| register` | the checkout as a Claude Code plugin marketplace: is it registered, and each plugin beside its module; `register` runs `claude plugin marketplace add <checkout>`, idempotent, re-pointing when another checkout held the name ([Agent harnesses](../../concepts/harness.md)) |
 | `fetch completion <tool>` | vendor one from nu_scripts **into your directory**, never the distro |
 | `startup-time [n]` | time N cold interactive starts |
 | `loaded-files` | what was parsed this session — find a slow import |

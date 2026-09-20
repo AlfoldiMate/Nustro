@@ -37,6 +37,7 @@ tests/
   terminal/           ghostty, theme, font — against a fake ghostty
   config/             layering, modules, upgrade, install, tools — the distro's own mechanics
   pty/                harness.py and menu.test.nu — Tab in a real terminal
+  claude-code/        the marketplace, the plugins' manifests and hooks against a real layout
   <concern>.test.nu   one file per module or concern
   fixtures/           brew/ (a trimmed zsh completion, name lists, a Cellar),
                       ghostty/ (the fake, three theme files); the runner's own

@@ -4,7 +4,7 @@
 #   nu install.nu                 the interactive installer
 #   nu install.nu --defaults      every shipped default, no questions (Ghostty included, on macOS)
 #   nu install.nu --dry-run       print the plan, change nothing
-#   nu install.nu --skip-tools --skip-plugins --skip-terminal
+#   nu install.nu --skip-tools --skip-plugins --skip-terminal --skip-harness
 #
 # Idempotent: safe to re-run after `git pull`, after installing a tool, or
 # after upgrading Nushell.
@@ -55,6 +55,7 @@ def main [
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
   --skip-terminal # do not install Ghostty (CI, the tests)
+  --skip-harness  # do not register the checkout with Claude Code (the tests)
 ] {
   print $"(ansi cyan_bold)Nustro(ansi reset)  ($ROOT)"
   print ""
@@ -88,7 +89,7 @@ def main [
     return
   }
 
-  apply $plan --dry-run=$dry_run --skip-tools=$skip_tools --skip-plugins=$skip_plugins
+  apply $plan --dry-run=$dry_run --skip-tools=$skip_tools --skip-plugins=$skip_plugins --skip-harness=$skip_harness
 }
 
 # ── 1. Where ──────────────────────────────────────────────────────────────────
@@ -401,7 +402,7 @@ def settings-block [plan: record]: nothing -> list<string> {
 
 # ── Applying ──────────────────────────────────────────────────────────────────
 
-def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> nothing {
+def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness]: nothing -> nothing {
   let user = $plan.user
 
   let migrated = (unlink-old-layout $user --dry-run=$dry_run)
@@ -445,6 +446,14 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins]: nothing -> no
       'print $"(ansi cyan_bold)Plugins(ansi reset)"; nu-config plugins list | select name registered | print; print ""'
     } else {
       'print $"(ansi cyan_bold)Plugins(ansi reset)"; nu-config plugins add; print ""'
+    })
+    # The checkout is also a Claude Code plugin marketplace (harness/). Guarded
+    # on claude, idempotent, and it only registers: which plugin to install is
+    # printed, not decided — a plugin adds hooks to every session.
+    (if $skip_harness or (which claude | is-empty) { null } else if $dry_run {
+      'print $"(ansi cyan_bold)Claude Code(ansi reset)"; nu-config harness status | select marketplace registered | print; print ""'
+    } else {
+      'print $"(ansi cyan_bold)Claude Code(ansi reset)"; nu-config harness register; print ""'
     })
   ] | compact)
   if ($steps | is-not-empty) {

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "nustro",
+  "owner": { "name": "Mate Alfoldi" },
+  "metadata": {
+    "description": "Claude Code plugins shipped with Nustro, the Nushell distro. Each one is a client of a shell command the distro provides, so a session gets the same command, care points and guard rails a user has at the prompt.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "worktree",
+      "source": "./harness/claude-code/worktree",
+      "description": "The bare-worktree layout from a Claude Code session: /worktree:worktree drives the shell's `worktree` command (init, add, remove, apply, discard, which), a hook denies raw `git worktree add/remove/move` inside a layout, and every session that starts in one is told where it is.",
+      "category": "productivity",
+      "keywords": ["git", "worktree", "nushell", "profiles"]
+    }
+  ]
+}
