@@ -12,7 +12,7 @@ YOUR config directory                     THE DISTRO (a git checkout)
   completions/     what you fetched          templates/user/  the scaffold of the left-hand side
   themes/          your themes               docs/
                                              tests/           the suite: nu tests/run.nu
-                                             harness/         Claude Code plugins, one per module
+                                             harness/         Claude Code plugins: the nushell skill, one per module
                                              .claude-plugin/  the marketplace listing them
   plugins/         plugins you built
   history.sqlite3, plugin.msgpackz, vendor/, .state/

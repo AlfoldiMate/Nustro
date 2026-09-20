@@ -6,8 +6,9 @@
 #   nu-config plugins add         register the plugins shipped next to `nu`
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
 #   nu-config startup-time        time cold starts
-#   nu-config upgrade             pull the distro; `upgrade check | status` around it
+#   nu-config upgrade             pull the distro, then the Claude Code plugins; `upgrade check | status` around it
 #   nu-config harness register    register the checkout as a Claude Code plugin marketplace
+#   nu-config harness update      refresh the marketplace and the plugins installed from it
 #   nu-config edit                open the distro in $EDITOR
 #   nu-config edit user           open your own config directory
 #   nu-config user init           (re)generate your directory's READMEs, examples and settings.nu
@@ -20,8 +21,11 @@ export use tools.nu *
 export use user.nu *
 # Is the checkout behind its remote: `nu-config upgrade | check | status`
 export use upstream.nu *
-# The Claude Code marketplace this checkout is: `nu-config harness status | register`
+# The Claude Code marketplace this checkout is: `nu-config harness status | register | update`
 export use harness.nu *
+# The error a command gives when its module's tool is missing; a module
+# imports the file by path (see its header for why not `use nu-config`).
+export use missing.nu *
 # Completion caches, for `doctor`.
 use nu-complete *
 
@@ -194,7 +198,8 @@ export def doctor []: nothing -> nothing {
     }
     for p in $h.plugins {
       let m = (if $p.installed and ($p.enabled != false) { $ok } else if $p.installed { $"(ansi yellow)??(ansi reset)" } else { $"(ansi dark_gray)--(ansi reset)" })
-      let how = (if $p.installed and ($p.enabled == false) { $"installed ($p.version), module disabled" } else if $p.installed { $"installed ($p.version)" } else if $p.enabled == false { "module disabled; not installed" } else { $p.install })
+      let behind = (if $p.installed and $p.available != null and $p.version != $p.available { $", ($p.available) here — nu-config harness update" } else { "" })
+      let how = (if $p.installed and ($p.enabled == false) { $"installed ($p.version)($behind), module disabled" } else if $p.installed { $"installed ($p.version)($behind)" } else if $p.enabled == false { "module disabled; not installed" } else { $p.install })
       print $"  ($m) ($p.plugin | fill --width 12) ($how)"
     }
   }
@@ -381,25 +386,41 @@ def module-meta [path: string]: nothing -> record {
   try { open $f } catch { {} }
 }
 
-# Is a declared dependency satisfied on this machine?
+# Is a declared dependency present on this machine?
 #
 # `paths` is checked when PATH misses, because a GUI application is installed
 # without being on PATH: Ghostty on macOS lives in the app bundle and is only
 # on PATH inside a Ghostty window, so `which` alone would call it missing on a
 # machine where it is plainly there.
-def dep-state [d: record]: nothing -> record {
-  let present = (
+def dep-present [d: record]: nothing -> bool {
+  (
     (which ($d.bin? | default "") | is-not-empty)
     or (($d.paths? | default []) | any {|p| $p | path expand | path exists })
   )
-  let hard = ($d.hard? | default true)
-  {
-    bin: ($d.bin? | default "?")
-    present: $present
-    hard: $hard
-    why: ($d.why? | default "")
-    install: ($d.install? | get -o $nu.os-info.name | default "")
-    state: (if $present { "ok" } else if $hard { "missing" } else { "optional" })
+}
+
+# Every dependency of a module with its state. A `group` is one need with
+# several answers — `terminal` wants Ghostty or WezTerm — so a member that is
+# absent while another member is present is `alt`, not `missing`: nothing is
+# broken, there is just a second terminal to be had.
+def dep-states [requires: list]: nothing -> table {
+  let present = ($requires | each {|d| dep-present $d })
+  $requires | enumerate | each {|e|
+    let d = $e.item
+    let here = ($present | get $e.index)
+    let hard = ($d.hard? | default true)
+    let group = ($d.group? | default null)
+    let group_ok = ($group != null and ($requires | enumerate | any {|o| ($o.item.group? | default null) == $group and ($present | get $o.index) }))
+    {
+      bin: ($d.bin? | default "?")
+      present: $here
+      hard: $hard
+      group: $group
+      why: ($d.why? | default "")
+      install: ($d.install? | get -o $nu.os-info.name | default "")
+      then: ($d.then? | default "")
+      state: (if $here { "ok" } else if $group_ok { "alt" } else if $hard { "missing" } else { "optional" })
+    }
   }
 }
 
@@ -414,7 +435,7 @@ def mod-list []: nothing -> table {
   module-dirs | each {|m|
     let meta = (module-meta $m.path)
     let enabled = ($m.name in ($env.NU_MODULES? | default $MODULES_FALLBACK))
-    let deps = ($meta.requires? | default [] | each {|d| dep-state $d })
+    let deps = (dep-states ($meta.requires? | default []))
     # What this shell did, not what meta.nuon suggests: MODULES_LAZY in the
     # user's settings.nu decides, and a module moved out of it is eager here.
     let lazy = (if ($env.NU_MODULES_LAZY? == null) { $meta.lazy? | default false } else { $m.name in $env.NU_MODULES_LAZY })
@@ -447,7 +468,7 @@ def mod-info [name: string]: nothing -> record {
     description: ($meta.description? | default "")
     lazy: ($meta.lazy? | default false)
     cost: ($meta.cost? | default 0ns)
-    requires: ($meta.requires? | default [] | each {|d| dep-state $d })
+    requires: (dep-states ($meta.requires? | default []))
     knobs: ($meta.knobs? | default {})
     docs: (module-docs $dir $meta)
   }
@@ -472,6 +493,11 @@ def mod-check [name: string]: nothing -> nothing {
   let ok = $"(ansi green)ok(ansi reset)"
   print $"(ansi cyan_bold)($name)(ansi reset)  ($info.description)"
   if ($info.requires | is-empty) { print "  no dependencies"; return }
+  let groups = ($info.requires | where group != null | get group | uniq)
+  for g in $groups {
+    let members = ($info.requires | where group == $g)
+    print $"  one of these \(($members | get bin | str join ', ')\):"
+  }
   for d in $info.requires {
     let mark = (match $d.state {
       "ok" => $ok
@@ -481,6 +507,11 @@ def mod-check [name: string]: nothing -> nothing {
     print $"  ($mark) ($d.bin | fill --width 10) ($d.why)"
     if not $d.present and ($d.install | is-not-empty) {
       print $"     (ansi dark_gray)install:(ansi reset) ($d.install)"
+    }
+    # The way back, once it is installed — stated for a missing tool, and
+    # for an `alt` too: it is what installing the other terminal would add.
+    if not $d.present and ($d.then | is-not-empty) {
+      print $"     (ansi dark_gray)then:(ansi reset)    ($d.then)"
     }
   }
 }
@@ -562,8 +593,12 @@ export def "module lint" []: nothing -> table<module: string, problem: string> {
       (if ($meta.docs? | default "" | is-empty) { "meta.nuon has no docs" } else if not ((module-docs $m $meta) | path exists) { $"docs page ($meta.docs) does not exist" })
       (if ((($m.path | path join load.nu) | path exists) and not ((do -i { nu-check ($m.path | path join load.nu) } | default false))) { "load.nu does not parse — the module would fail on first use" })
       ($meta.requires? | default [] | each {|d|
-          if ($d.bin? | default "" | is-empty) { "a requires entry has no bin" } else if ($d.why? | default "" | is-empty) { $"requires ($d.bin) has no why" } else if (["macos" "linux" "windows"] | any {|o| ($d.install? | get -o $o | default "" | is-empty) }) { $"requires ($d.bin) is missing an install line for some platform" } else { null }
+          if ($d.bin? | default "" | is-empty) { "a requires entry has no bin" } else if ($d.why? | default "" | is-empty) { $"requires ($d.bin) has no why" } else if (["macos" "linux" "windows"] | any {|o| ($d.install? | get -o $o | default "" | is-empty) }) { $"requires ($d.bin) is missing an install line for some platform" } else if ($d.hard? | default true) and ($d.then? | default "" | is-empty) { $"requires ($d.bin) has no then — what to do once it is installed" } else { null }
         } | compact)
+      # A tool that is not there must never cost a startup: a module that
+      # cannot work without one is loaded on first use, where the error
+      # names the tool, not at every shell start.
+      (if (not $lazy) and ($meta.requires? | default [] | any {|d| $d.hard? | default true }) { "has a hard dependency but is not lazy — a missing tool would cost every startup" })
     ] | flatten | compact)
     $problems | each {|p| { module: $m.name, problem: $p } }
   } | flatten

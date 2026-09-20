@@ -41,7 +41,7 @@ def layout []: nothing -> string {
   $root
 }
 
-def "test the marketplace lists plugins that exist, each named after its module" [] {
+def "test the marketplace lists plugins that exist, each named after its module or without hooks" [] {
   let m = open $MARKETPLACE
   assert equal $m.name "nustro"
   assert ($m.plugins | is-not-empty)
@@ -50,9 +50,29 @@ def "test the marketplace lists plugins that exist, each named after its module"
     assert equal ($dir | path type) dir $"($p.name): ($p.source)"
     let manifest = open ($dir | path join .claude-plugin plugin.json)
     assert equal $manifest.name $p.name "plugin.json and marketplace.json agree on the name"
-    assert equal ($ROOT | path join modules $p.name | path type) dir $"($p.name) is a plugin for a module of that name"
+    # A plugin that is not a module's client (the nushell skill) is prose only:
+    # a hook runs in every session, and only a module's user has asked for one.
+    if ($ROOT | path join modules $p.name | path type) != "dir" {
+      assert not ($dir | path join hooks | path exists) $"($p.name) has no module, so it may not have hooks"
+    }
     assert ($dir | path join README.md | path exists) $"($p.name) ships a README"
   }
+}
+
+def "test the nushell plugin ships the one copy of the skill, linked from .claude/skills" [] {
+  let shipped = $ROOT | path join harness claude-code nushell skills nushell
+  assert equal ($shipped | path join SKILL.md | path type) file
+  # Git checks the link out as a file holding its target on Windows (no
+  # core.symlinks there); the skill is still one copy, only the link is not one.
+  let link = $ROOT | path join .claude skills nushell
+  if $nu.os-info.name != "windows" {
+    assert equal ($link | path type) symlink $"($link) is not a symlink"
+    assert equal ($link | path expand) ($shipped | path expand)
+  }
+  # this-setup.md is the distro's, not one machine's: no home directory in it.
+  let setup = open --raw ($shipped | path join references this-setup.md)
+  assert not ($setup | str contains "~/.config/nushell") "this-setup.md names one machine's checkout"
+  assert not ($setup | str contains "Application Support") "this-setup.md names one machine's user directory"
 }
 
 def "test every hook a plugin declares is a script that exists and parses" [] {
@@ -151,9 +171,28 @@ def "test harness status reads the manifest and pairs each plugin with its modul
   assert equal $r.exit_code 0 $r.stderr
   let st = $r.stdout | from nuon
   assert equal $st.marketplace "nustro"
-  assert equal ($st.plugins | get plugin) ["worktree"]
-  assert equal ($st.plugins | get module) ["worktree"]
+  assert equal ($st.plugins | get plugin) ["worktree" "nushell"]
+  assert equal ($st.plugins | get module) ["worktree" null]
   # worktree is in the shipped MODULES, so a shell against this checkout has it enabled
-  assert equal ($st.plugins | get enabled) [true]
+  assert equal ($st.plugins | get enabled) [true null]
   assert (($st.plugins | get install | get 0) == "claude plugin install worktree@nustro")
+  # `available` is what the checkout ships, read from each plugin.json.
+  for p in $st.plugins {
+    let manifest = open ($ROOT | path join harness claude-code $p.plugin .claude-plugin plugin.json)
+    assert equal $p.available $manifest.version $p.plugin
+  }
+}
+
+def "test harness update is quiet when the marketplace is not this checkout" [] {
+  # A user directory of the test's own is not the registered marketplace
+  # (that is the live checkout, or nothing), so update must do nothing and
+  # say why only when asked.
+  let dir = user-dir
+  let quiet = nu-l $dir 'nu-config harness update'
+  assert equal $quiet.exit_code 0 $quiet.stderr
+  let st = nu-l $dir 'nu-config harness status | get registered | to nuon' | get stdout | from nuon
+  if $st == true { skip-test "this checkout is the registered marketplace on this machine" }
+  assert equal ($quiet.stdout | str trim) ""
+  let loud = nu-l $dir 'nu-config harness update --verbose' | get stdout | ansi strip
+  assert (($loud | str contains "not on PATH") or ($loud | str contains "not this checkout")) $loud
 }

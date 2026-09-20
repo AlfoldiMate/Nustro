@@ -4,10 +4,18 @@ The distro is a git checkout, so an update is a pull — and because your
 files are elsewhere, a pull never conflicts with anything you wrote.
 
 ```nu
-nu-config upgrade            # git pull --ff-only in the checkout, then the commits that came in
+nu-config upgrade            # git pull --ff-only in the checkout, the commits that came in, the Claude Code plugins
 nu-config upgrade check      # fetch now and say where the checkout stands
 nu-config upgrade status     # the last check's result, no network
 ```
+
+When `claude` is on PATH and the checkout is the registered marketplace,
+the pull is followed by `nu-config harness update`: the marketplace is
+refreshed and every plugin installed from it (`worktree@nustro`,
+`nushell@nustro`) is brought to the version the checkout now ships — Claude
+Code keeps its own copy of a plugin, so a pull alone would leave it behind.
+A moved version says so, with the reminder that a running Claude Code loads
+it at its next start ([Agent harnesses](../concepts/harness.md)).
 
 You do not have to remember to. Once every `UPDATE_CHECK_EVERY` (a day) an
 interactive shell spawns a background job that fetches, and the next shell to

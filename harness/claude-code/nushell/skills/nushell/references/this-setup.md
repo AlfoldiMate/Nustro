@@ -1,9 +1,15 @@
-# This machine's Nushell setup
+# Nustro: the distro and the user layer
 
-macOS (arm64), Nushell **0.115.1** via Homebrew, login shell `/bin/zsh`,
-terminal Ghostty, prompt Starship. One theme, the terminal's: `theme use`
-writes Ghostty's config and renders Nushell's colours, LS_COLORS, the bat
-theme and starship's config from the same palette (`docs/concepts/theming.md`).
+This file applies when the shell's configuration is Nustro, the Nushell
+distro (`nu -l -c 'nu-config doctor'` succeeds and names both roots). It
+describes what the distro is, not one machine: the concrete paths, the
+terminal, the edit mode and the theme are what `nu-config doctor`,
+`nu-config knobs` and `theme status` print on the machine at hand.
+
+Nushell is **0.115** (the bootstrap installs it: Homebrew on macOS, winget
+on Windows, a release on Linux). The terminal is Ghostty or WezTerm —
+`terminal target` says which — with one theme rendered for everything by
+`theme use` (`docs/concepts/theming.md`); the prompt is Starship.
 
 ## Two directories, and which one to edit
 
@@ -11,7 +17,7 @@ This is a **distro** with a user layer, not a config you edit in place:
 
 ```
 THE DISTRO (a git checkout)          YOUR config directory
-~/.config/nushell                    ~/Library/Application Support/nushell
+e.g. ~/.local/share/nustro           $nu.config-path | path dirname
   distro.nu    entrypoint      ◀──── config.nu     3 lines, sources the distro
   defaults.nu  every knob            settings.nu   the overrides
   conf/        behaviour             autoload/*.nu drop-ins, loaded last
@@ -23,9 +29,11 @@ Nushell only knows the right-hand side: it loads `config.nu` from its own config
 directory and derives history, the plugin registry, the autoload dirs and
 `$nu.data-dir` from that same place.
 
-- **Changing the distro** (this repo) — edit it here. A parse error breaks every
-  new terminal, so `nu-check distro.nu` before reporting anything done.
-- **Changing this machine only** — a knob goes in the user's `settings.nu`
+- **Changing the distro** — edit the checkout (a developer usually has a
+  second clone for that; `docs/cookbook/test-a-change.md`). A parse error
+  breaks every new terminal, so `nu-check distro.nu` before reporting
+  anything done.
+- **Changing one machine only** — a knob goes in the user's `settings.nu`
   (`nu-config edit user`), behaviour goes in a file in the user's `autoload/`.
 - **Never write user state into the checkout.** History, the plugin registry,
   generated tool files and module state all live in the user directory; the
@@ -58,9 +66,9 @@ what Nushell loads when.
 
 | | |
 |---|---|
-| `nu-config` | `doctor`, `knobs`, `module list\|lint\|enable\|disable`, `tools setup\|status`, `plugins list\|add`, `harness status\|register`, `startup-time`, `loaded-files`, `fetch completion`, `edit`, `edit user` |
+| `nu-config` | `doctor`, `knobs`, `module list\|lint\|enable\|disable`, `tools setup\|status`, `plugins list\|add`, `harness status\|register\|update`, `upgrade`, `startup-time`, `loaded-files`, `fetch completion`, `edit`, `edit user` |
 | `nu-complete` | the Tab engine: `status`, `cache clear`, `run`, `smart` |
-| `theme` / `ghostty` / `font` / `terminal` | the terminal itself (lazy module) |
+| `theme` / `font` / `terminal` / `ghostty` / `wezterm` | the terminal itself: Ghostty or WezTerm, `terminal target` says which (lazy module) |
 | `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |
 | `odata` | OData V2/V4 services as tables (lazy) |
 | `worktree` | bare repo + a directory per branch, gitignored files from profiles: `init`, `add`, `remove`, `apply`, `discard`, `which` (lazy) |
@@ -69,13 +77,18 @@ what Nushell loads when.
 roots, the layout state (`split` is the target), every derived path, a parse
 check, tools, plugins, modules and startup time.
 
-## Current configuration
+## What the defaults set
+
+`defaults.nu` is every knob with its default and the reason; `nu-config
+knobs` prints them with the user's overrides; `docs/reference/knobs.md` is
+the table. The shape, as shipped:
 
 - **Edit mode** vi; cursor `line` in insert, `block` in normal
 - **Editor** first of `zed --wait`, `nvim`, `vim`, `vi` that exists
 - **Tables** `markdown`, index always, footer at 25 rows
 - **Banner** off · **History** sqlite, 1M entries
-- **Tab** the smart menu (`SMART_TAB`), pipeline-aware, `NU_COMPLETE_EVAL = "safe"`
+- **Tab** the smart menu (`SMART_TAB`), pipeline-aware, fuzzy matching
+  ranked in tiers and searching descriptions, `NU_COMPLETE_EVAL = "safe"`
 - **Theme** whatever `theme use` rendered last into `.state/theme/` (no knob);
   tables, `ls`, bat and the starship prompt all come from it. `theme status`,
   `theme roles`
@@ -111,6 +124,14 @@ nu -l -c 'nu-config startup-time'  # ~84 ms; regression-check after adding anyth
 `nu -c '...'` and `nu script.nu` load no user config at all and prove nothing
 about this config. `nu -n` also has no `NU_LIB_DIRS`, so `nu-check` on a file
 that imports a module reports `false` there for reasons unrelated to the file.
+
+## Updating
+
+`nu-config upgrade` pulls the checkout (fast-forward only), renders any
+scaffold file a release added to the user directory, and — when `claude` is
+on PATH and the checkout is the registered marketplace — refreshes the
+marketplace and every plugin installed from it (`nu-config harness update`
+does that part alone). The shell says at start when the checkout is behind.
 
 ## After `brew upgrade nushell`
 

@@ -1,6 +1,6 @@
 # update — is the distro checkout behind its remote, and pulling it
 #
-#   nu-config upgrade            git pull --ff-only in the checkout, then say what changed
+#   nu-config upgrade            git pull --ff-only in the checkout, say what changed, update the Claude Code plugins
 #   nu-config upgrade check      fetch now and report where the checkout stands
 #   nu-config upgrade status     the last check's result; touches no network
 #   nu-config upgrade notice     the one-line "there is an update" the shell prints at start
@@ -31,6 +31,10 @@
 const ROOT = path self | path dirname | path dirname | path dirname
 
 def distro-root []: nothing -> path { $ROOT | path expand }
+
+# `harness update`, for the end of `upgrade`: the plugins Claude Code copied
+# out of this checkout are at the version it had before the pull.
+use harness.nu *
 
 # `nu-config user init`, without importing user.nu a second time: scaffold.nu
 # is a script (docs/concepts/layout.md), run in a `nu -n` the way user.nu's
@@ -184,6 +188,14 @@ export def upgrade []: nothing -> nothing {
   if ($written | is-not-empty) {
     print $"scaffold in ((user-root)):"
     for r in $written { print $"  ($r.action) ($r.file)  ($r.note)" }
+  }
+  # Claude Code holds a copy of each plugin at the version it was installed
+  # at; the marketplace reads the checkout in place. Quiet without claude or
+  # when the marketplace is another checkout's (`harness update --verbose`
+  # says which).
+  if (which claude | is-not-empty) and (harness status).registered == true {
+    print "Claude Code:"
+    harness update
   }
   print $"(ansi dark_gray)a new shell loads it; `nu-config doctor` checks it parsed(ansi reset)"
 }

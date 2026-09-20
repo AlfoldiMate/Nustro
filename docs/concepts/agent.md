@@ -35,7 +35,8 @@ for two things this design gets elsewhere: permission requests (not needed,
 see exec) and the command list (the init record, below).
 
 **Runs from the config repo.** Every turn does `cd ~/.config/nushell` first,
-so CLAUDE.md, `.claude/skills/nushell` and the agmem memory of this project
+so CLAUDE.md, the `nushell` skill (`.claude/skills/nushell`, a link to the
+copy the `nushell@nustro` plugin ships) and the agmem memory of this project
 load, and the model is grounded in 0.115 syntax. The two most reported
 failures of shell assistants are bash-in-Nushell and invented commands
 (codex discussion 296, nushell discussion 16109); the grounding plus the

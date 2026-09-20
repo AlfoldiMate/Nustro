@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "nushell",
+  "displayName": "Nushell",
+  "description": "The nushell skill: writing, debugging and configuring Nushell 0.115 — the language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, the stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. No hooks.",
+  "version": "0.1.0",
+  "author": { "name": "Mate Alfoldi" },
+  "homepage": "https://github.com/AlfoldiMate/Nustro/tree/main/harness/claude-code/nushell",
+  "repository": "https://github.com/AlfoldiMate/Nustro",
+  "keywords": ["nushell", "nu", "shell", "nustro"]
+}
