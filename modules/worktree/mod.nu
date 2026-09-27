@@ -182,8 +182,11 @@ def load-profile [root: string, name: string]: nothing -> record {
         | each {|c| $dir | path join $c } | where (ptype $it) == "file"
         | append $cfg_file
 
-    let scanned = glob ($dir | path join "**" "*") --no-dir --no-symlink
-        | append (glob ($dir | path join "**" "*") --no-dir --no-file)  # symlinked sources stay symlinks' targets
+    # Globbed from inside the directory: an absolute pattern on Windows is
+    # `D:\a\**\*`, whose backslashes the glob parser reads as escapes, and a
+    # relative one yields paths in the same native form as `path join`.
+    let scanned = do { cd $dir; glob "**/*" --no-dir --no-symlink }
+        | append (do { cd $dir; glob "**/*" --no-dir --no-file })  # symlinked sources stay symlinks' targets
         | uniq
         | where $it not-in $machinery
         | each {|f| { source: $f, target: ($f | path relative-to $dir), type: "symlink", override: true } }
@@ -304,7 +307,7 @@ def discard-entries [wt: string, entries: list]: nothing -> list<string> {
         }
     }
     # sweep dirs the entries may have created, deepest first, empties only
-    glob ($wt | path join "**") --no-file --no-symlink --exclude [".git/**" ".git"] | where $it != $wt
+    do { cd $wt; glob "**/*" --no-file --no-symlink --exclude [".git/**" ".git"] }  # relative: see load-profile
         | sort-by { $in | path split | length } --reverse
         | where (ls -a $it | is-empty)
         | each {|d| rm $d }
@@ -464,10 +467,18 @@ export def "worktree add" [
     let dest = $c.root | path join $name
     if ($dest | path exists -n) { fail $"($dest) already exists" }
 
-    let unborn = (try-git $c.root rev-parse "--verify" HEAD) == null
+    # Unborn is judged where the branch would start: the current worktree's
+    # HEAD, or the bare repo's from the root. The bare HEAD names git's
+    # init.defaultBranch (`master` unless configured), which a layout whose
+    # first worktree has another name never creates.
+    let unborn = (try-git ($c.worktree | default $c.root) rev-parse "--verify" HEAD) == null
     let branch_exists = (try-git $c.root show-ref "--verify" $"refs/heads/($name)") != null
     if $unborn {
+        let first = (run-git $c.root worktree list "--porcelain" | lines | where ($it starts-with "worktree ") | length) == 1
         run-git $c.root worktree add "--orphan" "-b" $name $dest | ignore
+        # The first worktree's branch becomes the bare HEAD, as in a
+        # `git clone --bare`, so an `add` from the root starts from it too.
+        if $first { run-git $c.root symbolic-ref HEAD $"refs/heads/($name)" | ignore }
     } else if $branch_exists {
         run-git $c.root worktree add $dest $name | ignore
     } else {
@@ -592,8 +603,7 @@ def transform [root: string] {
     # .claude is deliberately NOT excluded: pruning only removes empty dirs, so
     # a real .claude survives while the hollowed-out shell of a tracked one goes
     let excl = [".bare/**" ".bare" ".profiles/**" ".profiles" $"($branch)/**" $branch]
-    glob ($root | path join "**") --no-file --no-symlink --exclude $excl
-        | where $it != $root
+    do { cd $root; glob "**/*" --no-file --no-symlink --exclude $excl }  # relative: see load-profile
         | sort-by { $in | path split | length } --reverse
         | where (ls -a $it | is-empty)
         | each {|d| rm $d } | ignore

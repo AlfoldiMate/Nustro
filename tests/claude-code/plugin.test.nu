@@ -105,7 +105,7 @@ def "test the language server of the nushell plugin maps .nu and answers initial
 
 def "test the completion build scripts parse, and discover reads the project from CLAUDE_PROJECT_DIR" [] {
   let scripts = $ROOT | path join harness claude-code nushell skills nustro-completion-build scripts
-  for f in (glob ($scripts | path join "*.nu")) { assert (nu-check $f) $"($f) parses" }
+  for f in (glob ($scripts | path join "*.nu" | str replace -a '\' '/')) { assert (nu-check $f) $"($f) parses" }
   # The skill runs from the plugin cache, so the script must not derive the
   # checkout from its own path: the session's project directory is the config.
   let r = with-env { CLAUDE_PROJECT_DIR: $ROOT } { ^$nu.current-exe -n ($scripts | path join discover.nu) git --json | complete }
@@ -141,7 +141,7 @@ def "test a skill description stays short enough to survive a tight skill listin
   # machine with 28 other skills and haiku, 230 characters was the most a
   # new skill kept (2026-09-20) — the number is that machine's, the rule is
   # that a plugin's description competes for a budget it does not own.
-  for f in (glob ($ROOT | path join harness "**" SKILL.md)) {
+  for f in (glob ($ROOT | path join harness "**" SKILL.md | str replace -a '\' '/')) {
     let desc = open --raw $f | lines | where ($it starts-with "description:") | get -o 0 | default "" | str replace "description:" "" | str trim
     assert ($desc | is-not-empty) $"($f): a description"
     assert (($desc | str length) <= 230) $"($f): description is ($desc | str length) chars, over the cap"

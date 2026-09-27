@@ -15,9 +15,14 @@ def "test config-path is the XDG wezterm.lua when nothing exists yet" [] {
 
 def "test config-path prefers XDG over the home file, and the file WezTerm says it loaded over both" [] {
   let fake = fake-wezterm
-  let home = $nu.home-dir | path join .wezterm.lua
-  "return {}\n" | save $home
-  assert equal (wezterm config-path) $home "~/.wezterm.lua is read when the XDG one is missing"
+  # Only in a sandboxed HOME: on Windows $nu.home-dir does not follow HOME,
+  # so the file would land in the real profile and every later test would
+  # read it as the user's config.
+  if ($nu.home-dir | str starts-with $env.TEST_SCRATCH) {
+    let home = $nu.home-dir | path join .wezterm.lua
+    "return {}\n" | save $home
+    assert equal (wezterm config-path) $home "~/.wezterm.lua is read when the XDG one is missing"
+  }
   "return {}\n" | save ($fake.config | path join wezterm.lua)
   assert equal (wezterm config-path) ($fake.config | path join wezterm.lua)
   let other = scratch | path join elsewhere.lua

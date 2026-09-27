@@ -407,18 +407,18 @@ def scan-commands []: nothing -> table<name: string, kind: string, description: 
   let home = ($env.HOME | path join .claude)
   let plugins = ($home | path join plugins cache)
   let skill_files = (
-    [(glob ($home | path join skills '*' SKILL.md)) (glob ($ROOT | path join .claude skills '*' SKILL.md))]
+    [(glob ($home | path join skills '*' SKILL.md | str replace -a '\' '/')) (glob ($ROOT | path join .claude skills '*' SKILL.md | str replace -a '\' '/'))]
     | flatten | each {|f| {name: ($f | path dirname | path basename), kind: skill, file: $f} }
   )
-  let plugin_skills = (glob ($plugins | path join '*' '*' '*' skills '*' SKILL.md) | each {|f|
+  let plugin_skills = (glob ($plugins | path join '*' '*' '*' skills '*' SKILL.md | str replace -a '\' '/') | each {|f|
     let parts = ($f | path split)
     {name: $"(($parts | get ($parts | length | $in - 5))):(($f | path dirname | path basename))", kind: skill, file: $f}
   })
   let command_files = (
-    [(glob ($home | path join commands '*.md')) (glob ($ROOT | path join .claude commands '*.md'))]
+    [(glob ($home | path join commands '*.md' | str replace -a '\' '/')) (glob ($ROOT | path join .claude commands '*.md' | str replace -a '\' '/'))]
     | flatten | each {|f| {name: ($f | path parse | get stem), kind: command, file: $f} }
   )
-  let plugin_commands = (glob ($plugins | path join '*' '*' '*' commands '*.md') | each {|f|
+  let plugin_commands = (glob ($plugins | path join '*' '*' '*' commands '*.md' | str replace -a '\' '/') | each {|f|
     let parts = ($f | path split)
     {name: $"(($parts | get ($parts | length | $in - 4))):(($f | path parse | get stem))", kind: command, file: $f}
   })
@@ -548,7 +548,7 @@ export def sweep [
   if not ($dir | path exists) { return }
   if $detach {
     let min_turns = (setting AGENT_CHECKPOINT_MIN_TURNS 3 | into int)
-    let pending = (glob ($dir | path join '*.nuon') | where {|f|
+    let pending = (glob ($dir | path join '*.nuon' | str replace -a '\' '/') | where {|f|
       let r = (do -i { open $f })
       ($r | describe -d).type == "record" and (not $r.checkpointed) and $r.turns >= $min_turns and (not (pid-alive $r.pid))
     })
@@ -565,11 +565,11 @@ export def sweep [
     return
   }
   # A claim left behind by a shell that closed mid-checkpoint is taken back after 15 minutes.
-  for f in (glob ($dir | path join '*.checkpointing')) {
+  for f in (glob ($dir | path join '*.checkpointing' | str replace -a '\' '/')) {
     if ((date now) - (ls $f | get 0.modified)) > 15min { mv $f ($f | str replace --regex '\.checkpointing$' '') }
   }
   let debug = (setting AGENT_DEBUG false)
-  for f in (glob ($dir | path join '*.nuon')) {
+  for f in (glob ($dir | path join '*.nuon' | str replace -a '\' '/')) {
     let rec = (do -i { open $f })
     if ($rec | describe -d).type != "record" { rm -f $f; continue }
     let alive = (pid-alive $rec.pid)
@@ -618,7 +618,7 @@ export def status []: nothing -> nothing {
   let cache = (commands-cache)
   let cached = (if ($cache | path exists) { let c = (open $cache); $"($c.skills | length) skills, ($c.commands | length) commands, ((date now) - $c.at | format duration min) old" } else { "none yet — filled by the first turn; Tab falls back to a disk scan" })
   print $"(ansi cyan_bold)commands(ansi reset) ($cached)"
-  let stale = (if ((sessions-dir) | path exists) { glob ((sessions-dir) | path join '*.nuon') | where {|f| let r = (do -i { open $f }); ($r | describe -d).type == "record" and $r.id != $id and not (pid-alive $r.pid) } | length } else { 0 })
+  let stale = (if ((sessions-dir) | path exists) { glob ((sessions-dir) | path join '*.nuon' | str replace -a '\' '/') | where {|f| let r = (do -i { open $f }); ($r | describe -d).type == "record" and $r.id != $id and not (pid-alive $r.pid) } | length } else { 0 })
   print $"(ansi cyan_bold)state(ansi reset)    (state-dir)  ($stale) stale session\(s\) awaiting sweep"
   if ((sweep-log) | path exists) {
     print $"(ansi cyan_bold)sweeps(ansi reset)   (open --raw (sweep-log) | lines | last 3 | str join (char newline + '         '))"

@@ -262,6 +262,20 @@ def "test add inside a worktree starts at its HEAD and carries its ignored files
   assert equal ($feat | path join .env | path type) symlink "a link into the root is re-made by apply, not copied"
 }
 
+def "test add branches from the first worktree whatever the default branch of git is" [] {
+  # A bare HEAD names init.defaultBranch, `master` on a machine without one
+  # configured (CI's), never the `main` the layout's first worktree makes.
+  with-env { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "init.defaultBranch", GIT_CONFIG_VALUE_0: "master" } {
+    let root = layout
+    cd $root
+    worktree add feat
+    assert equal (git-in ($root | path join feat) log --oneline | lines | length) 1 "from the root: main's commit"
+    cd ($root | path join main)
+    worktree add fix
+    assert equal (git-in ($root | path join fix) log --oneline | lines | length) 1 "from inside main: its HEAD"
+  }
+}
+
 def "test init transforms a repository: history to .bare, ignored files to dflt" [] {
   let repo = scratch
   git-in $repo init -q | ignore

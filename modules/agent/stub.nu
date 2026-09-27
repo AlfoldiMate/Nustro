@@ -18,7 +18,7 @@ if $nu.is-interactive and (which claude | is-not-empty) {
   # module itself.
   job spawn {
     let d = ($nu.data-dir | path join .state agent sessions)
-    if ($d | path exists) and ((glob ($d | path join '*.nuon')) | is-not-empty) and $nu.os-info.name != "windows" {
+    if ($d | path exists) and ((glob ($d | path join '*.nuon' | str replace -a '\' '/')) | is-not-empty) and $nu.os-info.name != "windows" {
       let log = ($nu.data-dir | path join .state agent sweep-detach.log)
       ^sh -c $"nohup '($nu.current-exe)' -l -c 'use agent; agent sweep --detach' >'($log)' 2>&1 &"
     }
