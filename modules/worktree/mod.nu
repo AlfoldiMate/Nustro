@@ -176,10 +176,12 @@ def load-profile [root: string, name: string]: nothing -> record {
     }
 
     # profile machinery never propagates: profile.yaml, and any hook script
-    # that lives inside the profile dir
+    # that lives inside the profile dir. The command is split on `/` so the
+    # join is native on Windows too, as the scan below is: `scripts/hook.nu`
+    # joined whole would never equal `…\scripts\hook.nu`.
     let machinery = $PHASES | each {|ph| $hooks | get $ph } | flatten
         | each {|h| $h.command? } | compact
-        | each {|c| $dir | path join $c } | where (ptype $it) == "file"
+        | each {|c| $dir | path join ...($c | split row "/") } | where (ptype $it) == "file"
         | append $cfg_file
 
     # Globbed from inside the directory: an absolute pattern on Windows is
