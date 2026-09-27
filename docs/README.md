@@ -58,7 +58,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [odata](reference/modules/odata.md) | every command and flag, the query-option table, completion, knobs, testing |
 | [worktree](reference/modules/worktree.md) | `init`, `add`, `remove`, `apply`, `discard`, `which`; the profile format and its hooks; the rules apply keeps |
 | **Claude Code plugins** | |
-| [nushell](../harness/claude-code/nushell/README.md) | the `nushell` skill — the language, the config, Nustro when it is the shell; install with `claude plugin install nushell@nustro` |
+| [nushell](../harness/claude-code/nushell/README.md) | the `nushell` skill — the language, the config, Nustro when it is the shell — and `nu --lsp` as the session's language server for `.nu` files; install with `claude plugin install nushell@nustro` |
 | [worktree](../harness/claude-code/worktree/README.md) | `/worktree:worktree`, `/worktree:doctor`, the two hooks; install with `claude plugin install worktree@nustro` |
 
 ## Cookbook

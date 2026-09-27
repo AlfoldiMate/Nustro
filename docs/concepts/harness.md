@@ -14,8 +14,8 @@ module of this distro that wants a presence in a session:
 .claude-plugin/marketplace.json     the marketplace: Claude Code looks for it at the root, nowhere else
 harness/
 └── claude-code/
-    ├── nushell/                    two skills, no hooks
-    │   ├── .claude-plugin/plugin.json
+    ├── nushell/                    two skills and the language server, no hooks
+    │   ├── .claude-plugin/plugin.json   also `lspServers`: `nu --lsp` for .nu files
     │   ├── README.md
     │   ├── skills/nushell/         SKILL.md and references/: the session in Nushell, and Nustro
     │   └── skills/nustro-completion-build/   SKILL.md, references/, scripts/: what `agent completion` runs
@@ -75,7 +75,13 @@ teaches Tab a tool by writing a spec for the completion engine. Neither
 ships anything that runs in a hook. That is what lets it be a plugin of its
 own without breaking the rule above: a plugin with no module may have no
 hooks (the test enforces it), so installing it costs a session two skill
-lines and nothing per tool call. The skills live in the plugin only: the
+lines and nothing per tool call. The language server is not a hook: it is
+`nu --lsp`, one process per session that Claude Code talks to over stdio,
+and what a session pays for it is diagnostics after an edit to a `.nu` file
+— the new ones only, nothing when the edit broke nothing. It runs with the
+config because a Nustro file `use`s modules found on `NU_LIB_DIRS`, which
+`nu -n` does not have: `nu -n --lsp` answers `Module not found` for `use
+worktree`, a false diagnostic after every edit. The skills live in the plugin only: the
 checkout tracks no `.claude/` (gitignored — on a developer's machine it is
 their own session config, a symlink to a worktree of it), so a session in a
 checkout reaches them through the installed plugin, and `agent completion`
@@ -110,6 +116,7 @@ installed version beside the one the checkout ships when they differ.
 | `SessionStart` hook in a layout: `nu -n`, four `git` calls, one `ls`; `hyperfine -N`, 25 runs, 2026-09-20 | 77 ms, once per session |
 | `PreToolUse(Bash)` hook, a worktree command in a layout (regex, one `git rev-parse`) | 30 ms |
 | the same hook, any other command (the regex misses, git is not called) | 14 ms |
+| the nushell plugin's language server, `initialize` to `exit` on stdin; `hyperfine -N`, 20 runs, 2026-09-27 | `nu --lsp` 188 ms, once per session; `nu -n --lsp` 13 ms, the config is the difference |
 | `nu-config doctor`'s Claude Code section: `claude plugin marketplace list --json` and `claude plugin list --json` | 0.35 s, the slowest line of doctor; skipped without `claude` |
 | Claude Code's skill listing budget: every skill's description in one list, 8000 characters on a 200k-context model (`skillListingBudgetFraction`); over it, descriptions are kept by priority and the rest listed name-only, a new plugin skill last. On this machine, beside 28 other skills on haiku, 230 characters was the most a new skill kept (`claude --plugin-dir … -p --debug-file`, 2026-09-20) | a test keeps a plugin description ≤ 230 characters — the listing is shared, and the plugin's line is the first to go |
 
@@ -125,7 +132,9 @@ at all; `claude plugin validate --strict` on everything when `claude` is on
 the machine; `nu-config harness status` against a user directory of the
 test's own; the nushell plugin ships both skills under the names Claude
 Code will run them by, the checkout tracks no `.claude/`, and
-`this-setup.md` names no machine's paths; the completion build scripts
+`this-setup.md` names no machine's paths; the language server the plugin
+declares maps `.nu` and answers an `initialize` with hover and definitions;
+the completion build scripts
 parse and `discover.nu` finds the config through `CLAUDE_PROJECT_DIR`;
 `harness update` does nothing, quietly, when the marketplace is not the
 checkout under test.

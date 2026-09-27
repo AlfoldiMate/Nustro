@@ -2,10 +2,17 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "nushell",
   "displayName": "Nushell",
-  "description": "Two skills, no hooks. nushell: writing, debugging and configuring Nushell 0.115 — the language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, the stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. nustro-completion-build: teach Tab a CLI, a completions/<tool>.nu for Nustro's engine.",
-  "version": "0.2.0",
+  "description": "Two skills and the Nushell language server, no hooks. nushell: writing, debugging and configuring Nushell 0.115 — the language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, the stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. nustro-completion-build: teach Tab a CLI, a completions/<tool>.nu for Nustro's engine. `nu --lsp` for .nu files: diagnostics after each edit, definitions, references, hover.",
+  "version": "0.3.0",
   "author": { "name": "Mate Alfoldi" },
   "homepage": "https://github.com/AlfoldiMate/Nustro/tree/main/harness/claude-code/nushell",
   "repository": "https://github.com/AlfoldiMate/Nustro",
-  "keywords": ["nushell", "nu", "shell", "nustro", "completion"]
+  "keywords": ["nushell", "nu", "shell", "nustro", "completion", "lsp"],
+  "lspServers": {
+    "nushell": {
+      "command": "nu",
+      "args": ["--lsp"],
+      "extensionToLanguage": { ".nu": "nushell" }
+    }
+  }
 }

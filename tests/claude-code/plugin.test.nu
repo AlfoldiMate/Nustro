@@ -50,7 +50,7 @@ def "test the marketplace lists plugins that exist, each named after its module 
     assert equal ($dir | path type) dir $"($p.name): ($p.source)"
     let manifest = open ($dir | path join .claude-plugin plugin.json)
     assert equal $manifest.name $p.name "plugin.json and marketplace.json agree on the name"
-    # A plugin that is not a module's client (the nushell skill) is prose only:
+    # A plugin that is not a module's client (the nushell skill) has no hooks:
     # a hook runs in every session, and only a module's user has asked for one.
     if ($ROOT | path join modules $p.name | path type) != "dir" {
       assert not ($dir | path join hooks | path exists) $"($p.name) has no module, so it may not have hooks"
@@ -74,6 +74,33 @@ def "test the nushell plugin ships both skills, and the checkout tracks no .clau
   let setup = open --raw ($skills | path join nushell references this-setup.md)
   assert not ($setup | str contains "~/.config/nushell") "this-setup.md names one machine's checkout"
   assert not ($setup | str contains "Application Support") "this-setup.md names one machine's user directory"
+}
+
+# One LSP message with its Content-Length header, the framing on stdin.
+def lsp-frame [msg: record]: nothing -> string {
+  let body = $msg | to json -r
+  $"Content-Length: ($body | encode utf8 | bytes length)\r\n\r\n($body)"
+}
+
+def "test the language server of the nushell plugin maps .nu and answers initialize" [] {
+  let server = open ($ROOT | path join harness claude-code nushell .claude-plugin plugin.json) | get lspServers.nushell
+  assert equal $server.command "nu"
+  assert equal ($server.extensionToLanguage | transpose ext lang | where ext == ".nu" | get -o 0.lang) "nushell"
+  # The handshake Claude Code opens with, then a clean exit. `initialized` is
+  # not optional: without it `nu --lsp` exits 1 (0.115). `-n` keeps the
+  # user's config out of the test; the server with it is measured in
+  # docs/concepts/harness.md.
+  let input = [
+    (lsp-frame { jsonrpc: "2.0", id: 1, method: "initialize", params: { processId: null, rootUri: null, capabilities: {} } })
+    (lsp-frame { jsonrpc: "2.0", method: "initialized", params: {} })
+    (lsp-frame { jsonrpc: "2.0", id: 2, method: "shutdown" })
+    (lsp-frame { jsonrpc: "2.0", method: "exit" })
+  ] | str join
+  let r = $input | ^$nu.current-exe -n ...$server.args | complete
+  assert equal $r.exit_code 0 $r.stderr
+  let caps = $r.stdout | parse -r 'Content-Length: \d+\r\n\r\n(?<body>\{.*?\})(?=Content-Length|$)' | get body | each { from json } | where id? == 1 | get 0.result.capabilities
+  assert equal $caps.hoverProvider true
+  assert equal $caps.definitionProvider true
 }
 
 def "test the completion build scripts parse, and discover reads the project from CLAUDE_PROJECT_DIR" [] {
