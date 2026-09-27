@@ -330,7 +330,12 @@ def materialize [root: string, wt: string, plan: list, tracked: list<string>]: n
         mkdir ($target | path dirname)
         if $existing != null { rm -rf $target }
         if $e.type == "symlink" {
-            ^ln -s (rel-path ($target | path dirname) $e.source) $target
+            # Git for Windows' `ln` copies unless told otherwise; a copy would
+            # look like the user's own file to discard. nativestrict makes a
+            # real symlink or fails (no Developer Mode, no admin) — never a copy.
+            with-env { MSYS: "winsymlinks:nativestrict" } {
+                ^ln -s (rel-path ($target | path dirname) $e.source) $target
+            }
         } else if $e.type == "copy" {
             if ($e.source | path type) == "dir" { cp -r $e.source $target } else { cp $e.source $target }
         } else {

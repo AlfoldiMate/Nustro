@@ -101,6 +101,7 @@ def probe-carapace [tool: string, dir: path]: nothing -> record {
 }
 
 def probe-man [tool: string]: nothing -> any {
+  if (which man | is-empty) { return null }  # Windows has none
   let r = (^man -w $tool | complete)
   if $r.exit_code == 0 { $r.stdout | str trim } else { null }
 }

@@ -89,7 +89,10 @@ def main [
 # macOS the terminal module reads ~/Library/Application Support and writes
 # ~/Library/Fonts, and a test must never find the user's own. rustup's cargo
 # is a proxy that finds the toolchain through the home directory, so the real
-# one stays reachable and a cargo test is not skipped.
+# one stays reachable and a cargo test is not skipped. git reads neither the
+# system config nor the user's: Xcode's sets init.defaultBranch=main, which
+# hid a worktree bug CI found, and Git for Windows' core.autocrlf=true turns a
+# checkout's LF into CRLF.
 def sandbox [scratch: string, label: string]: nothing -> record {
   let box = $scratch | path join ($label | str replace -ra '[/\\]' '_')
   mkdir ($box | path join xdg config nushell) ($box | path join xdg data) ($box | path join xdg cache) ($box | path join home)
@@ -99,6 +102,8 @@ def sandbox [scratch: string, label: string]: nothing -> record {
     XDG_CONFIG_HOME: ($box | path join xdg config)
     XDG_DATA_HOME: ($box | path join xdg data)
     XDG_CACHE_HOME: ($box | path join xdg cache)
+    GIT_CONFIG_NOSYSTEM: "1"
+    GIT_CONFIG_GLOBAL: ($box | path join home .gitconfig)
   }
   | merge (if $nu.os-info.name == "windows" { {} } else { { HOME: ($box | path join home) } })
   | merge ({ CARGO_HOME: ($nu.home-dir | path join .cargo), RUSTUP_HOME: ($nu.home-dir | path join .rustup) }

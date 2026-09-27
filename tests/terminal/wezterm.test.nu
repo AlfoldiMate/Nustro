@@ -52,7 +52,7 @@ def "test set puts the line before the final return of an existing config, once,
   assert equal ($lines | last 3) ["-- Added by Nustro; `wezterm reset` removes it again." ($INCLUDE | str replace "apply(config)" "apply(cfg)") "return cfg"] ($lines | to nuon)
   assert equal ($lines | where {|l| $l =~ '(?i)nustro' } | length) 2 "the line is added once"
   assert equal ($lines | first 3) ["local wezterm = require 'wezterm'" "local cfg = wezterm.config_builder()" "cfg.font_size = 11"] "their lines are untouched"
-  assert equal (glob ($cfg + ".backup-*") | length) 1
+  assert equal (glob (($cfg | str replace -a '\' '/') + ".backup-*") | length) 1
 }
 
 def "test set refuses a config that does not end with a named return, and says what to add" [] {
@@ -114,7 +114,7 @@ def "test reset removes our file and the two lines, keeps the backup" [] {
   wezterm reset
   assert not (($fake.config | path join nustro.lua) | path exists)
   assert equal (open --raw $cfg) "local wezterm = require 'wezterm'\nlocal config = wezterm.config_builder()\nreturn config\n"
-  assert equal (glob ($cfg + ".backup-*") | length) 1
+  assert equal (glob (($cfg | str replace -a '\' '/') + ".backup-*") | length) 1
   assert equal (wezterm status | select included) { included: false }
 }
 
