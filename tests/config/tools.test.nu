@@ -47,12 +47,12 @@ def "test a second setup changes nothing and remove takes one file out" [] {
   assert not ($dir.data | path join vendor autoload $"($tool).nu" | path exists)
 }
 
-def "test the carapace file rewraps the completer for both input shapes" [] {
+def "test the carapace file rewraps the completer for the named inputs" [] {
   let dir = user-dir
   if (which -a carapace | where type == external | is-empty) { skip-test "carapace is not installed" }
   nu-l $dir 'nu-config tools setup --quiet' | ignore
   let f = $dir.data | path join vendor autoload carapace.nu
   let text = open --raw $f
-  assert ($text | str contains "nu-complete spans $token (try { $place }) (try { $buffer })") "the unified-inputs wrapper"
+  assert ($text | str contains "{|place| do $carapace_legacy $place.command }") "the named-inputs wrapper"
   assert ($text | str contains "CARAPACE_BRIDGES") "the bridges"
 }

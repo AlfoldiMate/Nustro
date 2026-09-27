@@ -328,14 +328,10 @@ export def "nu-complete brew spec" []: nothing -> record {
 }
 
 # null on any failure: Nushell then falls back to file completion instead of
-# showing nothing.
-# `[token, place?, buffer?]` fits both the unified completer inputs and
-# 0.115.1's single positional; `nu-complete spans` resolves it either way. The
-# inner `try`s are not defensive style — on 0.115.1 those two parameters are
-# never bound at all, and naming one is a runtime error. See `nu-complete
-# spans` in engine.nu.
-def complete-brew [token, place?, buffer?] {
-  try { nu-complete run (nu-complete brew spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+# showing nothing. `place.command` is the span list the engine walks
+# (engine.nu).
+def complete-brew [place: record] {
+  try { nu-complete run (nu-complete brew spec) $place.command } catch { null }
 }
 
 # `main` so that `use brew.nu *` yields `brew` (a module cannot export an

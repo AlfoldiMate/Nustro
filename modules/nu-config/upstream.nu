@@ -35,6 +35,7 @@ def distro-root []: nothing -> path { $ROOT | path expand }
 # `harness update`, for the end of `upgrade`: the plugins Claude Code copied
 # out of this checkout are at the version it had before the pull.
 use harness.nu *
+use tools.nu ["tools setup"]
 
 # `nu-config user init`, without importing user.nu a second time: scaffold.nu
 # is a script (docs/concepts/layout.md), run in a `nu -n` the way user.nu's
@@ -189,6 +190,12 @@ export def upgrade []: nothing -> nothing {
     print $"scaffold in ((user-root)):"
     for r in $written { print $"  ($r.action) ($r.file)  ($r.note)" }
   }
+  # The generated init files (vendor/autoload) come from generators in the
+  # checkout, so a pull that changed one — carapace's wrapper for the
+  # completer inputs of Nushell 0.116 — reaches them here, not at the next
+  # `tools setup` someone remembers to run. Idempotent; prints only what
+  # changed (0.17 s, 2026-09-27).
+  tools setup --quiet
   # Claude Code holds a copy of each plugin at the version it was installed
   # at; the marketplace reads the checkout in place. Quiet without claude or
   # when the marketplace is another checkout's (`harness update --verbose`

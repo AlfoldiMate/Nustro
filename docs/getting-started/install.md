@@ -19,7 +19,7 @@ asks before installing anything. `sh install.sh --yes` takes every default;
 `NUSHELL_VERSION` do the same from the environment. Re-running one is a
 `git pull`.
 
-Already have Nushell (0.115 or later) and a checkout? Skip them:
+Already have Nushell (0.116 or later) and a checkout? Skip them:
 
 ```nu
 git clone https://github.com/AlfoldiMate/Nustro ~/.local/share/nustro

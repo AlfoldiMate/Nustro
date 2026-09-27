@@ -1,12 +1,14 @@
 # Completions and externs
 
 Nushell 0.114.1, with two sections at the end: **0.115.1** (command-wide
-completers, `commandline complete`, menu sources — the installed binary, and
-what this config runs on) and **the next release** (#18791 unified every
-completer's input and output; merged upstream, not released). Read the 0.115.1
-section first for anything that touches the engine in this config
-(`modules/nu-complete`, `docs/reference/completion-spec.md`, `docs/concepts/completion.md`), and the
-last one before writing a completer that has to survive the upgrade.
+completers, `commandline complete`, menu sources) and **0.116** (#18791 and
+its follow-ups: every completer's input bound by name, one output contract —
+the installed binary, and what Nustro requires). The early sections still show
+the pre-0.116 completer signatures (`[context: string]`, `{|spans|}`); on 0.116
+those work through a bridge that warns. Read the 0.116 section before writing
+any completer, and the 0.115.1 one for the engine in Nustro
+(`modules/nu-complete`, `docs/reference/completion-spec.md`,
+`docs/concepts/completion.md`).
 
 ## Custom completions
 
@@ -456,21 +458,23 @@ closures included — the cheap way to classify a line. `scope commands`
 costs 18 ms and 476 `stor insert`s ~115 ms, which is why the signature
 table is built once in a background `job spawn`.
 
-## The next release: one input contract for every completer
+## 0.116: one input contract for every completer
 
-[#18791](https://github.com/nushell/nushell/pull/18791) landed on main on
-2026-09-09 (merge `b2637148`). **It is not in 0.115.1** — the installed binary
-has neither `attr interactive` nor `commandline complete --input`, which is the
-one-line check for whether a given `nu` has it:
+Nushell 0.116.0 (2026-09-26) shipped
+[#18791](https://github.com/nushell/nushell/pull/18791) with its follow-ups
+[#19054](https://github.com/nushell/nushell/pull/19054) (`place.command`, the
+sourced-menu partial-completion fix) and
+[#19085](https://github.com/nushell/nushell/pull/19085) (aliases expanded in
+`place.command`). 0.115.x has none of it; the one-line check for a given `nu`:
 
 ```nu
 nu -n -c 'attr interactive' | complete | get exit_code    # 0 → has it, 1 → 0.115.x
 ```
 
-Everything below was verified on 2026-09-18 against a local `cargo build` of
-that commit (it reports version 0.115.2), not read off the PR description —
-which is worth the trouble, because the PR text is wrong or incomplete in two
-places noted below.
+Everything below was verified against a build of main on 2026-09-18 and
+re-checked on the 0.116.0 release on 2026-09-27 — not read off the PR
+description or the release notes, which are wrong or incomplete in the places
+noted below.
 
 ### Inputs are bound by name, not by position
 
@@ -490,7 +494,7 @@ def both [place: record, token: record] { ... }      # any subset, any order
 The three recognized names (`INPUT_FIELDS` in the source):
 
 | `token` | the token at the cursor | `{text, kind, span}` — `kind` is `head`, `flag`, `value` or `block`; `span` is `nothing` for alias-expanded tokens. A cursor after a space is an empty `value` token whose span is zero-width at the cursor. |
-| `place` | what is being completed | `{cursor, target, kind, flag?, index?, shape?}` — `cursor` is a byte offset, `target` the `{start, end}` a suggestion replaces. `flag` is present for a flag value, `index` for a positional or external arg, `shape` when the declared syntax shape is known. |
+| `place` | what is being completed | `{cursor, target, kind, flag?, index?, shape?, command}` — `cursor` is a byte offset, `target` the `{start, end}` a suggestion replaces. `flag` is present for a flag value, `index` for a positional or external arg, `shape` when the declared syntax shape is known (absent on a positional the command does not have: `ps `, `first 3 `). `command` is the command at the cursor word by word, the partial last (`""` at a fresh slot), after a pipe or `;` and inside closures and subexpressions, with an alias at the head expanded (`gco ma` → `[git checkout ma]`) — the old `spans`. A `where` condition is one word in it: `[where, "size > 10 and", ""]`. |
 | `buffer` | the line up to the cursor | the exact typed text, across pipes, closures and `;`. Never anything past the cursor. |
 
 The PR description lists four values for `place.kind`. There are **eleven**
@@ -571,8 +575,8 @@ Suggestion fields: `value`, `display_override`, `description`, `kind`, `style`,
 Nushell, command-wide and external ones are not (they usually filter
 themselves).
 
-> **`options.filter: true` does not work on a command-wide completer in this
-> build.** Verified: a parameter completer returning `[alpha alptest beta]` at
+> **`options.filter: true` does not work on a command-wide completer, in the
+> main build or in 0.116.0.** Verified: a parameter completer returning `[alpha alptest beta]` at
 > `p alp` correctly yields `[alpha, alptest]`, while the same list from a
 > `@complete` completer with `options: {filter: true}` yields all three, on both
 > a `def` and an `extern`. The flag itself is read — asking for
@@ -623,6 +627,15 @@ dispatch. Declare `token: record` even when the body ignores it, so a direct
 call fails at the call site rather than deep in the body; `commandline complete
 --input` is how you get a real record to test with.
 
+> **The price: `commandline complete` refuses an `@interactive` completer
+> anywhere but the line editor** — `nu::shell::interactive_completer_needs_a_terminal`,
+> "this position completes with a terminal picker" — so a script, a test, or
+> a `nu -l -c` check of that slot errors instead of answering (0.116.0,
+> 2026-09-27). And it is not the only way onto the terminal: a completer
+> reached from a custom menu's `source` (through `commandline complete` inside
+> it) already runs on the line-editor thread, and ran fzf fine without the
+> attribute, where the same completer from the stock menu did not.
+
 ### Debugging
 
 ```nu
@@ -650,28 +663,22 @@ def complete-command [token: record] { [my-shortcut] ++ ($token.text | commandli
   through aliases, and at multi-word command heads and empty argument slots.
 - Aliases resolve through to the completion command, `@interactive` included.
 
-### What it means for this config
+### What it means for Nustro
 
-Migrated on 2026-09-19, and still running on 0.115.1. Three signatures moved:
-`def complete-<tool> [token, place?, buffer?]` in each `completions/*.nu`,
-`source: {|buffer, place| ... }` for the Tab menu in `conf/completions.nu`, and
-a wrapper appended to the generated `vendor/autoload/carapace.nu` by
-`nu-config tools setup`, because carapace itself still emits `{|spans| ... }`
-and every fallthrough to it was printing the warning.
-
-`nu-complete spans` in `engine.nu` is the only place that knows which release
-it is on: it returns the old span list unchanged, and rebuilds the same list
-from `buffer` (`ast --flatten`, `place.target.start`, cut at the last command
-head) on a newer build. Everything downstream is untouched.
-
-**The trap that cost the most.** 0.115.1 binds only the first parameter and
-leaves the rest *unbound* rather than null, so `if $place == null` is
-`variable not found` there — and since a completer that errors is silent, the
-symptom is file completion on the old release and nothing in the log. Every
-call site reads `(try { $place })` for that reason.
+Nustro requires 0.116 (2026-09-27) and dropped its 0.115 bridges. A spec's
+completer is `def complete-<tool> [place: record]` calling `nu-complete run
+(spec) $place.command`; the Tab menu is `source: {|buffer, place| ... }`, and
+the smart menu reads the slot (shape, flag value, target) from `place`; the
+wrapper `nu-config tools setup` appends to the generated
+`vendor/autoload/carapace.nu` is `{|place| do $carapace_legacy
+$place.command }`, because carapace 1.8.0 still emits `{|spans| ... }`.
+`nu-complete spans` survives only for completions generated before that date,
+as `$place.command`. Partial completion is on again (the sourced-menu span
+bug, nushell#19053, is fixed in 0.116.0).
 
 Still open: `place.target` could replace the hand-computed replacement spans in
-`smart.nu`, and `@interactive` could give `brew install` an `fzf` picker.
+`smart.nu`.
 `nu-complete filter` stays until the `options.filter` bug above is fixed, and
 `nu-complete external` stays because `fallback: true` does not reach carapace
-for a declared extern (see above).
+for a declared extern (see above); it calls the external closure with the
+inputs its header names, since `do` cannot bind by name.

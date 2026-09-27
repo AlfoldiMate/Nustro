@@ -60,10 +60,9 @@ if $SMART_TAB {
       match_text: green
       selected_match_text: green_reverse
     }
-    # `place` is a name the unified completer inputs bind (#18791): on 0.115.2
-    # it arrives as a record, on 0.115.1 as the old position int. Naming it
-    # `position` still works there and warns here. `nu-complete smart` takes
-    # both. Its `buffer` differs too — see the note on that command.
+    # Nushell binds a source's inputs by the names it declares: `buffer` the
+    # line, `place` the slot at the cursor (`commandline complete --input`).
+    # The old `{|buffer, position|}` still works, with a deprecation warning.
     source: {|buffer, place| nu-complete smart $buffer $place }
   }]
   # The stock Tab chain, pointed at the smart menu.

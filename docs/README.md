@@ -12,7 +12,8 @@ jump to a section if it is not.
 
 Every number in these pages was measured (`timeit`, `nu-config
 startup-time`, `hyperfine`) on the day stated next to it, on an M-series Mac
-unless it says otherwise; nothing is estimated. Nushell **0.115**.
+unless it says otherwise; nothing is estimated, on the Nushell release it names. The distro requires
+Nushell **0.116**.
 `assets/` holds the one image the top-level README shows: `demo.gif`, a
 hundred seconds of the shipped defaults in a real Ghostty window, recorded
 2026-09-19.

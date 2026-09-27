@@ -60,10 +60,11 @@ export def "nu-complete hello spec" []: nothing -> record {
 }
 
 # `null` on any failure: Nushell then falls back to files rather than to
-# nothing. The parameter names and the inner `try`s are load-bearing on both
-# 0.115.1 and 0.115.2 — completion-spec.md, "The completer's input".
-def complete-hello [token, place?, buffer?] {
-  try { nu-complete run (nu-complete hello spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+# nothing. The parameter's name is what Nushell binds, and `place.command` is
+# the line's words for this command — completion-spec.md, "The completer's
+# input".
+def complete-hello [place: record] {
+  try { nu-complete run (nu-complete hello spec) $place.command } catch { null }
 }
 
 # `main`, because a module cannot export an extern of its own name:

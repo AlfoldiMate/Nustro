@@ -1,27 +1,25 @@
 # Tab in a real terminal: the smart menu driven through tests/pty/harness.py
 # (a pseudo-terminal, keys one at a time, the line read back from history),
-# under the shipped defaults and again with `completions.partial = true`,
-# where nushell main corrupts the line after a partial completion. The
-# corruption is asserted per version, so the test documents the upstream bug
-# rather than hiding it: 0.115.1 is clean, the 0.115.2 main build of
-# 2026-09-19 (19bdc5f) is not, and a later release is expected clean again.
+# under the shipped defaults and again under prefix matching, where partial
+# completion always has a common prefix to insert. That insert is what
+# nushell#19053 broke in a sourced menu (the 0.115.2 main build turned
+# `bits r` Tab Tab Enter into `bits ror o`); 0.116.0 carries the fix, and
+# this is the test that says so.
 use lib.nu *
 use std/assert
 
 const HARNESS = ($ROOT | path join tests pty harness.py)
 
 # Cases as data. `want` is the line as history records it (trailing space
-# trimmed: the release appends none after a completed command, main does);
-# `corrupt` is what the partial-completion bug makes of it; `screen` is
-# what the menu must show for a case that only looks.
+# trimmed); `screen` is what the menu must show for a case that only looks.
 const CASES = [
   # The first two run in a shell that has not loaded the lazy terminal module
   # yet: the candidates come from a child nu (smart.nu, "Lazy modules"). The
   # Enter of the second is what loads it.
   { line: "fon", keys: "tab,esc,ctrl-c", screen: ["font dir" "font list" "font use"] }
   { line: "theme use catp", keys: "tab,tab,tab,tab,enter,enter", want: 'theme use "Catppuccin Macchiato"' }
-  { line: "bits r", keys: "tab,tab,enter,enter", want: "bits ror", corrupt: "bits ror o" }
-  { line: "git cher", keys: "tab,tab,enter,enter", want: "git cherry", corrupt: "git cherryry" }
+  { line: "bits r", keys: "tab,tab,enter,enter", want: "bits ror" }
+  { line: "git cher", keys: "tab,tab,enter,enter", want: "git cherry" }
   { line: "str tr", keys: "tab,enter,enter", want: "str trim" }
   { line: "git checkout ", keys: "tab,enter,enter", want: "git checkout feature" }
   { line: "ls | where ", keys: "tab,esc,ctrl-c", screen: [name type size modified] }
@@ -44,18 +42,27 @@ def --env repo []: nothing -> string {
 }
 
 # One session over every case; returns { history, screens }.
-def session [--partial]: nothing -> record {
+def session [--prefix]: nothing -> record {
   if $nu.os-info.name == "windows" { skip-test "no pty on Windows" }
   if (which python3 | is-empty) { skip-test "python3 is not installed" }
   if (which -a git | where type == external | is-empty) { skip-test "git is not installed" }
-  # The partial session also goes back to prefix matching: under fuzzy `bits r`
-  # has candidates with nothing in common past `bits ` (rol, ror, shr…), so
-  # there is no partial insert and nothing for the bug to corrupt.
-  let settings = ["const UPDATE_CHECK_EVERY = 0sec"] ++ (if $partial { ['$env.config.completions.partial = true' '$env.config.completions.algorithm = "prefix"'] } else { [] }) | str join "\n"
+  # Under fuzzy (the default) `bits r` has candidates with nothing in common
+  # past `bits ` (rol, ror, shr…), so there is no partial insert to test;
+  # prefix matching has one.
+  let settings = ["const UPDATE_CHECK_EVERY = 0sec"] ++ (if $prefix { ['$env.config.completions.algorithm = "prefix"'] } else { [] }) | str join "\n"
   let dir = user-dir --settings $settings
   let cwd = repo
   let args = $CASES | each {|c| ["--case" $"($c.line)|($c.keys)"] } | flatten
-  let r = ^python3 $HARNESS --nu $nu.current-exe --config-home $dir.env.XDG_CONFIG_HOME --cwd $cwd ...$args | complete
+  # A partial insert paints twice — the common prefix, then the menu the
+  # source recomputes for the new line (the 0.116 fix) — and under the load of
+  # a full run the gap between the two passed the default 0.2 s of quiet, so
+  # the second Tab landed mid-computation and was folded into the first
+  # (`bits rol` in 2 full runs of 2, never alone; 0.35 s held in 4 of 4, for
+  # 5 s more on the suite, 2026-09-27). The shipped defaults have `partial`
+  # on too, and failed the same way in a full run (`bits rol`, 1 of 1), so
+  # both sessions wait.
+  let quiet = ["--quiet" "0.35"]
+  let r = ^python3 $HARNESS --nu $nu.current-exe --config-home $dir.env.XDG_CONFIG_HOME --cwd $cwd ...$quiet ...$args | complete
   assert equal $r.exit_code 0 $r.stderr
   $r.stdout | from json
 }
@@ -78,11 +85,9 @@ def "test the menu completes and inserts under the shipped defaults" [] {
   }
 }
 
-def "test partial completion is clean on the release and corrupts the line on main" [] {
-  let got = session --partial
-  let v = (version).version
+def "test partial completion inserts the common prefix and the next Tab the right span" [] {
+  let got = session --prefix
   for r in (recorded $got | where {|r| $r.case.want? != null }) {
-    let expected = if $v == "0.115.2" and $r.case.corrupt? != null { $r.case.corrupt } else { $r.case.want }
-    assert equal $r.line $expected $"($r.case.line) on ($v)"
+    assert equal $r.line $r.case.want $r.case.line
   }
 }

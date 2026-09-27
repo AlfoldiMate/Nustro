@@ -241,14 +241,10 @@ export def "theme names" [--ghostty]: nothing -> list<string> {
 }
 
 # What a `<name>` argument completes from: the palettes, unless `--ghostty` is
-# already on the line, then Ghostty's. What the completer is handed differs by
-# release — 0.115.1 fills the first positional with the command text typed so
-# far and leaves the rest unbound; main (nushell#18791) binds `token` (a
-# record) and `buffer` (the line to the cursor) by name — and both carry the
-# flag, so the test is on whichever arrived as a string.
-def theme-completion [token?: any, place?: any, buffer?: any]: nothing -> list<string> {
-  let line = (if ($token | describe) == "string" { $token } else { (try { $buffer }) | default "" })
-  theme names --ghostty=($line =~ '--ghostty')
+# already on the line, then Ghostty's. `place.command` is the command at the
+# cursor, word by word (Nushell 0.116).
+def theme-completion [place: record]: nothing -> list<string> {
+  theme names --ghostty=('--ghostty' in $place.command)
 }
 
 # The themes to choose from: the palettes, or Ghostty's own with --ghostty.

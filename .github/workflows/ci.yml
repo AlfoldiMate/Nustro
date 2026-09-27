@@ -41,7 +41,7 @@ jobs:
           # The version this distro is verified against. Nushell makes breaking
           # changes at minor versions, so this is pinned deliberately: when it
           # is raised, the config is what has to be checked, not the pin.
-          version: '0.115.1'
+          version: '0.116.0'
 
       - name: nu is here
         run: nu --version

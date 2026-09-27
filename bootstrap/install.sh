@@ -87,7 +87,7 @@ latest_nu() {
   # to the version this distro is verified against rather than failing.
   v=$(curl -fsSL https://api.github.com/repos/nushell/nushell/releases/latest 2>/dev/null \
       | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
-  echo "${v:-0.115.1}"
+  echo "${v:-0.116.0}"
 }
 
 install_nu_tarball() {

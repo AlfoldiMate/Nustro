@@ -107,20 +107,18 @@ the file's output, shown after a failing file or with `-v`.
 ## Tab in a real terminal
 
 Some completion bugs exist only in reedline: the sourced-menu partial
-completion corruption (`bits r` Tab Tab Enter → `bits ror o` on nushell
-main) is invisible to `commandline complete`. `tests/pty/harness.py` forks
-a pseudo-terminal, runs `nu -l -i` in it against a `user-dir`, types each
-case's line, sends its keys one at a time, and reports what reedline
-recorded in history (exact, where reading the screen back through
-starship's prompt is not) and the screen each case produced.
-`tests/pty/menu.test.nu` holds the cases as data — `{line, keys, want}`,
-with `corrupt` for what the bug makes of a line and `screen` for a case
-that only looks — and runs them once under the shipped defaults and once
-with `completions.partial = true`, where the corruption is asserted per
-version: 0.115.1 clean, the 0.115.2 main build corrupted, a later release
-expected clean, so the test documents the upstream bug rather than hiding
-it. Python because every runner has it and nu has no pty; skipped on
-Windows, which has none either.
+completion corruption (`bits r` Tab Tab Enter → `bits ror o` on the 0.115.2
+main build, nushell#19053, fixed in 0.116.0) was invisible to `commandline
+complete`. `tests/pty/harness.py` forks a pseudo-terminal, runs `nu -l -i`
+in it against a `user-dir`, types each case's line, sends its keys one at a
+time, and reports what reedline recorded in history (exact, where reading
+the screen back through starship's prompt is not) and the screen each case
+produced. `tests/pty/menu.test.nu` holds the cases as data — `{line, keys,
+want}`, with `screen` for a case that only looks — and runs them once under
+the shipped defaults and once under prefix matching, where partial
+completion always has a common prefix to insert and the Tab after it has a
+span to get wrong. Python because every runner has it and nu has no pty;
+skipped on Windows, which has none either.
 
 What the harness taught, kept as its rules: reedline asks the terminal
 where the cursor is (`ESC[6n`) before every prompt and waits for the
@@ -128,9 +126,11 @@ answer, so the harness answers or every prompt costs the timeout; keys go
 one at a time with a settle-based wait — until the output has been quiet
 for 0.2 s, after at least one byte — because Tabs sent in a burst land
 while the menu source is still computing and get folded into one, and a
-fixed sleep was flaky against the smart menu's first-Tab cost. One session
-runs every case (8.5 s for eight cases; two sessions, 17.6 s for the file,
-which is the suite's long pole under `par-each`).
+fixed sleep was flaky against the smart menu's first-Tab cost. A partial
+insert paints twice (the prefix, then the menu recomputed for the new line),
+and under a full run's load the gap passed 0.2 s, so that session waits
+0.35 s (2026-09-27). One session runs every case (8.5 s for eight cases);
+the file is the suite's long pole under `par-each`.
 
 ## `lib.nu`
 

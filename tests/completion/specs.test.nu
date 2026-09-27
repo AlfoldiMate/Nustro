@@ -11,6 +11,10 @@ use brew.nu *
 use git.nu *
 use cargo.nu *
 
+# An alias of a spec'd command reaches the spec (Nushell 0.116 expands it in
+# `place.command`).
+alias gco = git checkout
+
 def values-of [line: string]: nothing -> list<string> { $line | commandline complete }
 def detailed [line: string]: nothing -> table { $line | commandline complete --detailed }
 
@@ -139,6 +143,12 @@ def "test git checkout offers branches by recency, then tags" [] {
   let got = detailed "git checkout " | where description !~ '^(modified|untracked)'
   assert equal ($got | get value) [feature main v1]
   assert equal ($got | get description) ["branch · onfeature" "branch · second" "tag · first"]
+}
+
+def "test an alias of git checkout offers the same branches, after a pipe too" [] {
+  git-repo
+  assert equal (detailed "gco " | where description =~ '^branch' | get value) [feature main]
+  assert equal (detailed "echo x | gco ma" | get value) [main]
 }
 
 def "test git add offers the changed and untracked files" [] {

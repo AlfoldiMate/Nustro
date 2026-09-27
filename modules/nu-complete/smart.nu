@@ -1,11 +1,13 @@
 # smart — the Tab menu source
 #
-# Nushell's own completer sees each command in isolation; only a custom menu
-# `source` closure gets the whole line (verified on 0.115.1: per-argument
-# completers get `get na`, not `ls | get na`, and `commandline` is empty while
-# completing). So Tab is bound to a menu whose source is `nu-complete smart`,
-# which starts from what Nushell would offer — `commandline complete
-# --detailed`, 0.1-0.6 ms, including every extern and carapace — and then:
+# Nushell's own completer sees each command in isolation: `ls | get ⌶` is
+# completed without knowing what `ls` returns. A completer can be handed the
+# whole line since 0.116 (`buffer`), but only one we attach — the built-ins'
+# slots are Nushell's. A menu `source` is the one place that sees both the line
+# and Nushell's answer for it, so Tab is bound to a menu whose source is
+# `nu-complete smart`, which starts from what Nushell would offer —
+# `commandline complete --detailed`, 0.1-0.6 ms, including every extern and
+# carapace — and then:
 #
 #   1. Columns.   `ls | where ⌶`, `get`, `select`, `sort-by`, `update` and every
 #                 other cell-path or condition slot offers the columns of the
@@ -119,19 +121,16 @@ export def "nu-complete warm" []: nothing -> nothing {
 }
 
 def ensure-sigs []: nothing -> nothing {
-  let created = (try { stor create -t $SIGS -c { name: str, npos: int, rest: int, shapes: str, valued: str, builtin: int, category: str } | ignore; true } catch { false })
+  let created = (try { stor create -t $SIGS -c { name: str, npos: int, rest: int, shapes: str, builtin: int, category: str } | ignore; true } catch { false })
   if not $created { return }
   scope commands | each {|c|
     let sig = ($c.signatures | values | first)
     let pos = ($sig | where parameter_type in [positional rest])
-    let valued = ($sig | where parameter_type == named and syntax_shape != null
-      | each {|p| [$"--($p.parameter_name)" (if ($p.short_flag? | default "") != "" { $"-($p.short_flag)" } else { null })] } | flatten | compact)
     {
       name: $c.name
       npos: ($pos | where parameter_type == positional | length)
       rest: (if ($pos | where parameter_type == rest | is-not-empty) { 1 } else { 0 })
       shapes: ($pos | get syntax_shape | to json -r)
-      valued: ($valued | to json -r)
       builtin: (if $c.type == "built-in" { 1 } else { 0 })
       category: $c.category
     } | stor insert -t $SIGS
@@ -142,7 +141,7 @@ def sig [name: string]: nothing -> any {
   ensure-sigs
   let hit = (stor open | query db $"select * from ($SIGS) where name = :n" -p { n: $name })
   if ($hit | is-empty) { null } else {
-    $hit.0 | update shapes { from json } | update valued { from json } | update rest { $in == 1 } | update builtin { $in == 1 }
+    $hit.0 | update shapes { from json } | update rest { $in == 1 } | update builtin { $in == 1 }
   }
 }
 
@@ -157,21 +156,6 @@ def resolve-cmd [toks: list<string>]: nothing -> any {
   if ($toks | is-empty) { return null }
   let s = (sig ($toks | first))
   if $s == null { null } else { { sig: $s, ntok: 1 } }
-}
-
-# Which positional the cursor is on, skipping flags and their values.
-def slot-of [args: list<string>, s: record]: nothing -> record<index: int, valued: bool> {
-  mut i = 0
-  mut valued = false
-  for a in $args {
-    if $valued { $valued = false; continue }
-    if ($a | str starts-with "-") {
-      if ($a in $s.valued) { $valued = true }
-      continue
-    }
-    $i += 1
-  }
-  { index: $i, valued: $valued }
 }
 
 def shape-at [s: record, index: int]: nothing -> string {
@@ -401,25 +385,29 @@ def lazy-complete [m: string, buffer: string]: nothing -> list<record> {
 
 # ── The menu source ───────────────────────────────────────────────────────────
 
-# Candidates for `buffer` at `position`.
+# Candidates for `buffer` at `place`, the record Nushell hands every completer
+# since 0.116 (`commandline complete --input` shows it for any line).
 #
-# `position` is an int on 0.115.1, where the menu source is called
-# `{|buffer, position| ...}`, and the `place` record on a build with #18791,
-# where the source names `place` and gets it bound by name. The two also
-# disagree about `buffer`: `input_mode: cursor_prefix` made it the line up to
-# the cursor, the unified inputs hand the whole recorded line, so it is cut
-# here. Everything below therefore sees what it always saw — the prefix, and a
-# byte offset into it (`str length` and `str substring` are byte-indexed).
-export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<record> {
-  let position = if ($position | describe) == "int" { $position } else { $position.cursor }
+# `place` answers what this file used to work out from the words: the slot's
+# shape (`first ⌶` wants `oneof<int, filesize>`, `ps ⌶` has none because
+# `ps` takes no positional), whether it is a flag's value, and where the token
+# under the cursor starts — resolved by Nushell itself, so it is right inside a
+# closure or a subexpression (`echo (first ⌶`) too. What it does not give is
+# the pipeline before the command, which is what columns are read from, nor the
+# parts of a `where` condition, which it hands over as one word; those still
+# come from `segments` and `words`. `buffer` is cut at the cursor: a menu source
+# is given the whole recorded line. Offsets are bytes (`str length` and `str
+# substring` are byte-indexed, like `place`).
+export def "nu-complete smart" [buffer: string, place: record]: nothing -> list<record> {
+  let position = $place.cursor
   let buffer = ($buffer | str substring 0..<$position)
-  # A custom completer's values (`theme use Cat⌶` → `Catppuccin Macchiato`)
-  # arrive unquoted and would be inserted as two arguments; files and
-  # carapace's values arrive quoted already.
   let segs = (segments $buffer)
   let seg = ($segs | last)
   let prefix = ($segs | drop 1 | str join "|" | str trim)
   let w = (words $seg)
+  # A custom completer's values (`theme use Cat⌶` → `Catppuccin Macchiato`)
+  # arrive unquoted and would be inserted as two arguments; files and
+  # carapace's values arrive quoted already.
   let base = (try { $buffer | commandline complete --detailed } catch { [] } | nu-complete quote)
   let lazy = (lazy-module $w)
   let base = if $lazy == null { $base } else {
@@ -427,22 +415,14 @@ export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<
     if $lazy.head { $theirs ++ $base } else { $theirs }
   }
   if ($w.tokens | is-empty) { return ($base | dedupe) }
-  let partial = if $w.fresh { "" } else { $w.tokens | last }
-  let before = if $w.fresh { $w.tokens } else { $w.tokens | drop 1 }
-  let cmd = (resolve-cmd $before)
-  if $cmd == null { return ($base | dedupe) }
-  let s = $cmd.sig
-  let args = ($before | skip $cmd.ntok)
-  let slot = (slot-of $args $s)
-  let shape = (shape-at $s $slot.index)
-  # A row condition is one positional however many words it spans.
-  let is_condition = ((shape-at $s 0) =~ 'condition')
+  let partial = ($buffer | str substring $place.target.start..<$position)
+  let shape = ($place.shape? | default "")
   let no_files = ($base | where kind not-in [file directory])
 
   # A closure parameter's field: `each {|r| $r.na⌶}` → columns.
-  let closure_field = ($partial | parse --regex '^\{\|\s*(?<var>\w+)\s*\|.*\$(?<same>\w+)\.(?<path>[\w.]*)$' | get -o 0)
-  if $closure_field != null and $closure_field.var == $closure_field.same and ($prefix | is-not-empty) {
-    let parts = ($closure_field.path | split row ".")
+  let field = ($partial | parse --regex '^\$(?<var>\w+)\.(?<path>[\w.]*)$' | get -o 0)
+  if $place.kind == "cell-path" and $field != null and $field.var != "it" and ($prefix | is-not-empty) and ($field.var in ($seg | parse --regex '\{\s*\|\s*(?<p>\w+)' | get p)) {
+    let parts = ($field.path | split row ".")
     let sub = ($parts | drop 1 | str join ".")
     let last = ($parts | last)
     let items = (column-items (rows-at $prefix $sub) [] | nu-complete filter $last | each {|r| $r | insert span (replace-span $position ($last | str length)) })
@@ -455,19 +435,22 @@ export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<
     if ($items | is-not-empty) { return $items }
   }
 
-  # Nothing before the command, a flag, or a flag's value: no columns to
-  # offer, but the slot may still refuse files — `ps ⌶` takes no positional
-  # and `first ⌶` wants a number (the tests found the number rule applied
-  # only after a pipe, 2026-09-19).
-  if $slot.valued or ($partial | str starts-with "-") or ($prefix | is-empty) {
-    let full = ($slot.index >= $s.npos and not $s.rest)
-    let bare = (not ($partial | str starts-with "-") and not $slot.valued)
+  # A positional slot the command does not have (`ps ⌶`, `first 3 ⌶`) or one
+  # that wants a number (`first ⌶`) refuses files, before a pipe too (the
+  # tests found the number rule applied only after one, 2026-09-19). A flag,
+  # a flag's value, or nothing before the command: no columns to offer.
+  let full = ($place.kind == "positional" and ($place.shape? == null))
+  let bare = ($place.kind == "positional")
+  if $place.kind in [flag-name flag-value] or ($partial | str starts-with "-") or ($prefix | is-empty) {
     return (if $bare and ($full or (wants-number $shape)) { $no_files | dedupe } else { $base | dedupe })
   }
 
-  # where / any / all: column, operator, value, and again after and/or.
-  if $is_condition {
-    let cond = $args
+  # where / any / all: column, operator, value, and again after and/or. The
+  # condition is one word to `place`, so it is read from the words here.
+  let before = if $w.fresh { $w.tokens } else { $w.tokens | drop 1 }
+  let cmd = (resolve-cmd $before)
+  if $cmd != null and ((shape-at $cmd.sig 0) =~ 'condition') {
+    let cond = ($before | skip $cmd.ntok)
     let rows = (rows-at $prefix "")
     if ($rows | is-empty) { return ($base | dedupe) }
     let cols = ($rows | first | get columns | columns)
@@ -497,17 +480,17 @@ export def "nu-complete smart" [buffer: string, position: any]: nothing -> list<
   }
 
   # Cell-path slots: get, select, reject, sort-by, update, insert, str trim ...
+  # A column already named on the line (`select name ⌶`) is not offered again.
   if ($shape =~ 'cell-path') {
     let parts = ($partial | split row ".")
     let sub = ($parts | drop 1 | str join ".")
     let last = ($parts | last)
-    let used = if $s.rest and $slot.index >= $s.npos { $args | where {|a| not ($a | str starts-with "-") } } else { [] }
+    let used = ($place.command | skip 1 | drop 1 | where {|a| not ($a | str starts-with "-") })
     let items = (column-items (rows-at $prefix $sub) $used | nu-complete filter $last | each {|r| $r | insert span (replace-span $position ($last | str length)) })
     return (if ($items | is-empty) { $no_files | dedupe } else { $items })
   }
 
-  if $slot.index >= $s.npos and not $s.rest { return ($no_files | dedupe) }
-  if (wants-number $shape) { return ($no_files | dedupe) }
+  if $full or (wants-number $shape) { return ($no_files | dedupe) }
   $base | dedupe
 }
 

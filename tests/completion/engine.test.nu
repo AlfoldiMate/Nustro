@@ -1,48 +1,65 @@
 # The completion engine (modules/nu-complete/engine.nu) without a terminal:
-# the span list a completer works from, filtering, quoting, and `run` walking
+# the span list a completer is handed, filtering, quoting, and `run` walking
 # a spec. The spec here is inline and small; the shipped ones are in
 # specs.test.nu.
 use lib.nu *
 use std/assert
 use nu-complete *
 
-# ── spans ─────────────────────────────────────────────────────────────────────
+# ── the span list: place.command ─────────────────────────────────────────────
 
-# The unified completer inputs (#18791): `token.text`, `place.target.start`,
-# the whole buffer. The cases checked token for token against 0.115.1's real
-# spans when `spans` was written.
-def spans-of [line: string, tok: string]: nothing -> list<string> {
-  nu-complete spans { text: $tok } { target: { start: (($line | str length) - ($tok | str length)) } } $line
+# A completer walks `place.command`, which Nushell (0.116) resolves at the
+# cursor. These pin the parts of that contract the engine relies on — the
+# cases its own rebuild from the buffer was checked against before 0.116.
+def command-at [line: string]: nothing -> list<string> {
+  ($line | commandline complete --input).place.command
 }
 
-def "test spans rebuilds the command tokens from the buffer" [] {
-  assert equal (spans-of "git checkout ch" "ch") [git checkout ch]
-  assert equal (spans-of "brew install ri" "ri") [brew install ri]
+alias gco = git checkout
+
+def "test place.command is the command at the cursor" [] {
+  assert equal (command-at "git checkout ch") [git checkout ch]
+  assert equal (command-at "ls | git ch") [git ch]
+  assert equal (command-at "echo a; git ch") [git ch]
+  assert equal (command-at "ls | each {|r| git ch") [git ch]
+  assert equal (command-at "echo (git ch") [git ch]
 }
 
-def "test spans starts at the last command head, not the pipeline head" [] {
-  assert equal (spans-of "ls | git ch" "ch") [git ch]
-  assert equal (spans-of "echo a; git ch" "ch") [git ch]
-  assert equal (spans-of "cd ~/x; brew install ri" "ri") [brew install ri]
+def "test place.command keeps a quoted argument and a flag=value as one word" [] {
+  assert equal (command-at 'git commit -m "a b" fi') [git commit -m '"a b"' fi]
+  assert equal (command-at "git log --oneline=x ma") [git log --oneline=x ma]
+  assert equal (command-at 'git commit -m "ab') [git commit -m '"ab']
 }
 
-def "test spans keeps a quoted argument and a flag=value as one token" [] {
-  assert equal (spans-of 'git commit -m "a b" fi' "fi") [git commit -m '"a b"' fi]
-  assert equal (spans-of "git log --oneline=x ma" "ma") [git log --oneline=x ma]
+def "test place.command ends a fresh slot with an empty word" [] {
+  assert equal (command-at "git checkout ") [git checkout ""]
 }
 
-def "test spans ends a fresh slot with an empty token" [] {
-  assert equal (spans-of "git checkout " "") [git checkout ""]
+def "test place.command expands an alias at the head" [] {
+  assert equal (command-at "gco ma") [git checkout ma]
 }
 
-def "test spans survives an unterminated quote" [] {
-  assert equal (spans-of 'git commit -m "ab' '"ab') [git commit -m '"ab']
+def "test spans still serves a completion written from the old template" [] {
+  let i = ("git checkout ma" | commandline complete --input)
+  assert equal (nu-complete spans $i.token (try { $i.place }) (try { $i.buffer })) [git checkout ma]
 }
 
-def "test spans passes the old span list through on 0.115.1" [] {
-  # There `place` is never bound, and the first parameter is the list itself.
-  assert equal (nu-complete spans [git ch] null null) [git ch]
-  assert equal (nu-complete spans null null null) []
+# ── external ──────────────────────────────────────────────────────────────────
+
+def "test external hands the completer the inputs it names" [] {
+  $env.config.completions.external.completer = {|place| [($place.command | str join ",")] }
+  assert equal (nu-complete external [git log --one]) ["git,log,--one"]
+  $env.config.completions.external.completer = {|buffer: string, token: record| [$buffer $token.text $token.kind] }
+  assert equal (nu-complete external [git log --one]) ["git log --one" --one flag]
+  $env.config.completions.external.completer = {|spans| $spans }
+  assert equal (nu-complete external [git ch]) [git ch]
+  $env.config.completions.external.completer = { [none] }
+  assert equal (nu-complete external [git ch]) [none]
+}
+
+def "test external without a completer is null" [] {
+  $env.config.completions.external.completer = null
+  assert equal (nu-complete external [git ch]) null
 }
 
 # ── normalize · filter ────────────────────────────────────────────────────────

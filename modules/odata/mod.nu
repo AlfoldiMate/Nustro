@@ -384,6 +384,11 @@ def type-at [schema: any, entity: string, nav: list<string>]: nothing -> any {
 
 # ── Completion (per-argument completers; the smart menu asks `odata complete columns`) ──
 
+# The command being completed, as the text the helpers below read: Nushell
+# (0.116) hands a completer `place.command`, the words of the command at the
+# cursor with the partial last, after any pipe and with an alias expanded.
+def ctx [place: record]: nothing -> string { $place.command | str join " " }
+
 def ctx-words [context: string]: nothing -> list<string> {
   $context | str replace --regex '^\s*odata\s+(get\s+)?' "" | split row " " | where {|w| $w | is-not-empty }
 }
@@ -411,8 +416,8 @@ def ctx-positionals [context: string]: nothing -> list<string> {
 
 def complete-service [] { all-services | transpose name s | each {|r| { value: $r.name, description: ($r.s.url? | default "") } } }
 
-def complete-entity [context: string] {
-  let svc = (ctx-service $context)
+def complete-entity [place: record] {
+  let svc = (ctx-service (ctx $place))
   if $svc == null { return [] }
   let schema = (try { schema-for $svc } catch { return [] })
   # one parenthesised expression: a `++` that starts a line is parsed as a command
@@ -424,10 +429,10 @@ def complete-entity [context: string] {
 
 # Keys of the entity typed before the cursor: from the service, when
 # ODATA_COMPLETE_KEYS allows a request at Tab time (memoised 60 s).
-def complete-key [context: string] {
+def complete-key [place: record] {
   if not (setting ODATA_COMPLETE_KEYS false) { return [] }
-  let svc = (ctx-service $context)
-  let pos = (ctx-positionals $context)
+  let svc = (ctx-service (ctx $place))
+  let pos = (ctx-positionals (ctx $place))
   if $svc == null or ($pos | is-empty) { return [] }
   let entity = $pos.0
   let schema = (try { schema-for $svc } catch { return [] })
@@ -443,9 +448,9 @@ def complete-key [context: string] {
   }
 }
 
-def complete-nav [context: string] {
-  let svc = (ctx-service $context)
-  let pos = (ctx-positionals $context)
+def complete-nav [place: record] {
+  let svc = (ctx-service (ctx $place))
+  let pos = (ctx-positionals (ctx $place))
   if $svc == null or ($pos | length) < 2 { return [] }
   let schema = (try { schema-for $svc } catch { return [] })
   let t = (type-at $schema $pos.0 ($pos | skip 2))
@@ -466,18 +471,18 @@ def prop-items [ctx: any]: nothing -> list<record> {
   $ctx.type.props | each {|p| { value: $p.name, description: ((edm-short $p.type) + (if $p.key { " · key" } else { "" }) + (if $p.label != null { $" · ($p.label)" } else { "" })) } }
 }
 
-def complete-field [context: string] { prop-items (entity-type-in $context) }
-def complete-orderby [context: string] {
-  let items = (prop-items (entity-type-in $context))
+def complete-field [place: record] { prop-items (entity-type-in (ctx $place)) }
+def complete-orderby [place: record] {
+  let items = (prop-items (entity-type-in (ctx $place)))
   $items ++ ($items | each {|i| { value: $"($i.value) desc", description: $i.description } })
 }
-def complete-expand [context: string] {
-  let ctx = (entity-type-in $context)
+def complete-expand [place: record] {
+  let ctx = (entity-type-in (ctx $place))
   if $ctx == null or $ctx.type == null { return [] }
   $ctx.type.navs | each {|n| { value: $n.name, description: (if $n.collection { $"[($n.target)]" } else { $n.target }) } }
 }
-def complete-function [context: string] {
-  let svc = (ctx-service $context)
+def complete-function [place: record] {
+  let svc = (ctx-service (ctx $place))
   if $svc == null { return [] }
   let schema = (try { schema-for $svc } catch { return [] })
   $schema.functions | each {|f| { value: ($f | get -o import | default $f.name), description: ($"($f.kind) ($f.method) · (($f.params | get name) | str join ', ')" + (if $f.bound { $" · on ($f.binding)" + (if $f.binding_collection { " collection" } else { "" }) } else { "" })) } }
@@ -486,7 +491,7 @@ def complete-function [context: string] {
 # `--on` of `odata call`: the entity set. A flag takes one value and Nushell
 # does not complete inside a `[…]` or a quoted string, so the key and the
 # navigations are typed by hand (or the row is piped in instead).
-def complete-on [context: string] { complete-entity $context }
+def complete-on [place: record] { complete-entity $place }
 
 # Whether the last navigation of `nav` is a collection (false for none).
 def nav-is-collection [schema: any, entity: string, nav: list<string>]: nothing -> bool {
@@ -822,13 +827,12 @@ export def "odata count" [entity: string@complete-entity, --service (-s): string
 
 # ── The expand stage ──────────────────────────────────────────────────────────
 
-# Navigations for `| expand ⌶`: a completer only sees its own segment
-# (`expand `), so the `odata …` call is read from the whole buffer, or,
-# when there is none (`commandline complete` in a test), from the last
-# call this shell made.
-def complete-expand-stage [context: string] {
-  let line = (try { commandline } catch { "" })
-  let call = (if ($line | str contains "|") { $line | split row "|" | first } else { "" })
+# Navigations for `| expand ⌶`: the command at the cursor is only `expand`,
+# so the `odata …` call is read from `buffer`, the line up to the cursor
+# (Nushell 0.116; `commandline` is empty while a completer runs), or, when the
+# line has none, from the last call this shell made.
+def complete-expand-stage [buffer: string] {
+  let call = (if ($buffer | str contains "|") { $buffer | split row "|" | first } else { "" })
   let ctx = (if ($call | str trim | str starts-with "odata") { entity-type-in $call } else {
     let last = ($env.ODATA_LAST? | default null)
     if $last == null { null } else {

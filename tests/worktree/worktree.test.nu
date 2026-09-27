@@ -322,6 +322,7 @@ def "test Tab completes worktree names and profile names" [] {
   assert equal ("worktree apply --to m" | commandline complete) [main]
   assert equal ("worktree add x -p " | commandline complete | sort) [ci dev] "dflt is always applied, so never offered"
   assert equal ("worktree add x -p ci," | commandline complete | sort) ["ci,ci" "ci,dev"]
+  assert equal ("worktree add x --profiles=ci,d" | commandline complete) ["ci,dev"] "the glued form is a flag value too"
   cd (scratch)
   assert equal ("worktree remove " | commandline complete) [] "outside a layout: nothing, not an error"
 }

@@ -19,12 +19,12 @@ does **not** run the Tab menu's own rewrite (columns after `where`, no files
 after `ps`), which is layer three — for that:
 
 ```nu
-nu -l -c 'nu-complete smart "ls | where " 11'                          # the buffer, and the cursor position
-nu -l -c 'nu-complete smart "ls | where " 11 | select value description'
+nu -l -c '"ls | where " | commandline complete --input | nu-complete smart $in.buffer $in.place'   # the inputs the menu is handed
+nu -l -c '"ls | where " | commandline complete --input | nu-complete smart $in.buffer $in.place | select value description'
 ```
 
-Run on 2026-09-19: `name string · CLAUDE.md`, `type string · file`, `size
-filesize · 3.4 kB`, `modified datetime · …` — the columns with a sample from
+Run on 2026-09-27: `name string · CLAUDE.md`, `type string · file`, `size
+filesize · 5.6 kB`, `modified datetime · …` — the columns with a sample from
 a real run of `ls`.
 
 Two commands that look right and prove nothing:

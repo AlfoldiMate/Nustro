@@ -333,9 +333,9 @@ export def "nu-complete cargo spec" [focus: string = ""]: nothing -> record {
 
 # `cargo +nightly build`: the toolchain token is not a flag and not a
 # subcommand, so it is completed here and dropped before the spec runs.
-def complete-cargo [token, place?, buffer?] {
+def complete-cargo [place: record] {
   try {
-    let spans = (nu-complete spans $token (try { $place }) (try { $buffer }))
+    let spans = $place.command
     let partial = ($spans | last)
     if ($spans | length) == 2 and ($partial | str starts-with "+") {
       return (toolchains | nu-complete filter $partial)

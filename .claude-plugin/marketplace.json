@@ -24,7 +24,7 @@
     {
       "name": "nushell",
       "source": "./harness/claude-code/nushell",
-      "description": "Two skills and the Nushell language server, no hooks. nushell: writing, debugging and configuring Nushell 0.115 — language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. nustro-completion-build: teach Tab a CLI, a completions/<tool>.nu for Nustro's engine, the one `agent completion` runs. `nu --lsp` for .nu files: diagnostics after each edit, definitions, references, hover.",
+      "description": "Two skills and the Nushell language server, no hooks. nushell: writing, debugging and configuring Nushell 0.116 — language, structured data, modules, plugins, completions, $env.config, hooks, keybindings, stdlib, the built-in MCP server — and Nustro, the distro, when it is the shell. nustro-completion-build: teach Tab a CLI, a completions/<tool>.nu for Nustro's engine, the one `agent completion` runs. `nu --lsp` for .nu files: diagnostics after each edit, definitions, references, hover.",
       "category": "development",
       "keywords": [
         "nushell",

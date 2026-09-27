@@ -14,8 +14,9 @@ git checkout <Tab>        # branches by recency, then remotes and tags
 | Command | Does |
 |---|---|
 | `nu-complete run <spec> <spans>` | positional completion for an extern, from a spec (`engine.nu`) |
-| `nu-complete spans <token> <place> <buffer>` | the completer's input as a span list, on 0.115.1 and on #18791 builds alike (`engine.nu`) |
-| `nu-complete smart <buffer> <pos>` | the Tab menu source: the only place that sees the whole line (`smart.nu`). `<pos>` is an int or a `place` record |
+| `nu-complete external <spans>` | what the external completer (carapace) says for a span list, called with the inputs its closure names (`engine.nu`) |
+| `nu-complete spans <token> <place> <buffer>` | `$place.command`: kept for completions generated before Nushell 0.116 was required (`engine.nu`) |
+| `nu-complete smart <buffer> <place>` | the Tab menu source: the one place that sees both the line and Nushell's answer for it (`smart.nu`) |
 | `nu-complete quote` | quote a candidate the line would otherwise split (`Catppuccin Macchiato` → `"Catppuccin Macchiato"`); `run` and `smart` apply it to spec and `string@completer` values, never to commands, flags or paths (`engine.nu`) |
 | `nu-complete cache <key> <ttl> {}` | memoise a slow source for the session (`cache.nu`) |
 | `nu-complete status` | what is cached, and where |
@@ -76,17 +77,18 @@ meta.nuon    description, dependencies, knobs
 
 ## Tests
 
-`nu tests/run.nu completion` — four files under `tests/completion/`, 43
-tests, 2.4 s on the user's build and 2.9 s on the 0.115.1 release
-(2026-09-19): `engine` (spans, filter, quote, `run` over an inline spec),
+`nu tests/run.nu completion` — four files under `tests/completion/`, 64
+tests (2026-09-27, Nushell 0.116.0): `engine` (the `place.command` contract
+the specs walk, `external`, filter, quote, `run` over an inline spec),
 `smart` (columns, operators, values, the no-files rules, the eval gating with
 a `save` that must not run), `specs` (brew against `tests/fixtures/brew`,
 git and cargo against a scratch repository and workspace) and `cost` (the
 numbers above as upper bounds, ten to twenty times the measurement).
 `nu tests/run.nu pty` drives Tab in a real pseudo-terminal
 (`tests/pty/menu.test.nu`): the menu completing and inserting under the
-shipped defaults, and the partial-completion corruption on nushell main
-asserted per version. [Tests](../tests.md) is how to add one.
+shipped defaults, and partial completion under prefix matching, where the
+insert nushell#19053 broke has a common prefix to make.
+[Tests](../tests.md) is how to add one.
 
 ## Limits
 
@@ -95,7 +97,7 @@ use `commandline complete --detailed`. `nu -l -c` does not load the vendor
 autoload dir, where carapace is wired, so the external fallback looks empty
 headless even when it works in the REPL.
 
-Nushell [#18791](https://github.com/nushell/nushell/pull/18791) changed how
-every completer receives its input, after 0.115.1. `nu-complete spans` is the
-one place the two shapes meet, and every spec runs on both
-([Completion](../../concepts/completion.md#the-unified-completer-inputs)).
+Nushell 0.116 hands every completer — a spec's, a menu source, the external
+one — one record bound by the names it declares (`token`, `place`,
+`buffer`); the distro requires it
+([Completion](../../concepts/completion.md#the-completer-inputs)).

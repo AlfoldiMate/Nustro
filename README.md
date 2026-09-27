@@ -18,7 +18,7 @@ Nustro is a [Nushell](https://www.nushell.sh) distro: a configuration you
 your settings live in your own config directory, in a file the distro does
 not ship, and a `const` there shadows the one here. So `git pull` never conflicts, a knob you never mention
 keeps tracking the distro, and nothing you own is ever written inside the
-checkout. Nushell **0.115**; macOS, Linux and Windows, by CI on every push.
+checkout. Nushell **0.116**; macOS, Linux and Windows, by CI on every push.
 
 ## Install
 

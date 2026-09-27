@@ -622,19 +622,14 @@ def "worktree names" []: nothing -> list<string> {
 }
 
 # The profile directories, for `-p`. A value is comma-separated, so the
-# completion finishes the last name and keeps what is before it. What a
-# completer is handed differs by release — 0.115.1 fills the first positional
-# with the line typed so far, main (nushell#18791) binds by name — so the word
-# is taken from whichever arrived as a string (the same bridge as terminal's;
-# the `try`s because 0.115.1 leaves the later parameters unbound, not null).
-def "profile names" [token?: any, place?: any, buffer?: any]: nothing -> list<string> {
+# completion finishes the last name and keeps what is before it. `token` is
+# the value alone, `--profiles=a,` included (Nushell 0.116 splits the glued
+# form into a flag value).
+def "profile names" [token: record]: nothing -> list<string> {
     let c = try { ctx } catch { null }
     if $c == null { return [] }
-    let line = [$token (try { $place }) (try { $buffer })] | where ($it | describe) == "string" | get -o 0 | default ""
-    let word = $line | split row " " | last | str replace -r '^-p=?|^--profiles=?' ""
-    let head = $word | split row "," | drop | str join ","
-    list-profiles $c.root | where $it != $DFLT
-        | each {|n| if ($head | is-empty) { $n } else { $"($head),($n)" } }
+    let head = $token.text | split row "," | drop | each {|p| $p + "," } | str join ""
+    list-profiles $c.root | where $it != $DFLT | each {|n| $"($head)($n)" }
 }
 
 # The bare `worktree`: the subcommands, one line each. `help worktree`

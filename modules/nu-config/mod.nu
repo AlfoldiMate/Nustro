@@ -89,13 +89,21 @@ export def install-status []: nothing -> record<state: string, user: string, dis
   { state: $state, user: $u, distro: $d }
 }
 
+# The oldest Nushell the distro runs on: every completer in it takes the
+# inputs 0.116 binds by name (`place.command`), and on 0.115 a spec's Tab
+# silently falls back to files. CI pins the same version.
+const NU_REQUIRED = { major: 0, minor: 116 }
+
 # Health check for the whole setup.
 export def doctor []: nothing -> nothing {
   let ok = $"(ansi green)ok(ansi reset)"
   let bad = $"(ansi red)!!(ansi reset)"
   let inst = (install-status)
 
-  print $"(ansi cyan_bold)Nushell(ansi reset) ((version).version)  ($nu.current-exe)"
+  let v = (version)
+  let old = ($v.major < $NU_REQUIRED.major) or ($v.major == $NU_REQUIRED.major and $v.minor < $NU_REQUIRED.minor)
+  let need = (if $old { $"  (ansi red)the distro needs ($NU_REQUIRED.major).($NU_REQUIRED.minor) or later — Tab for brew, git and cargo offers only files here(ansi reset)" } else { "" })
+  print $"(ansi cyan_bold)Nushell(ansi reset) ($v.version)  ($nu.current-exe)($need)"
   let up = (upgrade status)
   let behind = (if $up.error == null and $up.behind > 0 { $"  (ansi yellow)($up.behind) behind ($up.upstream) — nu-config upgrade(ansi reset)" } else { "" })
   print $"(ansi cyan_bold)Distro(ansi reset)  ($inst.distro)($behind)"

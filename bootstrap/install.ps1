@@ -51,7 +51,7 @@ function Latest-Nu {
   # is verified against rather than failing.
   try {
     (Invoke-RestMethod 'https://api.github.com/repos/nushell/nushell/releases/latest').tag_name
-  } catch { '0.115.1' }
+  } catch { '0.116.0' }
 }
 
 function Install-NuZip {

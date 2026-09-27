@@ -1,7 +1,7 @@
 # The module: template, spec semantics, gotchas
 
 Verified against Nushell 0.115.1 and `modules/nu-complete/engine.nu` on
-2026-09-11. Read `engine.nu` itself when in doubt: it is 180 lines and is
+2026-09-11; the completer's signature against 0.116.0 on 2026-09-27. Read `engine.nu` itself when in doubt: it is 180 lines and is
 the truth.
 
 `docs/reference/completion-spec.md` in the repo is the same contract written for a
@@ -61,12 +61,12 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 }
 
 # null on any failure: Nushell then falls back to files instead of nothing.
-# The three names are what nushell#18791 binds by name; the inner `try`s are
-# what keeps the module working on 0.115.1, which binds only the first and
-# leaves the others UNBOUND — naming `$place` there is a runtime error, and a
-# completer that errors is silent. See docs/reference/completion-spec.md.
-def complete-<tool> [token, place?, buffer?] {
-  try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+# Nushell (0.116) binds a completer's inputs by the names it declares; `place`
+# is the one a spec needs, and `place.command` is the span list the engine
+# walks — the command at the cursor, alias expanded. See
+# docs/reference/completion-spec.md, "The completer's input".
+def complete-<tool> [place: record] {
+  try { nu-complete run (nu-complete <tool> spec) $place.command } catch { null }
 }
 
 # `main`: a module cannot export an extern of its own name; `use <tool>.nu *` yields `<tool>`.
@@ -93,9 +93,8 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 
 ## Spec semantics (engine.nu)
 
-- `nu-complete spans` normalises the completer's input to
-  `[tool, arg…, partial]` on either release; the partial is `""` at a fresh
-  slot.
+- `place.command` is `[tool, arg…, partial]`; the partial is `""` at a
+  fresh slot. `"<tool> sub " | commandline complete --input` shows it.
 - Walk: a token starting with `-` is a flag (root flags apply everywhere;
   a flag with `arg` consumes the next token, or `--flag=value`); the first
   non-flag token that names a subcommand descends; the rest are positionals.
@@ -131,6 +130,8 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 - **stor caches die with the shell, `stor import` wipes them**: big lists go
   to SQLite files under `nu-complete cache-dir`; `open x.db | query db "… like 'fo%'"`
   answers 16k rows in 1-3 ms.
+- **Never `@interactive`** on the completer: `commandline complete` then
+  refuses it headless, and `verify.nu` with it.
 - **`try { } catch { null }`** around the completer: an error is otherwise
   silent and Nushell shows files. Test the inner call directly.
 - **Aliases**: engine has none. Copy the node under the alias name.
@@ -156,7 +157,7 @@ nu -l -c '"<tool> sub --" | commandline complete --detailed | get value'
 nu -l -c '"<tool> sub --flag " | commandline complete --detailed | get value'
 nu -l -c 'nu-complete run (nu-complete <tool> spec) [<tool> sub ""]'      # the error the try hides
 nu -l -c 'timeit { "<tool> sub " | commandline complete --detailed }'
-nu -l -c 'nu-complete smart "<tool> sub " 12'                              # the Tab menu path
+nu -l -c '"<tool> sub " | commandline complete --input | nu-complete smart $in.buffer $in.place'   # the Tab menu path
 nu ${CLAUDE_SKILL_DIR}/scripts/verify.nu <tool> --cases cases.nuon --oracle carapace
 ```
 

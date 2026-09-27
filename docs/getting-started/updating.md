@@ -50,7 +50,9 @@ old version, or a plugin command failing after an upgrade, is this and
 nothing else ([Plugins](../concepts/plugins.md)).
 
 Nushell makes breaking changes at minor versions; the distro is verified
-against 0.115, and the pin is raised deliberately.
+against 0.116 (CI pins 0.116.0), and the pin is raised deliberately.
+`nu-config doctor` says so on the first line when the `nu` running it is
+older.
 
 ## After installing a tool
 

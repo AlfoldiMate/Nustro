@@ -1,5 +1,6 @@
 # The Tab menu source (modules/nu-complete/smart.nu), called the way the menu
-# calls it: `nu-complete smart <line> <cursor>`. No terminal needed. The
+# calls it: `nu-complete smart <buffer> <place>`, with the inputs Nushell
+# would hand it (`commandline complete --input`). No terminal needed. The
 # pipeline probe runs `nu -n -c` in a subprocess with the test's $env.PWD;
 # `commandline complete` itself lists files from the process's working
 # directory, which a `cd` in a test does not move, so the `cd` fallback runs
@@ -9,7 +10,8 @@ use std/assert
 use nu-complete *
 
 def smart [line: string]: nothing -> list<record> {
-  nu-complete smart $line ($line | str length)
+  let i = ($line | commandline complete --input)
+  nu-complete smart $i.buffer $i.place
 }
 
 def kinds [line: string]: nothing -> list<string> {
@@ -58,6 +60,12 @@ def "test a number slot stops offering files, before a pipe too" [] {
   assert equal (kinds "ls | first ") []
 }
 
+def "test a slot inside a closure or a subexpression is read the same way" [] {
+  assert equal (kinds "echo (first ") []
+  assert equal (kinds "ls | each {|r| first ") []
+  assert equal (kinds "echo (ps ") []
+}
+
 def "test a flag slot and a flag value keep the Nushell answer" [] {
   assert equal (smart "cd --" | get value) [--help --physical]
 }
@@ -94,7 +102,7 @@ def "test no candidate is listed twice" [] {
 def "test cd in a folder with nothing to enter offers parents and places" [] {
   let d = scratch
   cd $d
-  let code = $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]; use nu-complete *; nu-complete smart 'cd ' 3 | select value description | to nuon"
+  let code = $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]; use nu-complete *; let i = \('cd ' | commandline complete --input\); nu-complete smart $i.buffer $i.place | select value description | to nuon"
   let out = ^$nu.current-exe -n -c $code | complete
   assert equal $out.exit_code 0 $out.stderr
   let got = $out.stdout | from nuon

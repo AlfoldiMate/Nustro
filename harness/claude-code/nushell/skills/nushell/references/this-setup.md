@@ -6,7 +6,7 @@ describes what the distro is, not one machine: the concrete paths, the
 terminal, the edit mode and the theme are what `nu-config doctor`,
 `nu-config knobs` and `theme status` print on the machine at hand.
 
-Nushell is **0.115** (the bootstrap installs it: Homebrew on macOS, winget
+Nushell is **0.116** (the bootstrap installs it: Homebrew on macOS, winget
 on Windows, a release on Linux). The terminal is Ghostty or WezTerm —
 `terminal target` says which — with one theme rendered for everything by
 `theme use` (`docs/concepts/theming.md`); the prompt is Starship.

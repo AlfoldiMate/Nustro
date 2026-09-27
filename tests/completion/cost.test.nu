@@ -11,12 +11,12 @@ def fastest [runs: int, code: closure]: nothing -> duration {
   1..$runs | each {|_| timeit $code } | math min
 }
 
-def "test spans rebuilds a long line within its budget" [] {
-  # 26 tokens: 0.24 ms.
-  let line = 'git commit -m "a b" --author=x ' + (1..20 | each {|i| $"word($i)" } | str join " ")
-  let place = { target: { start: ($line | str length) } }
-  let took = fastest 5 { nu-complete spans { text: "" } $place $line }
-  assert ($took < 5ms) $"spans took ($took)"
+def "test external binds the completer inputs within its budget" [] {
+  # 0.2 ms (2026-09-27): reading the closure's header, building its inputs.
+  $env.config.completions.external.completer = {|place: record, buffer: string| [] }
+  let spans = [git commit -m '"a b"' --author=x] ++ (1..20 | each {|i| $"word($i)" })
+  let took = fastest 5 { nu-complete external $spans }
+  assert ($took < 5ms) $"external took ($took)"
 }
 
 def "test quote scans two thousand plain values within its budget" [] {
@@ -47,10 +47,12 @@ def "test filter narrows two thousand values within its budget" [] {
 def "test the smart menu answers from its signature table within its budget" [] {
   # The first call builds the table (140 ms); after that `ps ` is 1.4 ms and
   # `ls | where ` 2.7 ms from the memoised probe.
-  nu-complete smart "ps " 3 | ignore
-  nu-complete smart "ls | where " 11 | ignore
-  let ps = fastest 5 { nu-complete smart "ps " 3 }
+  let ps_in = ("ps " | commandline complete --input)
+  let cols_in = ("ls | where " | commandline complete --input)
+  nu-complete smart $ps_in.buffer $ps_in.place | ignore
+  nu-complete smart $cols_in.buffer $cols_in.place | ignore
+  let ps = fastest 5 { nu-complete smart $ps_in.buffer $ps_in.place }
   assert ($ps < 30ms) $"ps took ($ps)"
-  let cols = fastest 5 { nu-complete smart "ls | where " 11 }
+  let cols = fastest 5 { nu-complete smart $cols_in.buffer $cols_in.place }
   assert ($cols < 50ms) $"ls | where took ($cols)"
 }

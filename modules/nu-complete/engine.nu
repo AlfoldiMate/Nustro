@@ -2,20 +2,22 @@
 #
 # Attach to an extern with Nushell's command-wide completer attribute:
 #
-#   def "brew complete" [token, place?, buffer?] {
-#     nu-complete run (brew spec) (nu-complete spans $token (try { $place }) (try { $buffer }))
+#   def "brew complete" [place: record] {
+#     nu-complete run (brew spec) $place.command
 #   }
 #   @complete "brew complete"
 #   export extern brew [...args]
 #
-# Those parameter names are not decoration: since nushell#18791 a completer is
+# The parameter name is not decoration: since Nushell 0.116 a completer is
 # handed one record whose fields bind to the parameters it NAMES, from the set
-# token / place / buffer. `nu-complete spans` turns them back into the span
-# list this file walks — the command name, every argument typed so far and the
-# partial token (an empty string at a fresh slot) — and returns the same list
-# on 0.115.1, which knows nothing of that record. Nushell does NOT filter what
-# a command-wide completer returns, so `run` filters with the user's
-# completions.algorithm itself.
+# token / place / buffer. `place.command` is the span list this file walks —
+# the command name, every argument typed so far and the partial token (an
+# empty string at a fresh slot) — resolved by Nushell at the cursor: after a
+# pipe or `;`, inside a closure or a subexpression, and with an alias at the
+# head expanded (`gco ma` arrives as [git checkout ma]). Nushell does NOT
+# filter what a command-wide completer returns (not even with
+# `options.filter: true` in the envelope, 0.116.0), so `run` filters with the
+# user's completions.algorithm itself.
 #
 # A spec is a plain record, meant to be read and edited by a person:
 #
@@ -40,37 +42,12 @@
 # `path` is the subcommand chain. Flags declared on the root spec apply
 # everywhere; a flag with an `arg` consumes the next token.
 
-# The completer's input, as the span list `run` walks.
-#
-# A build with #18791 (0.115.2 here, the first after 0.115.1) binds a
-# completer's parameters by name from {token, place, buffer}; 0.115.1 hands it
-# one positional span list. A completer
-# declared `[token, place?, buffer?]` is right on both: the new build fills all
-# three by name, and no parameter is named `spans`, which is what its
-# compatibility bridge warns about (once a session, in the REPL, after the
-# menu closes). 0.115.1 fills only the first, with the span list.
-#
-# It does not fill the other two with null — it never binds them, so naming
-# `$place` there is `variable not found` at runtime, which a completer turns
-# into silent file completion. Hence `(try { $place })` at every call site: the
-# guard is the version test, and `$token` being a list is the confirmation.
-#
-# On the new build the list is rebuilt from the buffer, because the record
-# carries no token list: `ast --flatten` for the tokens (quote-aware, 30 us),
-# `place.target.start` for where the token under the cursor begins, and the
-# last command head at or before it for where this command's own tokens start
-# (`ls | git ch` must not be handed `ls`). Verified token for token against
-# 0.115.1's real spans over quoted arguments, `--flag=value`, pipelines, `;`,
-# a fresh slot and an unterminated quote. One difference is deliberate: an
-# alias is not expanded here, where Nushell expanded it. `run` drops span 0,
-# and carapace expands aliases itself.
-export def "nu-complete spans" [token: any, place: any, buffer: any]: nothing -> list<string> {
-  if $place == null { return ($token | default []) }      # 0.115.1: already a span list
-  let cut = $place.target.start
-  let before = (try { ast --flatten $buffer } catch { [] }) | where {|t| $t.span.end <= $cut }
-  let heads = ($before | enumerate | where {|r| $r.item.shape in ["shape_external" "shape_internalcall"] })
-  let head = if ($heads | is-empty) { 0 } else { $heads | last | get index }
-  ($before | skip $head | get content) ++ [$token.text]
+# The span list, for a completion written before Nushell 0.116 was required:
+# `nu-complete run (spec) (nu-complete spans $token (try { $place }) (try
+# { $buffer }))`, which is what `agent completion` generated into your
+# completions/ until 2026-09-27. It is `$place.command` now; new code says so.
+export def "nu-complete spans" [token: any, place?: any, buffer?: any]: nothing -> list<string> {
+  if ($place | describe) =~ '^record' { $place.command } else { $token | default [] }
 }
 
 # Candidates as records, whatever shape the source used.
@@ -197,10 +174,45 @@ def flag-items [node: record, root: record, is_root: bool, partial: string]: not
 }
 
 # Ask the external completer (carapace) the way Nushell would.
+#
+# By hand, because nothing in Nushell chains to it: `fallback: true` in a
+# declared extern's answer adds file completion, `null` declines to file
+# completion, and the external completer is never consulted for a command
+# that has a completer of its own (0.116.0, measured). Nushell binds a
+# completer's inputs by the names it declares, which `do` cannot, so the
+# closure's own header says which to pass and in what order (`view source`,
+# 9 µs). What it is handed is rebuilt from `spans`: `command` exact,
+# `buffer` the words joined, cursor and target at its end — enough for
+# carapace, which reads only `$place.command`. `spans`, the pre-0.116 name,
+# still gets the list.
 export def "nu-complete external" [spans: list<string>]: nothing -> any {
   let ext = ($env.config.completions.external.completer? | default null)
   if $ext == null { return null }
-  do $ext $spans
+  let buffer = ($spans | str join " ")
+  let cursor = ($buffer | str length)
+  let target = { start: ($cursor - ($spans | last | default "" | str length)), end: $cursor }
+  let partial = ($spans | last | default "")
+  let inputs = {
+    token: { text: $partial, kind: (if ($partial | str starts-with "-") { "flag" } else { "value" }), span: $target }
+    place: { cursor: $cursor, target: $target, command: $spans }
+    buffer: $buffer
+    spans: $spans
+  }
+  let args = (closure-params $ext | each {|p| $inputs | get -o $p })
+  do $ext ...$args
+}
+
+# The parameter names in a closure's header: `{|place: record, buffer|` →
+# [place buffer]. Types are dropped (angle-bracketed ones first, since they
+# may hold commas), so are `?` and `...`.
+def closure-params [c: closure]: nothing -> list<string> {
+  let head = (view source $c | parse --regex '^\s*\{\s*\|(?<p>[^|]*)\|' | get -o 0.p | default "")
+  $head
+  | str replace --all --regex '<[^<>]*>' '' | str replace --all --regex '<[^<>]*>' ''
+  | str replace --all --regex ':\s*[\w-]+' ''
+  | split row --regex '[,\s]+'
+  | str replace --regex '^\.\.\.' '' | str trim --right --char '?'
+  | where {|p| $p != "" }
 }
 
 # Walk `spans` through the spec and return the candidates for the last one.

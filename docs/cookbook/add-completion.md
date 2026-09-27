@@ -61,7 +61,7 @@ use nu-complete *
 
 def --wrapped starship-out [...args: string]: nothing -> list<string> {
   let r = (^starship ...$args | complete)
-  if $r.exit_code != 0 { [] } else { $r.stdout | lines }
+  if $r.exit_code != 0 { [] } else { $r.stdout | lines --skip-empty }
 }
 
 # The `Commands:` block of --help: "  name  description" until the blank line.
@@ -100,8 +100,8 @@ export def "nu-complete starship spec" []: nothing -> record {
   }
 }
 
-def complete-starship [token, place?, buffer?] {
-  try { nu-complete run (nu-complete starship spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+def complete-starship [place: record] {
+  try { nu-complete run (nu-complete starship spec) $place.command } catch { null }
 }
 
 @complete "complete-starship"
@@ -110,9 +110,9 @@ export extern main [...args]
 
 Three parts, always in this order: private sources, one exported `spec`
 command, the completer and the extern. The last four lines are the same in
-every module and the parameter names and the inner `try`s are load-bearing —
-[Completion specs](../reference/completion-spec.md) says why, and has the
-whole spec format. `main`, because a module cannot export an extern of its
+every module, and the parameter's name is load-bearing: Nushell binds
+`place` by it — [Completion specs](../reference/completion-spec.md) says
+why, and has the whole spec format. `main`, because a module cannot export an extern of its
 own name.
 
 Cache anything slower than a few milliseconds: `nu-complete cache "key" 5sec
@@ -139,13 +139,15 @@ nu -l -c '"starship preset --" | commandline complete --detailed | get value'
 nu -l -c '"starship preset gru" | commandline complete --detailed | get value'      # gruvbox-rainbow
 nu -l -c 'nu-complete run (nu-complete starship spec) [starship preset ""]'         # the error the `try` hides, if any
 nu -l -c 'timeit { "starship preset " | commandline complete --detailed }'          # 1.6 ms
-nu -l -c 'nu-complete smart "starship preset " 16 | get value'                      # the Tab menu path
+nu -l -c '"starship preset " | commandline complete --input | nu-complete smart $in.buffer $in.place | get value'   # the Tab menu path
 nu -l -c 'nu-config startup-time'                                                    # within noise of before
 ```
 
 Run on 2026-09-19: the four subcommand rows with their descriptions, the
 twelve presets, `--output --force --list`, `gruvbox-rainbow`, 1.6 ms for the
 preset slot, 1.4 ms for the subcommand slot, startup 57-66 ms over five runs.
+Run again on 2026-09-27 against Nushell 0.116.0, with the completer taking
+`place`: the same rows, the twelve presets through the Tab menu path too.
 
 `nu --ide-complete` does **not** run `@complete` completers, so it proves
 nothing; and `nu -l -c` does not load the vendor autoload directory, where

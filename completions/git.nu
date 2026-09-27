@@ -206,8 +206,10 @@ export def "nu-complete git spec" []: nothing -> record {
   }
 }
 
-def complete-git [token, place?, buffer?] {
-  try { nu-complete run (nu-complete git spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+# null on any failure: Nushell then falls back to file completion instead of
+# showing nothing.
+def complete-git [place: record] {
+  try { nu-complete run (nu-complete git spec) $place.command } catch { null }
 }
 
 # `main` so that `use git.nu *` yields `git`.

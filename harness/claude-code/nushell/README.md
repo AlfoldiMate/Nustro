@@ -1,6 +1,6 @@
 # nushell plugin for Claude Code
 
-Two skills and the language server, no hooks. `nushell` keeps a session in Nushell 0.115
+Two skills and the language server, no hooks. `nushell` keeps a session in Nushell 0.116
 rather than in bash: the language and its parse-time rules, structured data,
 modules, plugins, completions, `$env.config`, hooks, keybindings, the
 standard library, the built-in MCP server — and

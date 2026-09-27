@@ -8,10 +8,9 @@ layers fit together. This page is the contract: what a module must look like,
 what it may assume, and what it has to prove before it is wired in. Building
 one, step by step, is [Add Tab completion for a tool](../cookbook/add-completion.md).
 
-Verified against Nushell 0.115.1 and against 0.115.2, the first build with
-the unified completer inputs; every module here runs on both.
-The completer's own signature is the one place they differ — read [The
-completer's input](#the-completers-input) before writing a new module.
+Verified against Nushell 0.116.0 (2026-09-27), which the distro requires:
+its completers are handed their inputs by name — read [The completer's
+input](#the-completers-input) before writing a new module.
 
 ## What a module owes you
 
@@ -75,10 +74,9 @@ export def "nu-complete <tool> spec" []: nothing -> record {
 }
 
 # `null` on any failure: Nushell then falls back to files rather than to nothing.
-# The parameter names and the inner `try`s are load-bearing on both releases —
-# see "The completer's input".
-def complete-<tool> [token, place?, buffer?] {
-  try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+# The parameter's NAME is what Nushell binds — see "The completer's input".
+def complete-<tool> [place: record] {
+  try { nu-complete run (nu-complete <tool> spec) $place.command } catch { null }
 }
 
 # `main`, because a module cannot export an extern of its own name:
@@ -171,8 +169,8 @@ A spec is a plain record, meant to be read and edited by a person.
 
 How the engine walks a line:
 
-- `nu-complete spans` hands the walk `[tool, arg…, partial]`, the partial
-  being `""` at a fresh slot, whichever shape the release gave the completer.
+- `place.command` hands the walk `[tool, arg…, partial]`, the partial being
+  `""` at a fresh slot, with an alias at the head already expanded.
 - A token starting with `-` is a flag. Root flags apply everywhere; a flag with
   an `arg` consumes the next token, and `--flag=value` is understood.
 - The first non-flag token that names a subcommand descends into it.
@@ -297,7 +295,7 @@ nu -l -c '"<tool> sub --" | commandline complete --detailed | get value'
 nu -l -c '"<tool> sub --flag " | commandline complete --detailed | get value'
 nu -l -c 'nu-complete run (nu-complete <tool> spec) [<tool> sub ""]'   # the error the `try` hides
 nu -l -c 'timeit { "<tool> sub " | commandline complete --detailed }'
-nu -l -c 'nu-complete smart "<tool> sub " 12'                   # the Tab menu path
+nu -l -c '"<tool> sub " | commandline complete --input | nu-complete smart $in.buffer $in.place'   # the Tab menu path
 nu -l -c 'nu-config startup-time'                               # within noise of before
 ```
 
@@ -329,9 +327,10 @@ Each of these cost time once.
   files.
 - **Wrap the completer body in `try { … } catch { null }`**, and test the inner
   command directly when a slot misbehaves.
-- **An unfilled completer parameter is unbound, not null**, on 0.115.1 — see
-  "The completer's input". The symptom is a module that works on one release
-  and silently offers files on the other.
+- **A parameter named anything but `token`, `place` or `buffer` gets
+  nothing** (0.116), and one named `spans` or `context` gets the old shape
+  through a bridge that prints a deprecation warning — see "The completer's
+  input".
 - **`lines --skip-empty`, not a closure filter.** Over 16k lines the closure
   costs ~12 ms and the flag costs nothing: 15 ms → 4 ms.
 - **No hard-coded home directory.** `$nu.home-dir`, `$env.HOMEBREW_PREFIX?`,
@@ -345,53 +344,47 @@ Each of these cost time once.
 
 ## The completer's input
 
-Nushell [#18791](https://github.com/nushell/nushell/pull/18791) unified how
-every completer receives its input, and landed after 0.115.1. A completer's
-parameters are now bound **by name** from a fixed set — `token`
-(`{text, kind, span}`), `place` (`{cursor, target, kind, flag?, index?,
-shape?}`) and `buffer` — instead of by position. Whether a binary has it:
-`nu -n -c 'attr interactive'`, exit 0 → yes.
-
-Every shipped module is written for both releases, and the whole of the
-difference is one line:
+Since Nushell 0.116 ([#18791](https://github.com/nushell/nushell/pull/18791)
+and its follow-ups) a completer's parameters are bound **by name** from a
+fixed set — `token` (`{text, kind, span}`), `place` (`{cursor, target, kind,
+index?, flag?, shape?, command}`) and `buffer`, the line up to the cursor —
+instead of by position. A spec's completer needs only `place`:
 
 ```nu
-def complete-<tool> [token, place?, buffer?] {
-  try { nu-complete run (nu-complete <tool> spec) (nu-complete spans $token (try { $place }) (try { $buffer })) } catch { null }
+def complete-<tool> [place: record] {
+  try { nu-complete run (nu-complete <tool> spec) $place.command } catch { null }
 }
 ```
 
-- **The names matter.** They are what the new build binds to; name one `spans`
-  and it still works, through a compatibility bridge that queues a deprecation
-  warning the REPL prints once a session.
-- **The `try`s matter more.** 0.115.1 fills only the first parameter, and it
-  does not fill the others with null — it never binds them, so naming `$place`
-  there is `variable not found` at runtime. A completer that errors is silent,
-  so the whole module would quietly degrade to file completion on the older
-  release. The guards are the compatibility.
-- **`nu-complete spans` is the single point of change.** It returns 0.115.1's
-  span list as it stands, and rebuilds the identical list from `buffer` on a
-  newer build. Everything downstream — `nu-complete run`, every `{|ctx| …}`
-  source, `ctx.spans` — is unchanged on both.
+- **`place.command` is the span list.** The command at the cursor, word by
+  word, the partial last — after a pipe or `;`, inside a closure or a
+  subexpression, with an alias at the head expanded (`gco ma` →
+  `[git checkout ma]`). Quoted arguments and `--flag=value` stay one word.
+- **The name is the contract.** Name the parameter `spans` and it still gets
+  the list, through a bridge that queues a deprecation warning the REPL
+  prints once a session; any other name gets nothing.
+- **A module generated before 2026-09-27** calls `nu-complete spans $token
+  (try { $place }) (try { $buffer })`; that keeps working (`nu-complete
+  spans` is now `$place.command`), and the line above is what to change it to.
 
-Two findings from testing the merged build, both of which read the other way
-in the PR description:
+Two findings from testing 0.116.0, both of which read the other way in the
+release notes:
 
 - `options.filter: true` does **not** narrow a command-wide completer's
   output. The engine keeps filtering its own results, honouring the user's
   `completions.algorithm` and `case_sensitive`.
-- `fallback: true` in the returned envelope does **not** chain to carapace.
-  For a declared `extern` — which every module here has — it means "and also
-  what Nushell would have offered", i.e. file completion; the external
-  completer is not consulted at all. `fallback: "external"` in a spec still
-  means what it says, because `nu-complete external` calls carapace by hand.
+- `fallback: true` in the returned envelope, like a `null` answer, does
+  **not** reach carapace. For a declared `extern` — which every module here
+  has — it means "and also file completion"; the external completer is not
+  consulted at all. `fallback: "external"` in a spec still means what it
+  says, because `nu-complete external` calls carapace by hand.
 
-Not yet used, and worth knowing about: `place.target` is the exact range a
-suggestion replaces, `place.kind` and `place.shape` say whether the cursor is
-on a flag value or a positional without walking the spans, `@interactive` lets
-a completer own the terminal (an `fzf` picker for `brew install`), and
 `commandline complete --input` prints the three inputs for a line without
 running any completer — the fastest way to see what a slot looks like.
+
+Do **not** mark a completer `@interactive`: `commandline complete` then
+refuses it outside the line editor (`interactive_completer_needs_a_terminal`),
+and every check on this page stops working.
 
 ## Where everything is
 
