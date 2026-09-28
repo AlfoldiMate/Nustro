@@ -45,6 +45,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 
 | | |
 |---|---|
+| [Glossary](reference/glossary.md) | the words these pages use in a fixed sense — knob, drop-in, tier, place, pushdown — each with the page that defines it |
 | [Knobs](reference/knobs.md) | every value `defaults.nu` ships, and where the module knobs are |
 | [Files and formats](reference/files.md) | every file the distro reads or writes, `.nu` against NUON against JSON |
 | [meta.nuon](reference/meta-nuon.md) | every field a module declares, and what `module lint` checks |
@@ -85,4 +86,6 @@ otherwise re-litigate, with the numbers that decided them. A reference page
 follows `templates/module-doc.md`: what it is, every command, configuration,
 dependencies, measured costs, files, limits. A cookbook page is one task,
 run once as written before it is committed, ending with what was seen. A
-measured number moves with its subject and never loses its date.
+measured number moves with its subject and never loses its date. A word
+used in a fixed sense is in the [glossary](reference/glossary.md), pointing
+at the page that defines it; a new one goes there too.

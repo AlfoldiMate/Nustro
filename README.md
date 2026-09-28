@@ -1,24 +1,29 @@
 # Nustro
 
-<p align="center"><img src="docs/assets/demo.gif" width="960" alt="One Ghostty window: Tab offers the columns of a pipeline, brew formulae with descriptions and crates; theme use recolours the window live, font use swaps the font, an OData query is pushed to the server, agent exec turns a sentence into a pipeline"></p>
-
-One window, a hundred seconds, one cut (six seconds of waiting for Claude).
-Tab after `ls | where` offers
-the columns, each with its type and a sample value; `brew install` completes
-sixteen thousand formulae with their descriptions; `theme use` recolours the
-terminal you are sitting in — prompt, tables, `ls`, the app icon — and
-`font use` swaps the font in every open window; `odata People | where … |
-select … | first 4` sends the server one request with `$filter`, `$select`
-and `$top`; and `agent exec` turns a sentence into a pipeline that you run
-with Enter. Every keystroke is real; the shell is the one this repo installs,
-on its shipped defaults, recorded 2026-09-19.
-
 Nustro is a [Nushell](https://www.nushell.sh) distro: a configuration you
 **install** rather than copy. The distro is a git checkout you never edit;
 your settings live in your own config directory, in a file the distro does
-not ship, and a `const` there shadows the one here. So `git pull` never conflicts, a knob you never mention
-keeps tracking the distro, and nothing you own is ever written inside the
-checkout. Nushell **0.116**; macOS, Linux and Windows, by CI on every push.
+not ship, and a `const` there shadows the one here. So `git pull` never
+conflicts, a knob you never mention keeps tracking the distro, and nothing
+you own is ever written inside the checkout. A pull that would break the
+shell does not land: `nu-config upgrade` checks the update out into a
+throwaway worktree and `nu-check`s it — your `settings.nu` included — before
+it fast-forwards, and what parses but misbehaves `nu-config upgrade
+rollback` takes back. Nushell **0.116**; macOS, Linux and Windows, by CI on
+every push.
+
+```
+YOUR config directory                        THE DISTRO (a git checkout)
+  config.nu     3 lines, points here ──▶       distro.nu      entrypoint
+  settings.nu   every knob, commented          defaults.nu    every knob, shipped value
+  autoload/     drop-ins, loaded last          conf/          behaviour
+  completions/ themes/ modules/ plugins/       modules/ completions/ themes/
+  history, plugin registry, .state/, vendor/   templates/user/  docs/  tests/  harness/
+```
+
+Nushell only ever knows about the left-hand side; `config.nu` sources the
+distro, and the layering is a language feature, not a build step
+([Layout](docs/concepts/layout.md)).
 
 ## Install
 
@@ -62,6 +67,21 @@ a sample value, `brew install <Tab>` every formula in 3 ms, `git checkout
 <Tab>` branches by recency. Ctrl+R is history, F1 help, Alt+E hands the line
 you are typing to Claude.
 
+## What it looks like
+
+<p align="center"><img src="docs/assets/demo.gif" width="960" alt="One Ghostty window: Tab offers the columns of a pipeline, brew formulae with descriptions and crates; theme use recolours the window live, font use swaps the font, an OData query is pushed to the server, agent exec turns a sentence into a pipeline"></p>
+
+One window, a hundred seconds, one cut (six seconds of waiting for Claude).
+Tab after `ls | where` offers
+the columns, each with its type and a sample value; `brew install` completes
+sixteen thousand formulae with their descriptions; `theme use` recolours the
+terminal you are sitting in — prompt, tables, `ls`, the app icon — and
+`font use` swaps the font in every open window; `odata People | where … |
+select … | first 4` sends the server one request with `$filter`, `$select`
+and `$top`; and `agent exec` turns a sentence into a pipeline that you run
+with Enter. Every keystroke is real; the shell is the one this repo installs,
+on its shipped defaults, recorded 2026-09-19.
+
 ## What is in the box
 
 Startup is **84 ms** on an M-series Mac against 47 ms for Nushell with no
@@ -89,11 +109,12 @@ it.
 |---|---|
 | [Getting started](docs/README.md#getting-started) | install, the first shell, the first setting, the first theme, updating |
 | [Concepts](docs/README.md#concepts) | how it works and why — the two directories, startup, modules, completion, theming, the agent, OData, worktrees, agent harnesses, plugins — with every measured number |
-| [Reference](docs/README.md#reference) | every command, every knob, every file; one page per module |
+| [Reference](docs/README.md#reference) | every command, every knob, every file; one page per module; a [glossary](docs/reference/glossary.md) |
 | [Cookbook](docs/README.md#cookbook) | one task per page: add a completion, override one, write a drop-in, make a palette, pin a font, debug Tab, test a change, uninstall |
 
 `nu tests/run.nu` runs the suite — Nushell on `std assert`, every shell it
 starts in a config directory of its own ([Tests](docs/reference/tests.md)).
+[CONTRIBUTING.md](CONTRIBUTING.md) is the rules for a change.
 
 ## Platforms
 
