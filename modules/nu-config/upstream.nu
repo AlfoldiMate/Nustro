@@ -153,7 +153,10 @@ def preflight [target: string]: nothing -> any {
   let dir = ($nu.data-dir | path join .state nu-config preflight)
   git-in [worktree remove --force $dir] | ignore
   if ($dir | path exists) { rm -rf $dir }
-  let w = (git-in [worktree add --detach --force $dir $target])
+  # core.longpaths: under a deep data dir on Windows the checkout's longest
+  # paths (harness/claude-code/nushell/skills/…) pass MAX_PATH, and git
+  # stops at "unable to create file" without it; `nu` handles them itself.
+  let w = (git-in [-c core.longpaths=true worktree add --detach --force $dir $target])
   if $w.exit_code != 0 { return $"could not check ($target) out for a look: ($w.stderr | str trim)" }
   let why = do {
     let req = (manifest $dir).requires_nu?

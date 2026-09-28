@@ -40,6 +40,12 @@ def clones []: nothing -> record {
     git $work push -q
   }
   ^git clone -q $remote $distro
+  # The scratch directory is deep on the Windows runner, and a pack's keep
+  # file in the remote or a checkout's longest path passes MAX_PATH there;
+  # git needs telling. A missing XDG_CONFIG_HOME is a warning on the child's
+  # stderr, so the directory is made.
+  for r in [$remote $distro $work] { git $r config core.longpaths "true" | ignore }
+  mkdir ($d | path join config)
   { remote: $remote, distro: $distro, work: $work, data: ($d | path join data), config: ($d | path join config) }
 }
 
