@@ -665,9 +665,15 @@ def transform [root: string] {
 def "worktree names" []: nothing -> list<string> {
     let c = try { ctx } catch { null }
     if $c == null { return [] }
-    ls -a $c.root | where type == dir | get name
-        | where {|d| ($d | path join ".git" | path type) == "file" }
-        | path basename
+    # git's own list, so `feature/x` — a directory below the root — and a
+    # worktree placed outside it are offered too; the bare entry is skipped.
+    # git prints `/` on Windows where `path join` made `\`, hence the expand.
+    let root = ($c.root | path expand -n)
+    run-git $c.root worktree list "--porcelain" | split row "\n\n"
+        | where {|b| $b !~ '(?m)^bare$' }
+        | each {|b| $b | lines | first | str substring 9.. | path expand -n }
+        | each {|p| try { $p | path relative-to $root } catch { $p } }
+        | where ($it | is-not-empty)
 }
 
 # The profile directories, for `-p`. A value is comma-separated, so the

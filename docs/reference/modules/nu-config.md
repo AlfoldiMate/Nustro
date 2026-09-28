@@ -17,7 +17,8 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 |---|---|
 | `doctor` | health check: both roots, layout state, files, search paths, parse, tools, plugins, Claude Code (the marketplace, each plugin beside its module), completion caches, modules |
 | `knobs [--overridden]` | every knob from `defaults.nu` and every module's `meta.nuon`, with whether your `settings.nu` sets it |
-| `module list \| info \| check \| enable \| disable \| lint` | the module system — [Modules](../../concepts/modules.md). `check` prints each dependency with its install line and, for a missing one, `then:` — what to do once it is installed; a `group` (Ghostty or WezTerm) is satisfied by any member |
+| `module list \| info \| check \| enable \| disable \| lint` | the module system — [Modules](../../concepts/modules.md). `check` prints each dependency with its install line and, for a missing one, `then:` — what to do once it is installed; a `group` (Ghostty or WezTerm) is satisfied by any member. `enable` of a module of yours is lazy whatever the flag: the eager `source` lines are parse-time and the distro's, so an eager module of yours is a `use` in `settings.nu` |
+| `module help <name> [--path]` | the page `docs:` names in the module's `meta.nuon`, through `glow` when installed and `$PAGER` otherwise — before the module has loaded, when `help theme` still says nothing; `--path` prints where it is |
 | `missing-tool <module> [bin] [--command]` | the error a command raises when its module's tool is not installed, worded from `meta.nuon` — for modules to import from `missing.nu`, not to type |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
 | `upgrade` | fetch; check the upstream out into a throwaway worktree under `<your>/.state/nu-config/`, refuse it when its `nustro.nuon` needs a newer Nushell or its `distro.nu` fails `nu-check` with the running `nu` (the parse error is printed, the checkout untouched); then `git pull --ff-only`, the commits that came in, `user init` for any scaffold file the new version ships and your directory lacks (a README, an example — never a file you have), `tools setup`, and `harness update` when `claude` is on PATH and the checkout is the registered marketplace. After a `rollback`, returns to the branch first |
@@ -46,6 +47,13 @@ it and passes it to `upgrade stale`; the module itself never sees the const.
 ## Dependencies
 
 None.
+
+## Measured costs
+
+14 ms at startup, `nu-config` with the `nu-complete` it imports, as its
+`meta.nuon` has it — eager and not optional, since it is how everything else
+is inspected and repaired. Everything below reads `meta.nuon` and the state
+files at the moment you ask, never at startup.
 
 ## Design
 

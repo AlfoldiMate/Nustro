@@ -542,6 +542,24 @@ export def "module info" [name: string@module-names]: nothing -> record { mod-in
 # Dependency report for one module. Installs nothing, loads nothing.
 export def "module check" [name: string@module-names]: nothing -> nothing { mod-check $name }
 
+# A module's documentation page, before the module has loaded: `help theme`
+# says nothing until the first line that mentions `theme` sources terminal,
+# but the page `docs:` names in meta.nuon is there from the start. Rendered
+# by `glow` when installed, else paged through $PAGER; `--path` prints where
+# it is instead.
+export def "module help" [
+  name: string@module-names
+  --path (-p)   # the file's path, nothing else
+]: nothing -> nothing {
+  let info = (mod-info $name)
+  if ($info.docs | is-empty) { error make { msg: $"($name) names no documentation in its meta.nuon \(docs:\)" } }
+  if not ($info.docs | path exists) { error make { msg: $"($name)'s documentation is missing: ($info.docs)" } }
+  if $path { print $info.docs; return }
+  if (which glow | is-not-empty) { ^glow -p $info.docs; return }
+  let pager = ($env.PAGER? | default "less" | split row " ")
+  ^($pager | first) ...($pager | skip 1) $info.docs
+}
+
 def module-names []: nothing -> list<string> { module-dirs | get name }
 
 # The enabled set and the lazy set as this shell sees them.
@@ -566,8 +584,16 @@ export def "module enable" [
 ]: nothing -> nothing {
   if $lazy and $eager { error make { msg: "--lazy and --eager are opposites" } }
   if ($name not-in (module-names)) { error make { msg: $"no module named '($name)'" } }
+  # conf/modules.nu can source a module of yours only lazily: the eager
+  # `source` lines are parse-time and name the distro's. Lazy is what it
+  # gets, said so; eager is a `use` in settings.nu.
+  let mine = ((module-dirs | where name == $name | get 0.source) == "yours")
+  if $mine and $eager {
+    error make { msg: $"($name) is yours, and the distro loads a module of yours on first mention only — for startup, `use ($name)` in settings.nu" }
+  }
+  let lazy = ($lazy or $mine)
   let sets = (module-sets)
-  print $"(ansi cyan_bold)enabling ($name)(ansi reset)"
+  print $"(ansi cyan_bold)enabling ($name)(ansi reset)(if $mine { ' — yours, so on first mention' } else { '' })"
   set-const-list "MODULES" ($sets.enabled | append $name | uniq)
   if $lazy { set-const-list "MODULES_LAZY" ($sets.lazy | append $name | uniq) }
   if $eager { set-const-list "MODULES_LAZY" ($sets.lazy | where $it != $name) }

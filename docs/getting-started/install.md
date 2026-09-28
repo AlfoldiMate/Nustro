@@ -44,6 +44,7 @@ and nothing is written before you say yes to the last one:
 ```nu
 nu install.nu              # the seven screens
 nu install.nu --defaults   # no questions, every shipped value — the platform's terminal included
+nu install.nu --minimal    # nu-config, nu-complete and terminal only; agent, odata, worktree are `nu-config module enable` away
 nu install.nu --dry-run    # print the plan, change nothing
 nu install.nu --skip-tools --skip-plugins --skip-harness
 ```

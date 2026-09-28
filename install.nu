@@ -3,6 +3,7 @@
 #
 #   nu install.nu                 the interactive installer
 #   nu install.nu --defaults      every shipped default, no questions (the platform's terminal included)
+#   nu install.nu --minimal       nu-config, nu-complete and terminal only; the rest is `nu-config module enable` away
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --skip-tools --skip-plugins --skip-terminal --skip-harness
 #
@@ -49,9 +50,14 @@ use terminal *
 # differences written down. Sourcing beats restating them: one file owns them.
 source ($ROOT | path join defaults.nu)
 
+# What `--minimal` enables: the distro itself, Tab, and the terminal it
+# configures. Everything else in MODULES is a toolbox a `module enable` adds.
+const CORE_MODULES = [nu-config nu-complete terminal]
+
 def main [
   --dry-run       # print what would be done
   --defaults      # no questions; every shipped default
+  --minimal       # the core modules only — nu-config, nu-complete, terminal — and no question about them
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
   --skip-terminal # do not install a terminal (CI, the tests)
@@ -72,9 +78,15 @@ def main [
   let plan = (
     {}
     | merge (screen-where --ask=$ask)
-    | merge (screen-modules --ask=$ask)
+    | merge (screen-modules --ask=($ask and not $minimal))
     | merge (screen-terminal --ask=$ask --dry-run=$dry_run --skip=$skip_terminal)
   )
+  # --minimal: the shell, Tab and the terminal; agent, odata and worktree are
+  # a `nu-config module enable` away, each lazy, so nothing is lost but the
+  # questions. The lazy set follows, as screen 2 would have made it.
+  let plan = (if $minimal {
+    $plan | upsert modules { enabled: $CORE_MODULES, lazy: ($MODULES_LAZY | where {|m| $m in $CORE_MODULES }) }
+  } else { $plan })
   # Screens 4 and 5 configure the terminal screen 3 chose, through `terminal
   # target` like every command; screen 3 set NUSTRO_TERMINAL for this process
   # so they agree, and nothing is pinned on disk until the plan is applied.

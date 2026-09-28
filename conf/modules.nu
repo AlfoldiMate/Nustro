@@ -64,10 +64,19 @@ source $M_WORKTREE
 # The hook sources the SAME load.nu the eager path does, so there is exactly
 # one place that knows how a given module is imported (`use odata *` and
 # `use agent` differ) and the two paths cannot drift apart.
+#
+# A module of yours is lazy the same way: `<your>/modules/<name>/load.nu`
+# is looked for first, so `const MODULES_LAZY = [... mine]` in settings.nu is
+# all it takes (`nu-config module enable mine`). The eager path above cannot
+# reach it — `source` wants a parse-time path and a directory cannot be
+# listed at parse time — so an eager module of yours is a `use` in
+# settings.nu. One `path exists` per lazy module at startup.
+const USER_MOD_DIR = $USER_ROOT | path join modules
 $env.NU_MODULES_LOADED = []
 for m in $MODULES_LAZY {
   let words = ([$m] ++ ($MODULES_TRIGGERS | get -o $m | default []) | str join "|")
-  let loader = ($MOD_DIR | path join $m load.nu)
+  let mine = ($USER_MOD_DIR | path join $m load.nu)
+  let loader = (if ($mine | path exists) { $mine } else { $MOD_DIR | path join $m load.nu })
   $env.config.hooks.pre_execution ++= [{
     condition: {|| $m not-in $env.NU_MODULES_LOADED and (commandline) =~ $'\b($words)\b' }
     code: $"source '($loader)'; $env.NU_MODULES_LOADED = \($env.NU_MODULES_LOADED | append '($m)'\)"

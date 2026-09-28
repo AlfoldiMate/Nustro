@@ -190,9 +190,15 @@ all at parse time, and it costs nothing at runtime.
 
 Adding a module of your own does not need `conf/modules.nu` at all: drop it in
 `<your>/modules/` and `use` it from your `settings.nu`, which is parse-time too.
-A module of yours keeps its page next to its code — `docs: README.md` in its
-`meta.nuon` resolves against the module directory when the path is relative to
-it, and `module lint` accepts either.
+Or make it lazy: `nu-config module enable <name>` puts it in `MODULES` and
+`MODULES_LAZY`, and the hook above looks for `<your>/modules/<name>/load.nu`
+before the distro's — the same trigger words, the same Tab completion of its
+commands before it loads. Only the eager path is the distro's alone: a
+directory cannot be listed at parse time, so there is no `source` line for a
+module of yours, and `module enable --eager` says so. A module of yours keeps
+its page next to its code — `docs: README.md` in its `meta.nuon` resolves
+against the module directory when the path is relative to it, and `module
+lint` accepts either; `nu-config module help <name>` shows it.
 
 ## Checking
 
@@ -200,5 +206,6 @@ it, and `module lint` accepts either.
 nu-config module list        every module, enabled, lazy, loaded, deps
 nu-config module info <n>    meta.nuon plus the dependency report
 nu-config module check <n>   dependencies only
+nu-config module help <n>    its documentation page, loaded or not
 nu-config module lint        the contract above, enforced
 ```
