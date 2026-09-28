@@ -40,11 +40,11 @@ def clones []: nothing -> record {
     git $work push -q
   }
   ^git clone -q $remote $distro
-  # The scratch directory is deep on the Windows runner, and a pack's keep
-  # file in the remote or a checkout's longest path passes MAX_PATH there;
-  # git needs telling. A missing XDG_CONFIG_HOME is a warning on the child's
-  # stderr, so the directory is made.
-  for r in [$remote $distro $work] { git $r config core.longpaths "true" | ignore }
+  # A missing XDG_CONFIG_HOME is a warning on the child's stderr on Windows,
+  # so the directory is made. And a test's name is in its scratch path: on the
+  # Windows runner a 78-character name put the remote's pack keep file past
+  # MAX_PATH ("Filename too long", which core.longpaths does not lift for
+  # index-pack), so names in this file stay short.
   mkdir ($d | path join config)
   { remote: $remote, distro: $distro, work: $work, data: ($d | path join data), config: ($d | path join config) }
 }
@@ -56,6 +56,15 @@ def push-commit [c: record, subject: string, --file: string, --text: string] {
   git $c.work add $f
   git $c.work commit -q -m $subject
   git $c.work push -q
+}
+
+# Does an error the child rendered say this? miette wraps a long message at
+# the terminal width — at a space, a `/` or a `-`, keeping none of them and
+# prefixing the continuation with `| ` — so a path or a phrase can straddle
+# two lines, and where it breaks moves with the scratch path's length, which
+# holds the test's name. Both sides are compared without whitespace.
+def says [err: string, phrase: string]: nothing -> bool {
+  ($err | str replace -ar '\n\s*\|' '' | str replace -ar '\s' '') | str contains ($phrase | str replace -ar '\s' '')
 }
 
 def in-distro [c: record, code: string]: nothing -> record {
@@ -126,7 +135,7 @@ def "test upgrade pulls fast-forward and lists what came in" [] {
   assert equal (in-distro $c 'nu-config upgrade status | get behind' | get stdout | str trim) "0"
 }
 
-def "test upgrade refuses an upstream that does not parse and leaves the checkout alone" [] {
+def "test upgrade refuses an upstream that does not parse" [] {
   let c = clones
   push-commit $c "fine"
   let broken = (open --raw ($c.work | path join conf aliases.nu)) + "\nconst BROKEN = (\n"
@@ -134,9 +143,9 @@ def "test upgrade refuses an upstream that does not parse and leaves the checkou
   let before = git $c.distro rev-parse HEAD
   let ran = in-distro $c 'nu-config upgrade'
   assert equal $ran.exit_code 1 $ran.stdout
-  assert ($ran.stderr | str contains "would break the next shell") $ran.stderr
-  assert ($ran.stderr | str contains "Unclosed delimiter") "the parse error is shown"
-  assert ($ran.stderr | str contains "conf/aliases.nu") "and where"
+  assert (says $ran.stderr "would break the next shell") $ran.stderr
+  assert (says $ran.stderr "Unclosed delimiter") $"the parse error is shown: ($ran.stderr)"
+  assert (says $ran.stderr "conf/aliases.nu") $"and where: ($ran.stderr)"
   assert equal (git $c.distro rev-parse HEAD) $before "not even the good commit before it: a pull is one fast-forward"
   assert equal ($c.data | path join nushell .state nu-config preflight | path exists) false "the throwaway worktree is gone"
   assert equal (git $c.distro worktree list | lines | length) 1 "and forgotten by git"
@@ -149,12 +158,12 @@ def "test upgrade refuses an upstream that needs a newer Nushell" [] {
   push-commit $c "needs the future" --file nustro.nuon --text "{ requires_nu: \"99.0\" }\n"
   let ran = in-distro $c 'nu-config upgrade'
   assert equal $ran.exit_code 1 $ran.stdout
-  assert ($ran.stderr | str contains "needs Nushell 99.0") $ran.stderr
-  assert ($ran.stderr | str contains "upgrade nu first") $ran.stderr
+  assert (says $ran.stderr "needs Nushell 99.0") $ran.stderr
+  assert (says $ran.stderr "upgrade nu first") $ran.stderr
   assert equal (git $c.distro log --format=%s -1) (git $c.remote log --format=%s -1 main~1) "not pulled"
 }
 
-def "test rollback goes to the proven commit, and upgrade returns to the branch" [] {
+def "test rollback goes to the proven commit and upgrade returns" [] {
   let c = clones
   let start = git $c.distro rev-parse HEAD
   let none = in-distro $c 'nu-config upgrade rollback'
