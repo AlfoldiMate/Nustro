@@ -442,7 +442,7 @@ export def "nu-complete smart" [buffer: string, place: record]: nothing -> list<
   let full = ($place.kind == "positional" and ($place.shape? == null))
   let bare = ($place.kind == "positional")
   if $place.kind in [flag-name flag-value] or ($partial | str starts-with "-") or ($prefix | is-empty) {
-    return (if $bare and ($full or (wants-number $shape)) { $no_files | dedupe } else { $base | dedupe })
+    return (if $bare and ($full or (wants-number $shape)) { $no_files | in-slot $buffer $place | dedupe } else { $base | dedupe })
   }
 
   # where / any / all: column, operator, value, and again after and/or. The
@@ -490,8 +490,23 @@ export def "nu-complete smart" [buffer: string, place: record]: nothing -> list<
     return (if ($items | is-empty) { $no_files | dedupe } else { $items })
   }
 
-  if $full or (wants-number $shape) { return ($no_files | dedupe) }
+  if $full or (wants-number $shape) { return ($no_files | in-slot $buffer $place | dedupe) }
   $base | dedupe
+}
+
+# Only what would go into the slot, or extends what is typed. Under `fuzzy`,
+# `ps ⌶` makes Nushell match the head and its space against every multiword
+# command — `polars agg` and 187 more with the plugin, all spanning {0,3},
+# which would replace `ps` itself. `bits r⌶` has the same shape (positional,
+# no shape, candidates from 0) and `bits ror` is right: the line so far is
+# its prefix. A candidate from before the token that does not start with the
+# text it would replace is a rewrite of the command, not a completion
+# (2026-09-28; the pty test drives `bits r`).
+def in-slot [buffer: string, place: record]: list -> list {
+  where {|r|
+    let start = ($r.span?.start? | default $place.target.start)
+    $start >= $place.target.start or ($r.value | str starts-with ($buffer | str substring $start..<$place.cursor))
+  }
 }
 
 # `first ⌶`, `skip ⌶`, `sleep ⌶`: a number is wanted, not a file.

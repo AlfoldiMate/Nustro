@@ -86,4 +86,10 @@ export def "user set" [
 ]: nothing -> nothing {
   let r = (scaffold-run ["set" $line "--dir" ($dir | default (user-root))])
   print $"  ($r.file): ($r.line)"
+  # A line that does not parse would take the whole distro down at the next
+  # start — Nushell then runs its stock shell, without this command in it.
+  let f = ($dir | default (user-root) | path join settings.nu)
+  if not (do -i { nu-check $f } | default false) {
+    print $"  (ansi red)($f) does not parse now — a new shell would start without the distro; `nu-check --debug` on it says where(ansi reset)"
+  }
 }

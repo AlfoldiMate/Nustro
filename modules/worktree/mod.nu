@@ -271,7 +271,8 @@ def run-hooks [profs: list, phase: string, root: string, wt: string] {
             let r = do {
                 cd $wt
                 with-env { BW_ROOT: $root, BW_WORKTREE: $wt, BW_PROFILE: $p.name } {
-                    if ($resolved | str ends-with ".nu") { ^nu $resolved ...$args | complete
+                    # the binary this module was parsed by, not whichever `nu` PATH finds first
+                    if ($resolved | str ends-with ".nu") { ^$nu.current-exe $resolved ...$args | complete
                     } else { ^$resolved ...$args | complete }
                 }
             }
@@ -614,7 +615,7 @@ def transform [root: string] {
     let tracked = run-git $root ls-files | lines
 
     mv ($root | path join ".git") ($root | path join ".bare")
-    ^git --git-dir ($root | path join ".bare") config core.bare true
+    run-git ($root | path join ".bare") config core.bare "true" | ignore
     "gitdir: ./.bare\n" | save -f ($root | path join ".git")
     if "origin" in (run-git $root remote | lines) {
         run-git $root config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*" | ignore

@@ -16,29 +16,45 @@ def --wrapped git [dir: string, ...args: string] {
 # { remote, distro, work, data, config }, the distro level with the remote,
 # and an XDG_DATA_HOME and XDG_CONFIG_HOME of this test's own so the state
 # file and the scaffold start absent whatever an earlier test's upgrade wrote.
+# This checkout as it is on disk, as a bare repository: HEAD plus the working
+# tree's changes as one commit, so an edit to upstream.nu not committed yet
+# is tested. Made once per file, in the file's own scratch — the tests run in
+# order in one process — because the snapshot reads the live checkout, where
+# an editor's temp file can vanish between `ls-files` and `cp`; one window
+# per file rather than one per test, and a file that is gone is skipped.
+def snapshot []: nothing -> string {
+  let snap = $env.TEST_SCRATCH | path join upgrade-snapshot.git
+  if ($snap | path exists) { return $snap }
+  let stage = $env.TEST_SCRATCH | path join upgrade-snapshot-stage
+  ^git clone -q --bare $ROOT $snap
+  ^git clone -q $snap $stage
+  let changed = (^git -C $ROOT ls-files -m -o --exclude-standard | lines)
+  let deleted = (^git -C $ROOT ls-files -d | lines)
+  for f in ($changed | where {|f| $f not-in $deleted }) {
+    let src = ($ROOT | path join $f)
+    if not ($src | path exists) { continue }
+    let dest = ($stage | path join $f)
+    mkdir ($dest | path dirname)
+    cp $src $dest
+  }
+  for f in $deleted { rm -f ($stage | path join $f) }
+  if ($changed ++ $deleted | is-not-empty) {
+    git $stage add -A
+    git $stage commit -q -m "working tree"
+    git $stage push -q
+  }
+  rm -rf $stage
+  $snap
+}
+
 def clones []: nothing -> record {
   if (which -a git | where type == external | is-empty) { skip-test "git is not installed" }
   let d = scratch
   let remote = $d | path join remote.git
   let distro = $d | path join distro
   let work = $d | path join work
-  ^git clone -q --bare $ROOT $remote
+  ^git clone -q --bare (snapshot) $remote
   ^git clone -q $remote $work
-  # The clone holds HEAD; an edit to upstream.nu not committed yet would go
-  # untested. What the working tree changed is pushed as one commit first.
-  let changed = (^git -C $ROOT ls-files -m -o --exclude-standard | lines)
-  let deleted = (^git -C $ROOT ls-files -d | lines)
-  for f in ($changed | where {|f| $f not-in $deleted }) {
-    let dest = ($work | path join $f)
-    mkdir ($dest | path dirname)
-    cp ($ROOT | path join $f) $dest
-  }
-  for f in $deleted { rm -f ($work | path join $f) }
-  if ($changed ++ $deleted | is-not-empty) {
-    git $work add -A
-    git $work commit -q -m "working tree"
-    git $work push -q
-  }
   ^git clone -q $remote $distro
   # A missing XDG_CONFIG_HOME/nushell is a warning on the child's stderr on
   # Windows, so it is made. And a test's name is in its scratch path: on the
@@ -109,10 +125,10 @@ def "test notice prints one line when behind and nothing once HEAD moved" [] {
 
 def "test stale is true before a check and after the interval" [] {
   let c = clones
-  assert equal (in-distro $c 'nu-config upgrade stale 1day' | get stdout | str trim) "true"
-  in-distro $c 'nu-config upgrade check' | ignore
-  assert equal (in-distro $c 'nu-config upgrade stale 1day' | get stdout | str trim) "false"
-  assert equal (in-distro $c 'nu-config upgrade stale 0sec' | get stdout | str trim) "true"
+  assert equal (in-distro $c 'nu-config upgrade stale 1day' | get stdout | str trim) "true" "before any check"
+  let checked = in-distro $c 'nu-config upgrade check | to nuon'
+  assert equal (in-distro $c 'nu-config upgrade stale 1day' | get stdout | str trim) "false" $"just after a check: ($checked.stdout)($checked.stderr)"
+  assert equal (in-distro $c 'nu-config upgrade stale 0sec' | get stdout | str trim) "true" "past a zero interval"
 }
 
 def "test upgrade pulls fast-forward and lists what came in" [] {

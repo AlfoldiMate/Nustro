@@ -11,6 +11,11 @@
       install: { macos: "brew install carapace", linux: "see https://carapace.sh", windows: "scoop install carapace" } }
   ]
   knobs: {
-    NU_COMPLETE_EVAL: { default: "safe", about: "run the typed pipeline to offer columns: safe | all | off" }
+    # To offer columns and values the engine runs the pipeline typed so far in
+    # a subprocess. safe: only when every command in it is a read-only built-in
+    # (ls, ps, open, where, ...; never an external, never rm/save/http). all:
+    # your own commands too, with the config loaded (~80 ms instead of ~20).
+    # off: never; Tab still filters and deduplicates.
+    NU_COMPLETE_EVAL: { default: "safe", about: "run the typed pipeline to offer columns and values: safe (read-only built-ins only) | all (your commands too, ~80 ms) | off" }
   }
 }

@@ -370,6 +370,15 @@ export def "edit user" []: nothing -> nothing {
   for r in (user init | where action != "kept") { print $"  ($r.action) ($r.file)  ($r.note)" }
   let ed = (editor-argv)
   ^($ed | first) ...($ed | skip 1) $root
+  # What the editor left has to parse: a settings.nu or a drop-in that does
+  # not takes the whole distro down at the next start — Nushell then runs its
+  # stock shell, without `nu-config doctor` in it to say so.
+  let drop_ins = (try { ls ($root | path join autoload) | where name ends-with ".nu" | get name } catch { [] })
+  for f in ([($root | path join settings.nu)] ++ $drop_ins | where ($it | path exists)) {
+    if not (do -i { nu-check $f } | default false) {
+      print $"(ansi red)($f) does not parse — a new shell would start without the distro; `nu-check --debug` on it says where(ansi reset)"
+    }
+  }
 }
 
 # ── Modules ───────────────────────────────────────────────────────────────────

@@ -117,12 +117,9 @@ $env.LESS = "-RFX"
 # per command). false: Nushell's stock completion menu.
 const SMART_TAB = true
 
-# To offer columns and values, the engine runs the pipeline typed so far in a
-# subprocess. "safe": only when every command in it is a read-only built-in
-# (ls, ps, open, where, ...; never an external, never rm/save/http).
-# "all": your own commands too, with the config loaded (~80 ms instead of ~20).
-# "off": never; Tab still filters and deduplicates.
-$env.NU_COMPLETE_EVAL = "safe"
+# What the engine may run to offer columns and values — NU_COMPLETE_EVAL,
+# safe | all | off — is the module's knob: modules/nu-complete/meta.nuon,
+# rendered into settings.nu like every knob here.
 
 # Partial completion: Tab first inserts what every candidate shares (`bits r`
 # → `bits ro`), and only then opens the menu. It was off while Nushell's

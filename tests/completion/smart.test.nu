@@ -54,6 +54,23 @@ def "test a command with no positional stops offering files" [] {
   assert ("file" in (kinds "ls "))
 }
 
+# What the polars plugin defines: under `fuzzy` Nushell matches `ps ` against
+# it (p, s, space, in order) and offers it in place of `ps` itself. A real
+# subcommand (`bits r` → `bits ror`) starts with the line and must stay.
+def "polars agg" [] { }
+
+def "test a command with no positional does not offer a command it fuzzy-matches" [] {
+  let was = $env.config.completions.algorithm
+  $env.config.completions.algorithm = "fuzzy"
+  let stock = ("ps " | commandline complete)
+  let got = (smart "ps ")
+  let sub = (smart "bits r" | get value)
+  $env.config.completions.algorithm = $was
+  assert ("polars agg" in $stock) $"the fixture fuzzy-matches: ($stock | to nuon)"
+  assert equal $got [] ($got | to nuon)
+  assert ("bits ror" in $sub) ($sub | to nuon)
+}
+
 def "test a number slot stops offering files, before a pipe too" [] {
   assert equal (kinds "first ") []
   assert equal (kinds "sleep ") []

@@ -19,8 +19,9 @@
 # Files run concurrently (`par-each`), each in a sandbox of its own — HOME
 # and the XDG directories under the run's scratch — so two files cannot see
 # each other's state, and a file's lines print together once it is done.
-# 137 tests: 38 s serial, 19 s concurrent on an M-series Mac (2026-09-19);
-# the pty file, two terminal sessions, is the long pole.
+# 220 tests: 31 s concurrent on an M-series Mac (2026-09-28; 137 tests were
+# 19 s, 38 s serial, on 2026-09-19); the pty file, two terminal sessions, is
+# the long pole.
 # Budget: the whole suite under 30 s, so it is run before every commit.
 
 const ROOT = path self | path dirname | path dirname
@@ -97,6 +98,10 @@ def sandbox [scratch: string, label: string]: nothing -> record {
   let box = $scratch | path join ($label | str replace -ra '[/\\]' '_')
   mkdir ($box | path join xdg config nushell) ($box | path join xdg data) ($box | path join xdg cache) ($box | path join home)
   "# nu -n reads no config; this keeps Nushell from warning that the directory is empty\n" | save ($box | path join xdg config nushell config.nu)
+  # The global config git reads: an identity, so a commit in a test never
+  # asks for one, and no signing. Nothing else — a test pins init.defaultBranch
+  # itself to prove the default is not relied on.
+  "[user]\n\tname = test\n\temail = test@example.com\n[commit]\n\tgpgsign = false\n" | save ($box | path join home .gitconfig)
   {
     TEST_SCRATCH: $box
     XDG_CONFIG_HOME: ($box | path join xdg config)

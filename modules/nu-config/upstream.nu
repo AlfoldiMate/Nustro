@@ -301,7 +301,7 @@ export def upgrade []: nothing -> nothing {
   # checkout, so a pull that changed one — carapace's wrapper for the
   # completer inputs of Nushell 0.116 — reaches them here, not at the next
   # `tools setup` someone remembers to run. Idempotent; prints only what
-  # changed (0.17 s, 2026-09-27).
+  # changed (22–25 ms, 0.12 s the first time in a shell, 2026-09-28).
   tools setup --quiet
   # Claude Code holds a copy of each plugin at the version it was installed
   # at; the marketplace reads the checkout in place. Quiet without claude or

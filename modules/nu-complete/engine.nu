@@ -176,8 +176,8 @@ def flag-items [node: record, root: record, is_root: bool, partial: string]: not
 # Ask the external completer (carapace) the way Nushell would.
 #
 # By hand, because nothing in Nushell chains to it: `fallback: true` in a
-# declared extern's answer adds file completion, `null` declines to file
-# completion, and the external completer is never consulted for a command
+# declared extern's answer adds file completion, `null` hands the slot to
+# file completion and `[]` shows nothing, and the external completer is never consulted for a command
 # that has a completer of its own (0.116.0, measured). Nushell binds a
 # completer's inputs by the names it declares, which `do` cannot, so the
 # closure's own header says which to pass and in what order (`view source`,
