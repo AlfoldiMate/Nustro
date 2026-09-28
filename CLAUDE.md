@@ -87,6 +87,8 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   (`why`, `install`, `then`); `module lint` enforces both.
 - Completion lives in `modules/nu-complete` + `completions/<tool>.nu`
   (`docs/concepts/completion.md`). Test it without a terminal:
-  `nu -l -c '"brew install rip" | commandline complete --detailed'` and
-  `nu -l -c 'nu-complete smart "ls | where " 11'`. `nu --ide-complete` does
-  not run `@complete` completers.
+  `nu -l -c '"brew install rip" | commandline complete --detailed'`,
+  `nu -l -c '"ls | where " | commandline complete --input'` (the `place` a
+  completer is handed) and `nu -l -c '"ls | where " | commandline complete
+  --input | nu-complete smart $in.buffer $in.place'`. `nu --ide-complete`
+  does not run `@complete` completers.

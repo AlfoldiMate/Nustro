@@ -42,7 +42,7 @@ names for `remove`, `--to` and `--on`, and profile names for `-p`.
 |---|---|
 | `worktree` | the subcommands, one line each |
 | `worktree init` | in an empty directory: `.bare`, the `.git` pointer file and an empty `dflt` profile. In an existing repository: transforms it — history into `.bare`, the current branch checked out as `./<branch>`, every gitignored file moved into `.profiles/dflt`, the tracked files' originals removed from the root. Refuses a dirty tree, a detached HEAD and a layout that already exists |
-| `worktree add <name> [-p a,b]` | `git worktree add` for a branch of that name (existing, new from the current worktree's HEAD, or orphan in an unborn repo), the base worktree's gitignored files carried over, then `dflt` and the listed profiles applied |
+| `worktree add <name> [-p a,b]` | `git worktree add` for a branch of that name — existing; on exactly one remote, tracked (`--track`); orphan when no branch has a commit yet; else new from the current worktree's HEAD, a bare HEAD that names no branch repointed at the first one — the base worktree's gitignored files carried over, then `dflt` and the listed profiles applied |
 | `worktree remove <name> [--force]` | the profile entries discarded, then `git worktree remove`; `--force` goes through to git for a worktree with untracked files left |
 | `worktree apply [-p a,b] [--to <wt>] [--reset]` | bare: refresh the set the manifest records; `-p`: change the set (`dflt` plus these, in order); `--reset`: back to `dflt` alone. `--to` names the worktree from the root |
 | `worktree discard` | undo what `apply` placed in this worktree: symlinks always, a copy only while it still matches its source |

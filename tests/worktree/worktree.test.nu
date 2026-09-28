@@ -98,6 +98,49 @@ def "test apply never overwrites a git-tracked file" [] {
   assert equal ($st.entries | get target) [.env] "the skipped entry is not recorded either"
 }
 
+def "test apply never replaces a directory with tracked files in it" [] {
+  let root = layout
+  let main = $root | path join main
+  mkdir ($main | path join config)
+  "a = 1\n" | save ($main | path join config a.toml)
+  # the scan places the source dir's files under their own name too; ignored, so
+  # status stays the measure of what happened to the tracked directory
+  "config-src\n" | save -a ($main | path join .gitignore)
+  git-in $main add config .gitignore | ignore
+  git-in $main commit -qm config | ignore
+  let ci = $root | path join .profiles ci
+  mkdir ($ci | path join config-src)
+  "b = 2\n" | save ($ci | path join config-src b.toml)
+  # one declared as a copy, one as a symlink: neither may `rm -rf` the tracked dir
+  "entries:\n  - source: config-src\n    target: config\n    type: copy\n" | save ($ci | path join profile.yaml)
+  cd $main
+  let text = printed $main "worktree apply -p ci"
+  assert ($text =~ "config: git-tracked") $text
+  assert equal (open --raw ($main | path join config a.toml)) "a = 1\n"
+  assert equal (git-in $main status --porcelain) "" "nothing tracked was touched"
+  "entries:\n  - source: config-src\n    target: config\n" | save -f ($ci | path join profile.yaml)
+  worktree apply -p ci
+  assert equal ($main | path join config | path type) dir "still the tracked directory, not a link"
+  assert equal (git-in $main status --porcelain) ""
+}
+
+def "test discard sweeps only the directories its entries made" [] {
+  let root = layout
+  let ci = $root | path join .profiles ci
+  mkdir ($ci | path join deep nest)
+  "x\n" | save ($ci | path join deep nest x.txt)
+  "deep\n" | save -a ($root | path join main .gitignore)
+  let main = $root | path join main
+  cd $main
+  worktree apply -p ci
+  assert equal ($main | path join deep nest x.txt | path type) symlink
+  mkdir ($main | path join mywork empty) ($main | path join .cache)
+  worktree discard
+  assert equal ($main | path join deep | path exists) false "the entry's parents, emptied, are swept"
+  assert equal ($main | path join mywork empty | path type) dir "an empty directory of the user's stays"
+  assert equal ($main | path join .cache | path type) dir
+}
+
 def "test add with a profile: later wins, copy, none and override false" [] {
   let root = layout
   let ci = $root | path join .profiles ci
@@ -274,6 +317,47 @@ def "test add branches from the first worktree whatever the default branch of gi
     worktree add fix
     assert equal (git-in ($root | path join fix) log --oneline | lines | length) 1 "from inside main: its HEAD"
   }
+}
+
+def "test add tracks a branch that only a remote has" [] {
+  # a colleague's branch: on origin after a fetch, in no worktree yet
+  let up = scratch
+  git-in $up init -q | ignore
+  "up\n" | save ($up | path join README.md)
+  git-in $up add . | ignore
+  git-in $up commit -qm up | ignore
+  git-in $up checkout -qb pushed | ignore
+  "theirs\n" | save ($up | path join theirs.txt)
+  git-in $up add . | ignore
+  git-in $up commit -qm theirs | ignore
+  git-in $up checkout -q main | ignore
+  let root = layout
+  git-in $root remote add origin $up | ignore
+  git-in $root config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*" | ignore
+  git-in $root fetch -q origin | ignore
+  cd ($root | path join main)
+  let text = printed ($root | path join main) "worktree add pushed"
+  assert ($text =~ "pushed is on origin: tracking it") $text
+  let wt = $root | path join pushed
+  assert equal (git-in $wt log --format=%s -1) theirs "origin/pushed's commit, not main's"
+  assert equal (git-in $wt rev-parse --abbrev-ref "@{u}") origin/pushed
+}
+
+def "test add from the root repairs a bare HEAD that names no branch" [] {
+  # a layout made before the first add pointed the bare HEAD, or a bare clone
+  # whose HEAD branch was deleted: HEAD → master, only main exists
+  let root = layout
+  git-in $root symbolic-ref HEAD refs/heads/master | ignore
+  cd $root
+  let text = printed $root "worktree add feat"
+  assert ($text =~ "bare HEAD named master") $text
+  assert equal (git-in ($root | path join feat) log --oneline | lines | length) 1 "from main, not an orphan"
+  assert equal (git-in $root symbolic-ref --short HEAD) main
+  # an existing branch is checked out before anything is judged unborn
+  worktree remove feat
+  git-in $root symbolic-ref HEAD refs/heads/master | ignore
+  worktree add feat
+  assert equal (git-in ($root | path join feat) branch --show-current) feat
 }
 
 def "test init transforms a repository: history to .bare, ignored files to dflt" [] {

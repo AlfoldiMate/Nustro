@@ -223,11 +223,20 @@ def load-profile [root: string, name: string]: nothing -> record {
 # replace earlier entries unless override: false; type none drops the target.
 # The implicit root-.claude symlink seeds the plan so any profile can override
 # or exclude it like a normal entry.
+# Is the target, or anything under it, git-tracked? `git ls-files` lists
+# files with `/` on every platform; a nested target comes from `path
+# relative-to`, so on Windows it holds `\`. A target that is a directory is
+# never itself in the list, only its files are — and `materialize` would
+# `rm -rf` it.
+def tracked-under [tracked: list<string>, target: string]: nothing -> bool {
+    let t = $target | str replace -a '\' '/'
+    $tracked | any {|f| $f == $t or ($f starts-with $"($t)/") }
+}
+
 def build-plan [root: string, wt: string, profs: list, tracked: list<string>]: nothing -> list {
     let root_claude = $root | path join ".claude"
     mut plan = {}
-    let claude_tracked = $tracked | any {|f| $f == ".claude" or ($f starts-with ".claude/") }
-    if ($root_claude | path type) in ["dir" "symlink"] and not $claude_tracked {
+    if ($root_claude | path type) in ["dir" "symlink"] and not (tracked-under $tracked ".claude") {
         $plan = { ".claude": { source: $root_claude, target: ".claude", type: "symlink", override: true, profile: "(root)" } }
     }
 
@@ -308,11 +317,18 @@ def discard-entries [wt: string, entries: list]: nothing -> list<string> {
             $kept = ($kept | append $e.target)
         }
     }
-    # sweep dirs the entries may have created, deepest first, empties only
-    do { cd $wt; glob "**/*" --no-file --no-symlink --exclude [".git/**" ".git"] }  # relative: see load-profile
+    # sweep the directories the entries may have created — each target's
+    # ancestors, deepest first, empties only. Never the whole worktree: an
+    # empty directory the user made is theirs, and a `node_modules` carried
+    # over by `add` is not walked.
+    let parents = $entries | get target
+        | each {|t| $t | path split | drop 1 } | where ($it | is-not-empty)
+        | each {|parts| 1..($parts | length) | each {|n| $parts | take $n | path join } } | flatten | uniq
         | sort-by { $in | path split | length } --reverse
-        | where (ls -a $it | is-empty)
-        | each {|d| rm $d }
+    for d in $parents {
+        let p = $wt | path join $d
+        if ($p | path type) == "dir" and (ls -a $p | is-empty) { rm $p }
+    }
     $kept
 }
 
@@ -320,7 +336,7 @@ def materialize [root: string, wt: string, plan: list, tracked: list<string>]: n
     mut done = []
     for e in $plan {
         let target = $wt | path join $e.target
-        if $e.target in $tracked {
+        if (tracked-under $tracked $e.target) {
             warn $"($e.target): git-tracked, never overwritten — skipped \(profile ($e.profile))"
             continue
         }
@@ -474,21 +490,36 @@ export def "worktree add" [
     let dest = $c.root | path join $name
     if ($dest | path exists -n) { fail $"($dest) already exists" }
 
-    # Unborn is judged where the branch would start: the current worktree's
-    # HEAD, or the bare repo's from the root. The bare HEAD names git's
-    # init.defaultBranch (`master` unless configured), which a layout whose
-    # first worktree has another name never creates.
-    let unborn = (try-git ($c.worktree | default $c.root) rev-parse "--verify" HEAD) == null
+    # In order: the branch exists; a remote has it (fetched whole, as `init`
+    # sets the refspec for); nothing has a commit yet; a new branch from the
+    # current worktree's HEAD. The bare HEAD names git's init.defaultBranch
+    # (`master` unless configured), which a layout whose first worktree has
+    # another name never creates — so from the root, unborn means no branch
+    # at all, and a bare HEAD left dangling is repaired before a branch is
+    # started from it.
     let branch_exists = (try-git $c.root show-ref "--verify" $"refs/heads/($name)") != null
-    if $unborn {
-        let first = (run-git $c.root worktree list "--porcelain" | lines | where ($it starts-with "worktree ") | length) == 1
+    let remotes = try-git $c.root remote | default "" | lines
+        | where (try-git $c.root show-ref "--verify" $"refs/remotes/($it)/($name)") != null
+    let branches = run-git $c.root for-each-ref "--format=%(refname:short)" refs/heads | lines
+    let unborn = if $c.worktree != null { (try-git $c.worktree rev-parse "--verify" HEAD) == null } else { $branches | is-empty }
+    if $branch_exists {
+        run-git $c.root worktree add $dest $name | ignore
+    } else if ($remotes | length) == 1 {
+        note $"($name) is on ($remotes.0): tracking it"
+        run-git $c.root worktree add "--track" "-b" $name $dest $"($remotes.0)/($name)" | ignore
+    } else if ($remotes | length) > 1 {
+        fail $"($name) is on several remotes \(($remotes | str join ', ')) — git worktree add --track -b ($name) ($dest) <remote>/($name)"
+    } else if $unborn {
         run-git $c.root worktree add "--orphan" "-b" $name $dest | ignore
         # The first worktree's branch becomes the bare HEAD, as in a
         # `git clone --bare`, so an `add` from the root starts from it too.
-        if $first { run-git $c.root symbolic-ref HEAD $"refs/heads/($name)" | ignore }
-    } else if $branch_exists {
-        run-git $c.root worktree add $dest $name | ignore
+        if ($branches | is-empty) { run-git $c.root symbolic-ref HEAD $"refs/heads/($name)" | ignore }
     } else {
+        if $c.worktree == null and (try-git $c.root rev-parse "--verify" HEAD) == null {
+            let head = run-git $c.root symbolic-ref "--short" HEAD
+            note $"the bare HEAD named ($head), which does not exist: pointing it at ($branches.0)"
+            run-git $c.root symbolic-ref HEAD $"refs/heads/($branches.0)" | ignore
+        }
         # -C into the current worktree so the new branch starts at ITS head
         run-git ($c.worktree | default $c.root) worktree add "-b" $name $dest | ignore
     }

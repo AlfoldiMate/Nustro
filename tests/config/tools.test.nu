@@ -55,4 +55,13 @@ def "test the carapace file rewraps the completer for the named inputs" [] {
   let text = open --raw $f
   assert ($text | str contains "{|place| do $carapace_legacy $place.command }") "the named-inputs wrapper"
   assert ($text | str contains "CARAPACE_BRIDGES") "the bridges"
+  # Sourced twice — the REPL after a `tools setup`, a cookbook's `source` line —
+  # the wrapper must not wrap itself: `$place.command` on a list is an error,
+  # and the specs' `try` would turn it into silent file completion.
+  let twice = ^$nu.current-exe -n -c $"source ($f | to nuon); source ($f | to nuon); do $env.config.completions.external.completer { command: [zoxide ''], cursor: 7, target: { start: 7, end: 7 }, kind: external-arg } | length" | complete
+  assert equal $twice.exit_code 0 $twice.stderr
+  assert (($twice.stdout | str trim | into int) > 0) "carapace still answers after a second source"
+  # A completer the user set first is carapace's to keep, and ours to leave alone.
+  let mine = ^$nu.current-exe -n -c $"$env.config.completions.external.completer = {|place| ['mine'] }; source ($f | to nuon); do $env.config.completions.external.completer { command: [x ''] } | to nuon" | complete
+  assert equal ($mine.stdout | str trim) '[mine]' $mine.stderr
 }
