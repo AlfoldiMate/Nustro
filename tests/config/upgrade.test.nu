@@ -13,8 +13,9 @@ def --wrapped git [dir: string, ...args: string] {
   $r.stdout | str trim
 }
 
-# { remote, distro, work, data }, the distro level with the remote, and an
-# XDG_DATA_HOME of this test's own so the state file starts absent.
+# { remote, distro, work, data, config }, the distro level with the remote,
+# and an XDG_DATA_HOME and XDG_CONFIG_HOME of this test's own so the state
+# file and the scaffold start absent whatever an earlier test's upgrade wrote.
 def clones []: nothing -> record {
   if (which -a git | where type == external | is-empty) { skip-test "git is not installed" }
   let d = scratch
@@ -39,19 +40,20 @@ def clones []: nothing -> record {
     git $work push -q
   }
   ^git clone -q $remote $distro
-  { remote: $remote, distro: $distro, work: $work, data: ($d | path join data) }
+  { remote: $remote, distro: $distro, work: $work, data: ($d | path join data), config: ($d | path join config) }
 }
 
-# One commit more on the remote.
-def push-commit [c: record, subject: string] {
-  $"($subject)\n" | save -a ($c.work | path join CHANGES.txt)
-  git $c.work add CHANGES.txt
+# One commit more on the remote: a line in CHANGES.txt, or a file of your own.
+def push-commit [c: record, subject: string, --file: string, --text: string] {
+  let f = ($file | default CHANGES.txt)
+  if $file == null { $"($subject)\n" | save -a ($c.work | path join $f) } else { $text | save -f ($c.work | path join $f) }
+  git $c.work add $f
   git $c.work commit -q -m $subject
   git $c.work push -q
 }
 
 def in-distro [c: record, code: string]: nothing -> record {
-  with-env { XDG_DATA_HOME: $c.data } {
+  with-env { XDG_DATA_HOME: $c.data, XDG_CONFIG_HOME: $c.config } {
     ^$nu.current-exe -n -c $"const NU_LIB_DIRS = [($c.distro | path join modules | to nuon)]; use nu-config; ($code)" | complete
   }
 }
@@ -107,8 +109,8 @@ def "test upgrade pulls fast-forward and lists what came in" [] {
   assert ($out | str contains "  a fix") $out
   assert equal (git $c.distro rev-parse HEAD) (git $c.work rev-parse HEAD)
   # A release may add to the scaffold: what is missing from the user's
-  # directory — the run's own XDG_CONFIG_HOME here — is written after the pull.
-  let user = ($env.XDG_CONFIG_HOME | path join nushell)
+  # directory — this test's own XDG_CONFIG_HOME — is written after the pull.
+  let user = ($c.config | path join nushell)
   assert ($out | str contains $"scaffold in ($user)") $out
   assert ($out | str contains "written settings.nu") $out
   assert ($user | path join README.md | path exists) "README.md rendered"
@@ -116,6 +118,75 @@ def "test upgrade pulls fast-forward and lists what came in" [] {
   let again = in-distro $c 'nu-config upgrade'
   assert ($again.stdout | str contains "already up to date with origin/main") $again.stdout
   assert equal (in-distro $c 'nu-config upgrade status | get behind' | get stdout | str trim) "0"
+}
+
+def "test upgrade refuses an upstream that does not parse and leaves the checkout alone" [] {
+  let c = clones
+  push-commit $c "fine"
+  let broken = (open --raw ($c.work | path join conf aliases.nu)) + "\nconst BROKEN = (\n"
+  push-commit $c "break the aliases" --file conf/aliases.nu --text $broken
+  let before = git $c.distro rev-parse HEAD
+  let ran = in-distro $c 'nu-config upgrade'
+  assert equal $ran.exit_code 1 $ran.stdout
+  assert ($ran.stderr | str contains "would break the next shell") $ran.stderr
+  assert ($ran.stderr | str contains "Unclosed delimiter") "the parse error is shown"
+  assert ($ran.stderr | str contains "conf/aliases.nu") "and where"
+  assert equal (git $c.distro rev-parse HEAD) $before "not even the good commit before it: a pull is one fast-forward"
+  assert equal ($c.data | path join nushell .state nu-config preflight | path exists) false "the throwaway worktree is gone"
+  assert equal (git $c.distro worktree list | lines | length) 1 "and forgotten by git"
+  # the check ran a fetch, so status knows the commits are there
+  assert equal (in-distro $c 'nu-config upgrade status | get behind' | get stdout | str trim) "2"
+}
+
+def "test upgrade refuses an upstream that needs a newer Nushell" [] {
+  let c = clones
+  push-commit $c "needs the future" --file nustro.nuon --text "{ requires_nu: \"99.0\" }\n"
+  let ran = in-distro $c 'nu-config upgrade'
+  assert equal $ran.exit_code 1 $ran.stdout
+  assert ($ran.stderr | str contains "needs Nushell 99.0") $ran.stderr
+  assert ($ran.stderr | str contains "upgrade nu first") $ran.stderr
+  assert equal (git $c.distro log --format=%s -1) (git $c.remote log --format=%s -1 main~1) "not pulled"
+}
+
+def "test rollback goes to the proven commit, and upgrade returns to the branch" [] {
+  let c = clones
+  let start = git $c.distro rev-parse HEAD
+  let none = in-distro $c 'nu-config upgrade rollback'
+  assert equal $none.exit_code 1
+  assert ($none.stderr | str contains "nothing recorded") $none.stderr
+  # doctor's parse check is what records last_good; `upgrade good` is that step
+  in-distro $c 'nu-config upgrade good' | ignore
+  push-commit $c "one"
+  push-commit $c "two"
+  let up = in-distro $c 'nu-config upgrade'
+  assert equal $up.exit_code 0 $up.stderr
+  let tip = git $c.distro rev-parse HEAD
+  let st = in-distro $c 'nu-config upgrade status | select last_good previous | to nuon' | get stdout | from nuon
+  assert equal $st { last_good: $start, previous: $start }
+  # a further upgrade with nothing new keeps both pins
+  in-distro $c 'nu-config upgrade' | ignore
+  assert equal (in-distro $c 'nu-config upgrade status | get previous' | get stdout | str trim) $start
+  let back = in-distro $c 'nu-config upgrade rollback'
+  assert equal $back.exit_code 0 $back.stderr
+  assert ($back.stdout | str contains "the last that doctor saw parse") $back.stdout
+  assert equal (git $c.distro rev-parse HEAD) $start
+  assert equal (git $c.distro rev-parse --abbrev-ref HEAD) "HEAD" "detached"
+  let notice = in-distro $c 'nu-config upgrade notice' | get stdout | ansi strip | str trim
+  assert ($notice | str contains "rolled back to") $notice
+  assert ($notice | str contains "returns to main") $notice
+  let again = in-distro $c 'nu-config upgrade rollback'
+  assert ($again.stdout | str contains "already at") $again.stdout
+  let ret = in-distro $c 'nu-config upgrade'
+  assert equal $ret.exit_code 0 $ret.stderr
+  assert ($ret.stdout | str contains "back on main") $ret.stdout
+  assert equal (git $c.distro rev-parse HEAD) $tip
+  assert equal (git $c.distro symbolic-ref --short HEAD) main
+  # a named commit works too, and the branch is remembered across two rollbacks
+  let named = in-distro $c $"nu-config upgrade rollback ($start)"
+  assert equal $named.exit_code 0 $named.stderr
+  let deeper = in-distro $c $"nu-config upgrade rollback ($start)~0"
+  assert ($deeper.stdout | str contains "already at") $deeper.stdout
+  assert equal (in-distro $c 'nu-config upgrade status | get branch' | get stdout | str trim) main
 }
 
 def "test upgrade refuses a checkout with commits of its own" [] {

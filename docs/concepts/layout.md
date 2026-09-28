@@ -8,6 +8,7 @@ YOUR config directory                     THE DISTRO (a git checkout)
   config.nu        3 lines, points here ──▶  distro.nu     entrypoint
   settings.nu      every knob, commented     defaults.nu   every knob, shipped value
   README.md        what is here, and whose   conf/         behaviour
+                                             nustro.nuon   what it requires: Nushell 0.116
   autoload/*.nu    drop-ins, loaded last     modules/ completions/ themes/
   completions/     what you fetched          templates/user/  the scaffold of the left-hand side
   themes/          your themes               docs/

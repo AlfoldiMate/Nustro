@@ -7,7 +7,25 @@ files are elsewhere, a pull never conflicts with anything you wrote.
 nu-config upgrade            # git pull --ff-only in the checkout, the commits that came in, the Claude Code plugins
 nu-config upgrade check      # fetch now and say where the checkout stands
 nu-config upgrade status     # the last check's result, no network
+nu-config upgrade rollback   # back to the last version doctor saw parse; `upgrade` returns
 ```
+
+A pull is checked before it is live. A configuration that fails to parse
+does not mean no shell — Nushell prints the error and starts its stock
+shell — but it does mean a shell with none of these commands in it, so the
+check has to run while they still exist. `upgrade` fetches, checks the
+upstream out into a throwaway worktree under `<your>/.state/nu-config/`,
+reads its `nustro.nuon` against the `nu` running (an upstream that needs a
+newer Nushell is refused: `brew upgrade nushell` first), and `nu-check`s its
+`distro.nu` — every `source` and `use` followed, your `settings.nu`
+included. Only then does it fast-forward; otherwise it prints the parse
+error and the checkout is as it was (0.24 s for the check, 2026-09-28).
+
+What slips past — a change that parses and misbehaves — `rollback` undoes:
+it checks out the last commit `nu-config doctor` saw parse (its parse line
+records it), or where the last `upgrade` started, or the commit you name.
+HEAD is left detached, the shell says so at each start, and `nu-config
+upgrade` returns to the branch and pulls.
 
 When `claude` is on PATH and the checkout is the registered marketplace,
 the pull is followed by `nu-config harness update`: the marketplace is

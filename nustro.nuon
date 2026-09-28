@@ -1,0 +1,8 @@
+# nustro.nuon — what this checkout requires, read by `nu-config doctor` for
+# its first line and by `nu-config upgrade` before it pulls: an upstream that
+# needs a newer Nushell than the one running is refused, not installed into
+# every next terminal. Raised together with the CI pin (.github/workflows/ci.yml)
+# and the bootstraps' fallback version.
+{
+  requires_nu: "0.116"
+}
