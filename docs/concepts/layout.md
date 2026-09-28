@@ -93,7 +93,7 @@ const USER_SETTINGS = (if ($USER_SETTINGS_PATH | path exists) { $USER_SETTINGS_P
 source $USER_SETTINGS     # `source null` is a no-op
 ```
 
-`if` and `path exists` are const-evaluable in Nushell 0.115, which is what
+`if` and `path exists` are const-evaluable in Nushell 0.116, which is what
 makes that work. `open` and `from nuon` are **not**, which is why the enabled
 knobs cannot be read from a NUON file and why `settings.nu` is `.nu`
 ([Files and formats](../reference/files.md)).

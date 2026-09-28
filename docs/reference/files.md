@@ -109,7 +109,7 @@ Two formats, and a reason for each:
 | NUON | anything tooling reads at **runtime**: module `meta.nuon`, state, registries, caches |
 
 `.nu` is not a style choice. `open` and `from nuon` are not const-evaluable in
-0.115 (`scope commands | where is_const` lists `path exists`, `if`, `path join`
+0.116 (`scope commands | where is_const` lists `path exists`, `if`, `path join`
 and the `str` commands — not `open`), so a value the parser has to know cannot
 come from a data file. Everything else is NUON: it is Nushell's own literal
 syntax, so a state file reads like the record it is and `open` needs no `--raw`

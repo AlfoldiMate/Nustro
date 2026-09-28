@@ -130,13 +130,19 @@ that argument, which is usually wrong for things like hostnames.
 ## External completers
 
 A global fallback closure, used when Nushell has no completion of its own.
-Receives `$spans` (tokens typed so far); returns records or `null`.
+Since 0.116 it is handed one record whose fields bind to the parameters the
+closure **names** — `place` (`{cursor, target, kind, index?, flag?, shape?,
+command}`), `token` (`{text, kind, span}`) and `buffer` (the line up to the
+cursor); `$place.command` is the token list of the command being completed
+(name, every argument, the partial token). Returns records or `null`. A
+closure that still declares `{|spans| …}` works but prints "Positional
+completer input deprecated" once a session.
 
 ```nu
 $env.config.completions.external = {
   enable: true
   max_results: 100
-  completer: {|spans| carapace $spans.0 nushell ...$spans | from json }
+  completer: {|place| carapace $place.command.0 nushell ...$place.command | from json }
 }
 ```
 
@@ -144,28 +150,31 @@ $env.config.completions.external = {
 A more robust version, which falls back to files when carapace errors:
 
 ```nu
-let carapace = {|spans|
+let carapace = {|place|
+  let spans = $place.command
   carapace $spans.0 nushell ...$spans
   | from json
   | if ($in | default [] | where value =~ '^-.*ERR$' | is-empty) { $in } else { null }
 }
 ```
 
-Dispatch to different engines per command:
+Dispatch to different engines per command (`do` binds positionally, so hand
+the inner closures the whole record):
 
 ```nu
-let external = {|spans|
-  match $spans.0 {
-    git => (do $fish_completer $spans)
-    _   => (do $carapace_completer $spans)
+let external = {|place|
+  match $place.command.0 {
+    git => (do $fish_completer $place)
+    _   => (do $carapace_completer $place)
   }
 }
 $env.config.completions.external.completer = $external
 ```
 
-**Alias caveat:** Nushell expands aliases before the completer sees the spans,
-while carapace expects the original. Recover the typed text with
-`commandline | split words` if this matters.
+**Alias caveat:** `place.command` arrives with an alias at the head already
+expanded (`alias gco = git checkout` → `[git checkout ma]`), which is what a
+spec or carapace wants. The text as typed is `$buffer` — name it in the
+closure's header; `commandline` returns `""` inside a completer.
 
 More recipes: <https://www.nushell.sh/cookbook/external_completers.html>
 
@@ -419,10 +428,11 @@ test completion from a script.
 
 ### Menus with a `source` closure
 
-- Only a custom menu's `source: {|buffer, position| ...}` sees the whole
-  line (`input_mode: cursor_prefix` → text up to the cursor). A per-argument
-  completer's `context` is the current command element only (`get na`, not
-  `ls | get na`); `commandline` and `commandline get-cursor` return `""` and
+- Only a custom menu's `source: {|buffer, place| ...}` sees the whole
+  line (`input_mode: cursor_prefix` → text up to the cursor; `{|buffer,
+  position|}` is the pre-0.116 shape and prints the deprecation). A
+  per-argument completer's `context` is the current command element only
+  (`get na`, not `ls | get na`); `commandline` and `commandline get-cursor` return `""` and
   `0` inside any completer or menu source.
 - Putting `source` on the stock `completion_menu` (merge by name) is
   ignored. Use a new menu name and rebind Tab with the stock chain:

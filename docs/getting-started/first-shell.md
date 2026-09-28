@@ -55,7 +55,8 @@ to you; `git pull` updates it without touching your files
 | `nu-complete` | the engine behind Tab: `status`, `cache clear` ([reference](../reference/modules/nu-complete.md)) |
 
 `theme`, `agent`, `odata` and `worktree` are lazy: not parsed at startup, loaded on the
-first line that mentions them (18 ms, 18 ms, 97 ms and 10 ms, once). That is why
+first line that mentions them (31 ms, 18 ms, 97 ms and 10 ms, once — each
+module's `meta.nuon`, `terminal` measured 2026-09-20). That is why
 startup is 84 ms on an M-series Mac against 47 ms for Nushell with no config
 at all, and also why a lazy module is interactive-only — a script has to `use
 odata *` itself ([Startup](../concepts/startup.md)).

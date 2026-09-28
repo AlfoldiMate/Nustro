@@ -37,11 +37,13 @@ tests/
   terminal/           ghostty, wezterm, registry, theme, font — against a fake ghostty and a fake wezterm
   config/             layering, modules, upgrade, install, tools — the distro's own mechanics
   pty/                harness.py and menu.test.nu — Tab in a real terminal
+  worktree/           the bare-worktree layout: init, add, remove, apply, discard, which
   claude-code/        the marketplace, the plugins' manifests and hooks against a real layout
   <concern>.test.nu   one file per module or concern
-  fixtures/           brew/ (a trimmed zsh completion, name lists, a Cellar),
-                      ghostty/ (the fake, three theme files); the runner's own
-                      sample files — never searched for tests
+  fixtures/           brew/ (a trimmed zsh completion, name lists, a Cellar, a
+                      Caskroom), ghostty/ (the fake, three theme files),
+                      wezterm/ (the fake), harness/ and harness-names/ (the
+                      runner's own sample files) — never searched for tests
 ```
 
 ## A test file
@@ -85,11 +87,18 @@ state) are that file's alone, and so is `HOME` off Windows (where
 `$nu.home-dir` does not follow it), so `~/Library/Fonts` and
 `~/Library/Application Support` are scratch too; rustup's
 `CARGO_HOME`/`RUSTUP_HOME` are passed through so the real cargo still runs.
+git reads neither the system config nor yours: every test gets
+`GIT_CONFIG_NOSYSTEM=1` and a `GIT_CONFIG_GLOBAL` under the sandbox's `home/`
+(Xcode's `init.defaultBranch=main` hid a worktree bug CI found; Git for
+Windows' `core.autocrlf=true` turns a checkout's LF into CRLF). The
+runner's sandbox gitconfig holds an identity (`test <test@example.com>`) and
+`commit.gpgsign = false`, nothing else: a test that commits gets a committer
+without asking, and pins `init.defaultBranch` itself when it depends on it.
 Files run **concurrently** (`par-each`), which the sandboxes make safe, and
 a file's lines are printed together once it is done; `--serial` runs them
 one at a time in order. Tests within a file share a process and a sandbox,
-so a test must not assume a file it did not write is absent. Tests within a file share that process; state a test wants alone
-goes in a `scratch` directory.
+so a test must not assume a file it did not write is absent; state a test
+wants alone goes in a `scratch` directory.
 
 **Never name a helper after a built-in.** A file's `def`s are declared before
 its `use` lines are parsed, and a module parsed in that scope resolves names
@@ -158,12 +167,13 @@ A file costs two `nu -n` starts (one lists the tests, one runs them) and a
 test that starts a shell against a user directory costs one `nu -l`: about
 60 ms with the distro loaded, 105 ms on the 0.115.1 release build
 (2026-09-19, M-series Mac). The harness file alone, six tests, four of them
-starting a shell: 332 ms. The whole suite, 137 tests in fourteen files:
-18 s concurrent (the pty file is the long pole), 38 s `--serial`, the same
-on 0.115.1 (0.55 s for
+starting a shell: 332 ms. The whole suite, 220 tests in twenty files:
+31 s concurrent on 0.116.0 (2026-09-28; the pty file is the long pole at
+15 s), 18 s for 137 tests in fourteen files on 2026-09-19, 38 s `--serial`
+then (0.55 s for
 the harness alone on the Linux runner, 1.4 s on the macOS one). The slow
-tests are the ones that clone this repository three times (`config/upgrade`,
-0.5-0.8 s each), run the installer (`config/install`, 0.5-1 s) decode the
+tests are the ones that clone this repository (`config/upgrade`: one
+snapshot per file, three clones of it per test, 1-3 s each), run the installer (`config/install`, 0.5-1 s) decode the
 icon's PNG in Python (1.3 s) or drive a terminal (`pty/menu`, 8.5 s a
 session). The whole suite is budgeted under 30 s so it
 is run before every commit; `--timing` names what to look at when it is

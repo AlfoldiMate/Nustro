@@ -86,13 +86,14 @@ is slow every time is a source that runs an external, and belongs in
   background job has finished; the first `ps | …` pays `ps` (150 ms).
 - `SMART_TAB = false` in `settings.nu` returns to Nushell's stock menu, which
   is the quickest way to tell whether a problem is the engine's or Nushell's.
-- On a Nushell built from main, `bits r` Tab Tab landing as `bits ror o` is
-  the partial-completion bug, not a completer
-  ([Completion](../concepts/completion.md#known-limits)).
+- Before 0.116, `bits r` Tab Tab landing as `bits ror o` was Nushell's
+  sourced-menu partial-completion bug (nushell#19053), not a completer. It is
+  fixed in 0.116.0, which the distro requires; `tests/pty/menu.test.nu`
+  drives it ([Completion](../concepts/completion.md#the-completer-inputs)).
 
 For the real thing — what the menu showed, keystroke by keystroke — drive an
 interactive `nu` in a pty: answer Reedline's cursor query (`ESC[6n`) with
-`ESC[1;1R`, set the window size, type whole lines, strip the escapes. The
+`ESC[40;1R` (row 40 of a 40-line window, as `tests/pty/harness.py` does), set the window size, type whole lines, strip the escapes. The
 `nustro-completion-build` skill's `verify.nu` runs every slot of a spec through
 `commandline complete` in one login shell and diffs against carapace, which
 finds forgotten slots faster than any of this:

@@ -94,7 +94,7 @@ pasting anything.
 
 Because the process runs in this repo, `CLAUDE.md`, the `nushell` skill and
 the repo's agmem memory load on every turn. That is what keeps proposals in
-0.115 syntax.
+0.116 syntax.
 
 ## Teaching Tab a tool
 

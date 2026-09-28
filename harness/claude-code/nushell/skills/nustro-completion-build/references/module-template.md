@@ -1,7 +1,7 @@
 # The module: template, spec semantics, gotchas
 
 Verified against Nushell 0.115.1 and `modules/nu-complete/engine.nu` on
-2026-09-11; the completer's signature against 0.116.0 on 2026-09-27. Read `engine.nu` itself when in doubt: it is 180 lines and is
+2026-09-11; the completer's signature against 0.116.0 on 2026-09-27. Read `engine.nu` itself when in doubt: it is
 the truth.
 
 `docs/reference/completion-spec.md` in the repo is the same contract written for a

@@ -37,7 +37,7 @@ see exec) and the command list (the init record, below).
 **Runs from the config repo.** Every turn does `cd ~/.config/nushell` first,
 so CLAUDE.md, the `nushell` skill (from the installed `nushell@nustro`
 plugin) and the agmem memory of this project load, and the model is grounded
-in 0.115 syntax. The two most reported
+in 0.116 syntax. The two most reported
 failures of shell assistants are bash-in-Nushell and invented commands
 (codex discussion 296, nushell discussion 16109); the grounding plus the
 `nu` MCP server's `command_help` are the mitigation. Your actual directory
@@ -87,7 +87,7 @@ first turn, Tab falls back to a disk scan of `~/.claude/skills`,
 supplies descriptions from frontmatter. `agent commands` is the merged
 table (10 ms).
 
-**Checkpoint at the next start, not at exit.** Nushell 0.115 has no exit
+**Checkpoint at the next start, not at exit.** Nushell 0.116 has no exit
 hook (only pre_prompt, pre_execution, env_change, display_output,
 command_not_found), and background jobs die with the shell. So each turn
 records `{id, pid, turns, checkpointed}` in `.state/agent/sessions/`, and

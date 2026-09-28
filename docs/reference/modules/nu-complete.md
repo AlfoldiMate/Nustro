@@ -50,7 +50,8 @@ Three layers, in the order they answer:
    file noise after commands that take no argument, and deduplicate.
 
 A custom menu is the only kind whose `source` closure receives the buffer — a
-`source` on the stock `completion_menu` is ignored by 0.115 — which is why Tab
+`source` on the stock `completion_menu` is ignored (0.115.1, and the rebinding
+is what 0.116.0 runs) — which is why Tab
 is rebound rather than configured.
 
 [Completion](../../concepts/completion.md) has the full design;

@@ -1,6 +1,6 @@
 # How Nushell starts, and where this distro plugs in
 
-Verified against Nushell 0.115. The full 29-step table is in the book's
+Verified against Nushell 0.116. The full 29-step table is in the book's
 [Configuration](https://www.nushell.sh/book/configuration.html) chapter; this is
 the part that matters for organising a config, and [Layout](layout.md) is the
 map of the two directories it walks.

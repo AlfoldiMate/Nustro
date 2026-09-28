@@ -90,7 +90,7 @@ A `const` is shadowed by a `const` of the same name in `settings.nu`; an
 | knob | default | meaning |
 |---|---|---|
 | `const SMART_TAB` | `true` | Tab runs the pipeline-aware engine in `modules/nu-complete`; `false` is Nushell's stock completion menu |
-| `$env.NU_COMPLETE_EVAL` | `"safe"` | to offer columns and values the engine runs the pipeline typed so far in a subprocess: `"safe"` only when every command is a read-only built-in, `"all"` your own commands too (~80 ms instead of ~20), `"off"` never — Tab still filters and deduplicates. Declared again by the module's `meta.nuon`, which is why `nu-config knobs` lists it twice |
+| `$env.NU_COMPLETE_EVAL` | `"safe"` | what the engine may run to offer columns and values — the `nu-complete` module's knob, declared in its `meta.nuon`, not in `defaults.nu` ([Module knobs](#module-knobs), [nu-complete](modules/nu-complete.md#configuration)) |
 | `$env.config.completions.algorithm` | `"fuzzy"` | how a candidate matches what is typed: its letters in that order. Nushell ranks its own candidates by match quality; the engine ranks a spec's in tiers — starts with it, contains it, letters in order, matched only in the description — and searches descriptions under `"substring"` too, never under `"prefix"` ([Completion](../concepts/completion.md#filtering)) |
 | `$env.config.completions.partial` | `true` | Tab first inserts what every candidate shares, then opens the menu. Was off until Nushell 0.116.0 fixed the sourced-menu span bug ([nushell#19053](https://github.com/nushell/nushell/issues/19053)) |
 | `$env.config.completions.persistent_menus` | `false` | Keep the Tab menu open while editing: Backspace refilters it, Enter takes the selected item. Nushell's own default; works with the smart menu |
@@ -120,7 +120,8 @@ way; `nu-config knobs | where owner == <module>` lists them.
 | [agent](modules/agent.md#configuration) | `AGENT_MODEL`, `AGENT_EFFORT`, `AGENT_CONFIRM`, `AGENT_PERMISSION_MODE`, `AGENT_ALLOWED_TOOLS`, `AGENT_COMPLETION_TOOLS`, `AGENT_COMPLETION_MAX_TURNS`, `AGENT_CHECKPOINT`, `AGENT_CHECKPOINT_MIN_TURNS`, `AGENT_DEBUG` |
 | [odata](modules/odata.md#configuration) | `ODATA_SERVICES`, `ODATA_SERVICE`, `ODATA_PUSHDOWN`, `ODATA_PUSHDOWN_SEARCH`, `ODATA_COMPLETE_KEYS`, `ODATA_COMPLETE_KEYS_TOP`, `ODATA_METADATA_TTL`, `ODATA_DEBUG` |
 | [nu-complete](modules/nu-complete.md#configuration) | `NU_COMPLETE_EVAL` |
-| [terminal](modules/terminal.md#configuration), [nu-config](modules/nu-config.md#configuration) | none, on purpose |
+| [terminal](modules/terminal.md#configuration) | `NERD_FONTS_RELEASE` |
+| [nu-config](modules/nu-config.md#configuration) | none, on purpose |
 
 ## Not a knob
 

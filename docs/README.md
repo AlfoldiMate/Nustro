@@ -53,7 +53,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Tests](reference/tests.md) | `nu tests/run.nu`: the runner, writing a test, `lib.nu`, the isolation, the cost |
 | **Modules** | |
 | [nu-config](reference/modules/nu-config.md) | `doctor`, `knobs`, `module`, `user`, `tools`, `plugins`, `upgrade`, `startup-time`, `edit` |
-| [nu-complete](reference/modules/nu-complete.md) | the engine behind Tab: `run`, `spans`, `smart`, `quote`, `cache`, `status` |
+| [nu-complete](reference/modules/nu-complete.md) | the engine behind Tab: `run`, `external`, `smart`, `quote`, `cache`, `status` |
 | [terminal](reference/modules/terminal.md) | `theme`, `font`, `terminal`, `ghostty`, `wezterm` — every command, with costs |
 | [agent](reference/modules/agent.md) | `ask`, `exec`, `skill`, `command`, `completion`; the exec menu; the knobs |
 | [odata](reference/modules/odata.md) | every command and flag, the query-option table, completion, knobs, testing |

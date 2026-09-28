@@ -48,7 +48,8 @@ const MODULES_LAZY = [agent odata worktree]  # terminal always loaded; the shipp
 `nu-config loaded-files | where filename =~ modules/terminal` lists its seven
 files as parsed. Measured on 2026-09-19, minimum of fifteen cold starts of
 this checkout on an M-series Mac: **69.7 ms** with `terminal` eager against
-**53.4 ms** lazy — 16 ms, which is what its `meta.nuon` says it costs.
+**53.4 ms** lazy — 16 ms, which is what its `meta.nuon` said then; it says
+31 ms since the WezTerm backend and the registry joined it (2026-09-20).
 
 The other direction — making a module lazy that ships eager — is the same
 line with the name added, and works for any module whose commands are never

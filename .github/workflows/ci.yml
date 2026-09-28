@@ -31,10 +31,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # ubuntu-latest moves from Ubuntu 24.04 to 26.04 on 2026-10-19 (GitHub's
+        # runner-images schedule): a Linux-only failure after that date is the image.
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: hustcer/setup-nu@v3
         with:
