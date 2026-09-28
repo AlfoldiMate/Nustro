@@ -40,12 +40,12 @@ def clones []: nothing -> record {
     git $work push -q
   }
   ^git clone -q $remote $distro
-  # A missing XDG_CONFIG_HOME is a warning on the child's stderr on Windows,
-  # so the directory is made. And a test's name is in its scratch path: on the
+  # A missing XDG_CONFIG_HOME/nushell is a warning on the child's stderr on
+  # Windows, so it is made. And a test's name is in its scratch path: on the
   # Windows runner a 78-character name put the remote's pack keep file past
   # MAX_PATH ("Filename too long", which core.longpaths does not lift for
   # index-pack), so names in this file stay short.
-  mkdir ($d | path join config)
+  mkdir ($d | path join config nushell)
   { remote: $remote, distro: $distro, work: $work, data: ($d | path join data), config: ($d | path join config) }
 }
 
@@ -62,9 +62,10 @@ def push-commit [c: record, subject: string, --file: string, --text: string] {
 # the terminal width — at a space, a `/` or a `-`, keeping none of them and
 # prefixing the continuation with `| ` — so a path or a phrase can straddle
 # two lines, and where it breaks moves with the scratch path's length, which
-# holds the test's name. Both sides are compared without whitespace.
+# holds the test's name. Both sides are compared without whitespace, and a
+# path with `/`: the error names `conf\aliases.nu` on Windows.
 def says [err: string, phrase: string]: nothing -> bool {
-  ($err | str replace -ar '\n\s*\|' '' | str replace -ar '\s' '') | str contains ($phrase | str replace -ar '\s' '')
+  ($err | str replace -ar '\n\s*\|' '' | str replace -ar '\s' '' | str replace -a '\' '/') | str contains ($phrase | str replace -ar '\s' '')
 }
 
 def in-distro [c: record, code: string]: nothing -> record {
