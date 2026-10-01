@@ -27,6 +27,12 @@ def snapshot []: nothing -> string {
   if ($snap | path exists) { return $snap }
   let stage = $env.TEST_SCRATCH | path join upgrade-snapshot-stage
   ^git clone -q --bare $ROOT $snap
+  # The snapshot's branch is `main` whatever this checkout is on: CI checks a
+  # pull request out detached and a pushed branch under its own name, and
+  # every test here asserts `origin/main` (all nine failed on the first pull
+  # request, #46, 2026-10-01).
+  ^git -C $snap update-ref refs/heads/main (^git -C $snap rev-parse HEAD | str trim)
+  ^git -C $snap symbolic-ref HEAD refs/heads/main
   ^git clone -q $snap $stage
   let changed = (^git -C $ROOT ls-files -m -o --exclude-standard | lines)
   let deleted = (^git -C $ROOT ls-files -d | lines)

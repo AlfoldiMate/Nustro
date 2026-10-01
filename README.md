@@ -61,9 +61,11 @@ nu ~/.local/share/nustro/install.nu              # guided: seven screens, every 
 configuration that is not Nustro's is backed up, all the modules are enabled,
 the missing tools are installed, the platform's terminal is installed when
 there is none (Ghostty; WezTerm on Windows) and set to start Nushell, tool
-init files, plugins and Claude Code are wired. Two things it leaves for you,
-because they are a taste: the theme (the shell follows the terminal's own
-sixteen colours until you run `theme`) and the font (`font`). A run with no
+init files, plugins and Claude Code are wired. The theme is `doomchad`,
+written to the terminal and rendered for the shell by one command so the two
+always agree — or, on a re-run, the theme you had; the font is DejaVu Sans
+Mono Nerd Font when the terminal has none configured (`theme` and `font`
+change either). A run with no
 terminal on stdin or stdout — a provisioning script, CI — takes the defaults
 by itself.
 
@@ -81,7 +83,7 @@ History and the plugin registry stay. Alone it still asks the screens; with
 | `--minimal` | `nu-config`, `nu-complete` and `terminal` only; the rest is `nu-config module enable` away |
 | `--dry-run` | print the plan, change nothing |
 | `--skip-deps` | do not install starship, zoxide, atuin, carapace, vivid (`nu-config deps install` later) |
-| `--skip-terminal` | do not install a terminal |
+| `--skip-terminal` | do not install a terminal or the default font |
 | `--skip-tools` | do not generate tool init files (`nu-config tools setup` later) |
 | `--skip-plugins` | do not register plugins |
 | `--skip-harness` | do not register the checkout with Claude Code |

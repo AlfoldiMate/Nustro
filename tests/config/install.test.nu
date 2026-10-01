@@ -163,6 +163,38 @@ def "test --clean starts over from a configuration of the distro" [] {
   assert ($both.stderr | str contains "opposites") $both.stderr
 }
 
+# The terminal's file is outside the config directory and the shell's render
+# inside its state, so the two can be left naming different themes — by a
+# restored backup, a `--clean`, a `theme sync` of one side. Every run writes
+# both from one name: the default on a first or a clean install, the one
+# rendered before on a re-run.
+def "test a run writes one theme to the terminal and the shell" [] {
+  let fake = fake-ghostty
+  $env.XDG_DATA_HOME = (scratch)
+  let state = $env.XDG_DATA_HOME | path join nushell .state theme theme.nuon
+  let ours = $fake.config | path join nustro.ghostty
+  let first = install --defaults
+  assert equal $first.exit_code 0 ($first.stdout + $first.stderr)
+  assert equal (open $state | get name) doomchad
+  assert (open --raw $ours | str contains "theme/ghostty/doomchad") (open --raw $ours)
+  # The shell alone moves to another theme: the terminal still says doomchad.
+  let moved = ^$nu.current-exe -l -c 'use terminal *; theme sync onedark --quiet | ignore' | complete
+  assert equal $moved.exit_code 0 $moved.stderr
+  assert (open --raw $ours | str contains "theme/ghostty/doomchad")
+  let again = install --defaults
+  assert equal $again.exit_code 0 ($again.stdout + $again.stderr)
+  assert equal (open $state | get name) onedark "a re-run keeps the theme that was rendered"
+  assert (open --raw $ours | str contains "theme/ghostty/onedark") "and writes it to the terminal too"
+  let clean = install --defaults --clean
+  assert equal $clean.exit_code 0 ($clean.stdout + $clean.stderr)
+  assert equal (open $state | get name) doomchad "a clean run starts from the default"
+  assert (open --raw $ours | str contains "theme/ghostty/doomchad") (open --raw $ours)
+  assert not (open --raw $ours | str contains "font-family") "--skip-terminal: no font is downloaded"
+  # Without that flag the plan names the default font, the terminal having none.
+  let plan = ^$nu.current-exe ($ROOT | path join install.nu) --dry-run --skip-deps --skip-tools --skip-plugins --skip-harness | complete
+  assert ($plan.stdout | ansi strip | str contains "font use DejaVuSansMono") $plan.stdout
+}
+
 def "test init files of another setup in the data dir move too" [] {
   # Off macOS the vendor autoload dir is not under the config dir, and a
   # starship.nu someone generated there would repaint the distro's prompt.

@@ -65,6 +65,14 @@ source ($ROOT | path join defaults.nu)
 # configures. Everything else in MODULES is a toolbox a `module enable` adds.
 const CORE_MODULES = [nu-config nu-complete terminal]
 
+# What an install ends with when nothing else was chosen and there is a
+# terminal to write to: the theme a first shell opens in, and the font when
+# the terminal has none configured. Both are `theme use` / `font use` away
+# from anything else, and neither is a knob — they are state, like every
+# theme and font chosen later.
+const DEFAULT_THEME = "doomchad"
+const DEFAULT_FONT = "DejaVuSansMono"
+
 # What Nushell keeps in its config directory by itself, whoever configured it:
 # never moved, never backed up. `.backup` is where this script puts the rest.
 const KEPT = [history.txt history.sqlite3 history.sqlite3-wal history.sqlite3-shm plugin.msgpackz .backup]
@@ -78,7 +86,7 @@ def main [
   --skip-deps     # do not install missing tools (starship, zoxide, atuin, carapace, vivid)
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
-  --skip-terminal # do not install a terminal (CI, the tests)
+  --skip-terminal # do not install a terminal or the default font (CI, the tests)
   --skip-harness  # do not register the checkout with Claude Code (the tests)
 ] {
   print $"(ansi cyan_bold)Nustro(ansi reset)  ($ROOT)  (ansi dark_gray)Nushell ((version).version)(ansi reset)"
@@ -120,8 +128,8 @@ def main [
   # so they agree, and nothing is pinned on disk until the plan is applied.
   let plan = (
     $plan
-    | merge (screen-theme --ask=$ask --terminal=$plan.terminal)
-    | merge (screen-font --ask=$ask --dry-run=$dry_run --terminal=$plan.terminal)
+    | merge (screen-theme --ask=$ask --terminal=$plan.terminal --fresh=($where.existing.mode == "clean"))
+    | merge (screen-font --ask=$ask --dry-run=$dry_run --skip=$skip_terminal --terminal=$plan.terminal)
   )
   # Screen 3 may have turned the terminal module off; that lands in the
   # MODULES line of screen 2's answer, whichever it was.
@@ -413,23 +421,36 @@ def terminal-shell-key [terminal: string]: nothing -> string {
 # made here. Nothing chosen means the ANSI tier: the shell follows whatever
 # sixteen colours the terminal paints.
 
-def screen-theme [--ask, --terminal: any]: nothing -> record {
+# What is written when no theme is picked is never "nothing", because a
+# terminal and a shell that were configured at different times disagree: the
+# terminal's file is outside the config directory, so a `--clean` run or a
+# restored backup left Ghostty on one theme and the prompt rendered from
+# another (doomchad under a Catppuccin prompt, 2026-10-01). So the theme step
+# always writes both, with `theme use`: the theme picked here, else the one
+# rendered before (unless this run starts clean), else DEFAULT_THEME. Without
+# a terminal there is nothing to disagree with, and the shell stays on the
+# terminal's own sixteen colours.
+def screen-theme [--ask, --terminal: any, --fresh]: nothing -> record {
   print $"(ansi cyan_bold)4. Theme(ansi reset)"
   print $"  (ansi dark_gray)a hundred palettes \(NvChad's and Catppuccin\), rendered for the terminal, its icon, Nushell, ls, bat and the prompt; `theme` changes it later, `theme --ghostty` picks among Ghostty's own 463(ansi reset)"
-  if not $ask { print ""; return { theme: null } }
-
-  mut theme = null
-  if $terminal != null {
-    # Default no, like every question here but the shell: pressing Enter
-    # through the whole installer has to end with nothing written.
-    if (yes-no "pick a theme?" --default-no) {
-      $theme = (pick-theme)
-    }
-  } else {
+  if $terminal == null {
     print $"  (ansi dark_gray)no terminal to write it to: the shell uses the terminal's sixteen colours by name(ansi reset)"
+    print ""
+    return { theme: null, theme_ghostty: false }
   }
+  let before = (if $fresh { null } else { theme current })
+  let kept = ($before | default {} | get -o name)
+  let fallback = (if $kept != null {
+    { theme: $kept, theme_ghostty: (($before | get -o by) == "ghostty") }
+  } else {
+    { theme: $DEFAULT_THEME, theme_ghostty: false }
+  })
+  print (if $kept != null { $"  current   ($kept) — written again to ($terminal) and the shell, so the two agree" } else { $"  default   ($DEFAULT_THEME)" })
+  # Default no, like every question here but the shell: pressing Enter
+  # through the whole installer ends with the defaults.
+  let picked = (if $ask and (yes-no "pick another theme?" --default-no) { pick-theme } else { null })
   print ""
-  { theme: $theme }
+  if $picked == null { $fallback } else { { theme: $picked, theme_ghostty: false } }
 }
 
 # The theme picker, but choosing only: nothing is written here, because the
@@ -459,7 +480,10 @@ def pick-theme []: nothing -> any {
 
 # ── 5. Font ───────────────────────────────────────────────────────────────────
 
-def screen-font [--ask, --dry-run, --terminal: any]: nothing -> record {
+# No font picked and none configured in the terminal, ours or theirs: the
+# default is installed and written (`--skip-terminal` leaves it out: it is a
+# download). A font the terminal already has is never replaced unasked.
+def screen-font [--ask, --dry-run, --skip, --terminal: any]: nothing -> record {
   print $"(ansi cyan_bold)5. Font(ansi reset)"
   if $terminal == null {
     print "  no terminal to set a font on"
@@ -471,12 +495,14 @@ def screen-font [--ask, --dry-run, --terminal: any]: nothing -> record {
   let now = (terminal live (terminal target | get font_key))
   print $"  current   ($now | default "the terminal's own built-in JetBrains Mono")"
   print $"  installed ((($rows | where installed | get font) | str join ', ') | default 'none of the fifteen')"
+  let fallback = (if $now == null and not $skip { $DEFAULT_FONT } else { null })
+  if $fallback != null { print $"  default   ($fallback) — the terminal has no font configured" }
   if (not $ask) or $dry_run {
     if $dry_run { print $"  (ansi dark_gray)a font has to be downloaded to be seen, so the picker is skipped on a dry run(ansi reset)" }
     print ""
-    return { font: null }
+    return { font: $fallback }
   }
-  if not (yes-no "pick a Nerd Font?" --default-no) { print ""; return { font: null } }
+  if not (yes-no "pick a Nerd Font?" --default-no) { print ""; return { font: $fallback } }
 
   mut chosen = null
   mut picking = true
@@ -493,14 +519,14 @@ def screen-font [--ask, --dry-run, --terminal: any]: nothing -> record {
     let row = (font list | where font == $pick.font | get 0)
     if not $row.installed { continue }
     match ([$"keep ($row.family)" "see it in a new window" "pick another"] | input list $row.family) {
-      $a if ($a | default "" | str starts-with "keep") => { $chosen = $row.family; $picking = false }
+      $a if ($a | default "" | str starts-with "keep") => { $chosen = $row.font; $picking = false }
       "see it in a new window" => { font preview $pick.font }
       "pick another" => { }
       _ => { $picking = false }
     }
   }
   print ""
-  { font: $chosen }
+  { font: ($chosen | default $fallback) }
 }
 
 # ── 6. Tools ──────────────────────────────────────────────────────────────────
@@ -651,9 +677,10 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
 
   # The theme is first after the terminal: `theme use` writes Ghostty's theme
   # and icon, paints this window, and renders tables, ls, bat and the prompt
-  # from it. No theme chosen re-renders whatever was chosen before, or the
-  # ANSI tier on a first install — never a reset.
-  let theme_name = (if ($plan.theme? | default null) != null { $plan.theme | to nuon } else { "" })
+  # from it. Screen 4 always names one when there is a terminal, so the
+  # terminal's file and the shell's render are written by the same command;
+  # without a terminal the last render is refreshed, or the ANSI tier.
+  let theme_name = (if ($plan.theme? | default null) != null { ($plan.theme | to nuon) + (if ($plan.theme_ghostty? | default false) { " --ghostty" } else { "" }) } else { "" })
   # The terminal: the pin (`terminal use`), which `theme use` below writes
   # through; then the shell and the font, in the terminal's own vocabulary
   # through the same commands a user types.
