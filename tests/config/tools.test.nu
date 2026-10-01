@@ -120,3 +120,46 @@ def "test an unknown command is looked up without starting brew" [] {
   # A lazy module's word still gets its own answer first.
   assert (do $ask theme | get stdout | str contains "lazy `terminal` module")
 }
+
+# `nu` reached through two symlinks, the plugins beside the second: the list
+# is found by following the links, and an entry in the registry whose file
+# does not exist is not registered.
+def "test plugins are found through the symlinks nu is reached by" [] {
+  if $nu.os-info.name == "windows" { skip-test "symlinks need a privilege on Windows"; return }
+  let d = scratch
+  let first = $d | path join first
+  let second = $d | path join second
+  mkdir $first $second
+  ^ln -s $nu.current-exe ($second | path join nu)
+  ^ln -s ($second | path join nu) ($first | path join nu)
+  "#!/bin/sh\n" | save ($second | path join nu_plugin_fake)
+  let mods = $ROOT | path join modules
+  let r = ^($first | path join nu) -n -c $"const NU_LIB_DIRS = [($mods | to nuon)]; use nu-config; nu-config plugins list | to nuon" | complete
+  assert equal $r.exit_code 0 $r.stderr
+  assert equal ($r.stdout | from nuon) [{ name: fake, registered: false, path: ($second | path join nu_plugin_fake) }]
+}
+
+# A registry whose plugin file was deleted, as an upgrade leaves it: one line
+# naming the plugin and the fix. With nothing wrong: silence, and the marker
+# that makes the next start skip the check.
+def "test a plugin registered from a file that is gone is one line at the start" [] {
+  let plugin = $nu.current-exe | path expand | path dirname | path join (if $nu.os-info.name == "windows" { "nu_plugin_inc.exe" } else { "nu_plugin_inc" })
+  if not ($plugin | path exists) { skip-test "no nu_plugin_inc next to nu"; return }
+  let d = scratch
+  let copy = $d | path join ($plugin | path basename)
+  let registry = $d | path join plugin.msgpackz
+  let config = $d | path join config.nu
+  cp $plugin $copy
+  ^$nu.current-exe -n -c $"plugin add --plugin-config ($registry | to nuon) ($copy | to nuon)"
+  $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]\nuse nu-config\n" | save $config
+  let run = {|| with-env { XDG_DATA_HOME: ($d | path join data) } { ^$nu.current-exe --plugin-config $registry --config $config -c 'nu-config plugins notice' | complete } }
+  let fine = do $run
+  assert equal ($fine.stdout | str trim) "" $fine.stderr
+  rm $copy
+  # The marker of the run above says this version was fine: still silent.
+  assert equal ((do $run).stdout | str trim) ""
+  rm -r ($d | path join data)
+  let gone = do $run
+  assert ($gone.stdout | ansi strip | str contains "plugins: inc registered from files that are gone") ($gone.stdout + $gone.stderr)
+  assert ($gone.stdout | ansi strip | str contains "nu-config plugins add")
+}

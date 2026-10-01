@@ -56,6 +56,7 @@ comparing with what init would write today, never by mtime
 | `theme/icons/<slug>.png` | `theme use` (macOS, Ghostty) | Ghostty, through `macos-custom-icon` |
 | `terminal/target.nuon` | `terminal use` (the installer does it) | `terminal target`: which terminal `theme`, `font` and `terminal shell` configure |
 | `nu-config/upgrade.nuon` | the background `git fetch` (`conf/update.nu`); `upgrade`, `rollback` and `doctor` for the pins `previous`, `branch` and `last_good` | every interactive start, 0.3 ms |
+| `nu-config/plugins-ok-<version>` | `nu-config plugins notice` (`conf/plugins.nu`), once every registered plugin's file was found for this Nushell version | every interactive start: one `path exists`; without it the check itself, 1.7 ms |
 | `nu-config/preflight/` | `upgrade`, a throwaway worktree of the fetched upstream, removed once checked | `nu-check`, in a child `nu` |
 | `odata/services.nuon` | `odata service add` | the service registry, merged under `$env.ODATA_SERVICES` |
 | `agent/sessions/<id>.nuon` | every `agent` turn | the startup sweep, which checkpoints closed sessions |

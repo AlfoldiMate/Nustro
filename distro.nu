@@ -64,6 +64,7 @@ source ($DISTRO_ROOT | path join conf completions.nu)  # the Tab menu and the to
 source ($DISTRO_ROOT | path join conf aliases.nu)      # aliases and small commands
 source ($DISTRO_ROOT | path join conf tools.nu)        # hooks for tools without an init file
 source ($DISTRO_ROOT | path join conf update.nu)       # "the distro is behind its remote", once a day
+source ($DISTRO_ROOT | path join conf plugins.nu)      # "plugins are registered from files that are gone", after a Nushell upgrade
 
 # After this file Nushell loads, in order:
 #   1. *.nu in $nu.vendor-autoload-dirs — generated tool init files (nu-config tools setup)

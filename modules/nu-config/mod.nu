@@ -5,6 +5,7 @@
 #   nu-config deps install        install the missing tools (starship, zoxide, atuin, carapace, vivid)
 #   nu-config tools setup         generate init files for installed tools (zoxide, atuin, ...)
 #   nu-config plugins add         register the plugins shipped next to `nu`
+#   nu-config plugins notice      the startup line when a registered plugin's file is gone
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
 #   nu-config startup-time        time cold starts
 #   nu-config upgrade             pull the distro, then the Claude Code plugins; `upgrade check | status` around it
@@ -200,7 +201,7 @@ export def doctor []: nothing -> nothing {
       print $"  ($m) ($p.name)"
     }
     if ($pl | where not registered and name not-in $DEV_PLUGINS | is-not-empty) {
-      print $"  (ansi dark_gray)register with: nu-config plugins add(ansi reset)"
+      print $"  (ansi dark_gray)not registered, or registered from a file that is gone: nu-config plugins add(ansi reset)"
     }
   }
   print ""
@@ -316,14 +317,42 @@ export def loaded-files []: nothing -> table {
 # plugin as unregistered. The flag needs the path spelled out, because a
 # config-less nu knows $nu.plugin-path but refuses to default to it.
 export def "plugins list" []: nothing -> table<name: string, registered: bool, path: string> {
-  let registered = (do -i { plugin list --registry --plugin-config $nu.plugin-path | get name } | default [])
-  ls ($nu.current-exe | path dirname)
+  # A registry entry whose file is gone is not registered: Homebrew's Cellar
+  # path carries the version, so the entries of 0.115.1 named files that an
+  # upgrade to 0.116.0 deleted, and `gstat` was "Unable to spawn plugin"
+  # while this listed it as fine (2026-10-02).
+  let registered = (
+    do -i { plugin list --registry --plugin-config $nu.plugin-path | where {|p| $p.filename | path exists } | get name } | default []
+  )
+  let dir = (plugin-dir)
+  if $dir == null { return [] }
+  ls $dir
   | where name =~ 'nu_plugin_'
   | get name
   | each {|p|
       let short = ($p | path basename | str replace 'nu_plugin_' '' | str replace --regex '\.exe$' '')
       { name: $short, registered: ($short in $registered), path: $p }
     }
+}
+
+# The directory the plugins are in: beside `nu`, following the symlinks `nu`
+# is reached through one hop at a time and stopping at the first directory
+# that holds any. ~/.local/bin/nu → /opt/homebrew/bin/nu → the Cellar: the
+# first has none, and the list was empty there ("no plugins found next to
+# nu", 2026-10-02). Null when no hop has any. `plugin add` records the file
+# behind the link whichever directory it is given, so a Homebrew upgrade
+# still leaves the entries naming a Cellar that is gone: `plugins list` then
+# shows them unregistered, and `plugins add` is the fix.
+def plugin-dir []: nothing -> any {
+  mut exe = $nu.current-exe
+  for _ in 1..8 {
+    let dir = ($exe | path dirname)
+    if (ls $dir | where name =~ 'nu_plugin_' | is-not-empty) { return $dir }
+    let target = (ls -l $exe | get -o 0.target)
+    if ($target | default "" | is-empty) { return null }
+    $exe = ($dir | path join $target | path expand --no-symlink)
+  }
+  null
 }
 
 # Register every plugin next to the nu binary, except the developer examples.
@@ -337,11 +366,33 @@ export def "plugins list" []: nothing -> table<name: string, registered: bool, p
 export def "plugins add" []: nothing -> nothing {
   let todo = (plugins list | where name not-in $DEV_PLUGINS)
   if ($todo | is-empty) { print "no plugins found next to nu"; return }
+  # Every one, registered or not: `plugin add` replaces an entry of the same
+  # name, which is what refreshes one left by the previous Nushell.
+  mut failed = []
   for p in $todo {
-    print $"  plugin add ($p.name)"
-    do -i { plugin add $p.path }
+    let r = (try { plugin add $p.path; null } catch {|e| $e.msg })
+    print (if $r == null { $"  plugin add ($p.name)" } else { $"  (ansi red)failed(ansi reset)     ($p.name): ($r)" })
+    if $r != null { $failed = ($failed ++ [$p.name]) }
   }
-  print "done — restart Nushell, or `plugin use <name>` now"
+  print (if ($failed | is-empty) { "done — restart Nushell, or `plugin use <name>` now" } else { $"($failed | length) of ($todo | length) could not be registered" })
+}
+
+# One line at an interactive start when a registered plugin's file is gone —
+# what a Nushell upgrade leaves behind, since the registry names the versioned
+# file (`gstat`: "Unable to spawn plugin", with nothing saying why, 2026-10-02).
+# The check is `plugin list` and a `path exists` each, 1.7 ms, so it runs
+# until it passes once for this Nushell version and leaves a marker; after
+# that a start pays one `path exists` (µs) until the version changes.
+export def "plugins notice" []: nothing -> nothing {
+  let marker = ($nu.data-dir | path join .state nu-config $"plugins-ok-((version).version)")
+  if ($marker | path exists) { return }
+  let gone = (plugin list | where {|p| not ($p.filename | path exists) } | get name)
+  if ($gone | is-empty) {
+    mkdir ($marker | path dirname)
+    touch $marker
+    return
+  }
+  print $"(ansi dark_gray)plugins: ($gone | str join ', ') registered from files that are gone \(a Nushell upgrade\) — (ansi reset)(ansi cyan)nu-config plugins add(ansi reset)"
 }
 
 const NU_SCRIPTS = "https://raw.githubusercontent.com/nushell/nu_scripts/main"
