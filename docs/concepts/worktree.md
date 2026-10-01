@@ -67,7 +67,7 @@ transform produces: every gitignored path the repository had, moved as it was.
 worktree: edit it in one, all have it. The link is relative
 (`../.profiles/dflt/.env`), so the container can be moved or synced whole.
 Where a symlink is wrong — a tool that resolves it and writes next to the
-target, a file each branch is meant to diverge in — `profile.yaml` says
+target, a file each branch is meant to diverge in — `profile.nuon` says
 `type: copy`, and `discard` then removes the copy only while it still matches
 the source: a diverged copy is the user's work and is kept, with a warning.
 
@@ -84,7 +84,7 @@ what git does not: if a target is in `git ls-files`, the entry is skipped with
 a warning naming the profile. The rule is what makes a profile safe to apply
 blindly after a pull.
 
-**`profile.yaml` is machinery, not an entry.** It and any hook script inside
+**`profile.nuon` is machinery, not an entry.** It and any hook script inside
 the profile directory are never placed. Hooks (`before-apply`, `after-apply`,
 `after-add`, `before-remove`, `before-discard`, `after-init`) are for what a
 symlink cannot do: seed a database, run `direnv allow`, `cargo fetch` — in the

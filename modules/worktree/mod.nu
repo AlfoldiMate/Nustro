@@ -21,7 +21,7 @@
 #   |- <worktree>/         <- one sibling dir per branch
 #
 # Every file in a profile dir is symlinked into the worktree at the same
-# relative path. An optional profile.yaml (never propagated) overrides entries
+# relative path. An optional profile.nuon (never propagated) overrides entries
 # and declares hooks:
 #
 #   entries:
@@ -62,7 +62,7 @@ const DFLT = "dflt"
 const STATE = ".state"
 const JUNK = [node_modules .venv venv target dist build out .next .cache __pycache__ .pytest_cache .DS_Store]
 
-# Lifecycle points a profile.yaml `hooks:` block may declare. apply runs the
+# Lifecycle points a profile.nuon `hooks:` block may declare. apply runs the
 # apply pair; add runs after-add once the worktree stands; remove/discard run
 # their "before" while the entries still exist; after-init fires once, from
 # dflt only, when a repo transform completes.
@@ -157,25 +157,25 @@ def list-profiles [root: string]: nothing -> list<string> {
     ls -a $pr | where type == dir | get name | path basename | where not ($it starts-with ".")
 }
 
-# profile.yaml allows one hook record or a list of them.
+# profile.nuon allows one hook record or a list of them.
 def as-list [v: any]: nothing -> list {
     if ($v | describe) starts-with "record" { [$v] } else { $v }
 }
 
-# One profile fully resolved: auto-scanned entries merged with profile.yaml.
+# One profile fully resolved: auto-scanned entries merged with profile.nuon.
 # Config entries win over scanned ones for the same target; each entry is
 # {source (abs), target (rel), type, override}.
 def load-profile [root: string, name: string]: nothing -> record {
     let dir = profiles-root $root | path join $name
     if ($dir | path type) != "dir" { fail $"no profile '($name)' in (profiles-root $root)" }
 
-    let cfg_file = $dir | path join "profile.yaml"
+    let cfg_file = $dir | path join "profile.nuon"
     let cfg = if ($cfg_file | path type) == "file" { open $cfg_file } else { {} }
     let hooks = $PHASES | reduce -f {} {|ph, acc|
         $acc | insert $ph (as-list ($cfg.hooks? | default {} | get -o $ph | default []))
     }
 
-    # profile machinery never propagates: profile.yaml, and any hook script
+    # profile machinery never propagates: profile.nuon, and any hook script
     # that lives inside the profile dir. The command is split on `/` so the
     # join is native on Windows too, as the scan below is: `scripts/hook.nu`
     # joined whole would never equal `…\scripts\hook.nu`.
@@ -195,10 +195,10 @@ def load-profile [root: string, name: string]: nothing -> record {
 
     let declared = $cfg.entries? | default [] | each {|e|
         let src = $e.source?
-        if $src == null { fail $"($name)/profile.yaml: entry without source" }
+        if $src == null { fail $"($name)/profile.nuon: entry without source" }
         let abs = ($src starts-with "/") or ($src =~ '^[A-Za-z]:[\\/]')
         if $abs and $e.target? == null {
-            fail $"($name)/profile.yaml: absolute source ($src) needs an explicit target"
+            fail $"($name)/profile.nuon: absolute source ($src) needs an explicit target"
         }
         let target = $e.target? | default $src
         {
@@ -263,7 +263,7 @@ def run-hooks [profs: list, phase: string, root: string, wt: string] {
     for p in $profs {
         for h in ($p.hooks | get -o $phase | default []) {
             let cmd = $h.command?
-            if $cmd == null { fail $"($p.name)/profile.yaml: ($phase) hook without command" }
+            if $cmd == null { fail $"($p.name)/profile.nuon: ($phase) hook without command" }
             let local = $p.dir | path join $cmd
             let resolved = if (ptype $local) == "file" { $local } else { $cmd }
             let args = $h.args? | default [] | each { into string }
@@ -651,7 +651,7 @@ def transform [root: string] {
     if ($junk | is-not-empty) {
         warn $"junk landed in .profiles/dflt: ($junk | str join ', ') — delete what a fresh checkout should rebuild"
     }
-    if (ptype (profiles-root $root | path join $DFLT "profile.yaml")) == "file" {
+    if (ptype (profiles-root $root | path join $DFLT "profile.nuon")) == "file" {
         run-hooks [(load-profile $root $DFLT)] "after-init" $root $wt
     }
 

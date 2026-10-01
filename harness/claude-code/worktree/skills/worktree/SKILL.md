@@ -39,7 +39,7 @@ proj/                  the root: the container
 
 A profile is a directory; every file in it is placed into the worktree at
 the same relative path, as a relative symlink unless the profile's
-`profile.yaml` says `type: copy`. `dflt` first, then the profiles named with
+`profile.nuon` says `type: copy`. `dflt` first, then the profiles named with
 `-p`, in order; a later entry replaces an earlier one. A git-tracked file is
 never overwritten.
 

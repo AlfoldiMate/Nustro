@@ -53,20 +53,24 @@ names for `remove`, `--to` and `--on`, and profile names for `-p`.
 A profile is a directory under `.profiles/`. Every file in it is an entry:
 symlinked into the worktree at the same relative path. `dflt` is always
 applied first; a later profile's entry replaces an earlier one's. An optional
-`profile.yaml` in the profile directory (never itself placed) overrides entries
+`profile.nuon` in the profile directory (never itself placed) overrides entries
 and declares hooks:
 
-```yaml
-entries:
-  - source: .env.local      # relative to the profile dir, or absolute
-    type: copy              # symlink (default) | copy | none (exclude the target)
-    override: true          # false: never replace something already there
-    target: .env.local      # required only when source is absolute
-hooks:
-  before-apply:             # one record or a list of them
-    - command: scripts/seed.nu   # relative: resolved in the profile dir
-      args: ["--fast"]
-  after-apply: ...
+```nuon
+{
+  entries: [
+    { source: .env.local      # relative to the profile dir, or absolute
+      type: copy              # symlink (default) | copy | none (exclude the target)
+      override: true          # false: never replace something already there
+      target: .env.local }    # required only when source is absolute
+  ]
+  hooks: {
+    before-apply: [           # one record or a list of them
+      { command: scripts/seed.nu   # relative: resolved in the profile dir
+        args: ["--fast"] }
+    ]
+  }
+}
 ```
 
 The hook points: `before-apply`, `after-apply` (both from `apply` and from
@@ -161,5 +165,5 @@ is written under `$nu.data-dir`.
 
 `nu tests/run.nu worktree` — `tests/worktree/worktree.test.nu` runs every
 command against a layout under the run's scratch directory: init, a
-transform, add with profiles and a `profile.yaml`, apply's refresh and reset,
+transform, add with profiles and a `profile.nuon`, apply's refresh and reset,
 the tracked-file and diverged-copy rules, discard, remove.

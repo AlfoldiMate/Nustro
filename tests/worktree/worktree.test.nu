@@ -1,6 +1,6 @@
 # modules/worktree against real git in the run's scratch directory: a layout
 # from nothing and from an existing repository, add with profiles and a
-# profile.yaml, the rules apply keeps (tracked never overwritten, later profile
+# profile.nuon, the rules apply keeps (tracked never overwritten, later profile
 # wins, override: false defers, type: none excludes), the manifest behind
 # which/apply/discard/remove, what add carries over, and the two completers.
 use lib.nu *
@@ -112,13 +112,13 @@ def "test apply never replaces a directory with tracked files in it" [] {
   mkdir ($ci | path join config-src)
   "b = 2\n" | save ($ci | path join config-src b.toml)
   # one declared as a copy, one as a symlink: neither may `rm -rf` the tracked dir
-  "entries:\n  - source: config-src\n    target: config\n    type: copy\n" | save ($ci | path join profile.yaml)
+  { entries: [{ source: config-src, target: config, type: copy }] } | to nuon | save ($ci | path join profile.nuon)
   cd $main
   let text = printed $main "worktree apply -p ci"
   assert ($text =~ "config: git-tracked") $text
   assert equal (open --raw ($main | path join config a.toml)) "a = 1\n"
   assert equal (git-in $main status --porcelain) "" "nothing tracked was touched"
-  "entries:\n  - source: config-src\n    target: config\n" | save -f ($ci | path join profile.yaml)
+  { entries: [{ source: config-src, target: config }] } | to nuon | save -f ($ci | path join profile.nuon)
   worktree apply -p ci
   assert equal ($main | path join config | path type) dir "still the tracked directory, not a link"
   assert equal (git-in $main status --porcelain) ""
@@ -150,14 +150,11 @@ def "test add with a profile: later wins, copy, none and override false" [] {
   "mine\n" | save ($ci | path join local.toml)
   # .env from ci replaces dflt's as a copy; ci.yaml is excluded; local.toml
   # defers to whatever is already in the worktree
-  "entries:
-  - source: .env
-    type: copy
-  - source: ci.yaml
-    type: none
-  - source: local.toml
-    override: false
-" | save ($ci | path join profile.yaml)
+  { entries: [
+    { source: .env, type: copy }
+    { source: ci.yaml, type: none }
+    { source: local.toml, override: false }
+  ] } | to nuon | save ($ci | path join profile.nuon)
   cd ($root | path join main)
   worktree add feat -p ci
   let feat = $root | path join feat
@@ -166,7 +163,7 @@ def "test add with a profile: later wins, copy, none and override false" [] {
   assert equal (open ($feat | path join .env)) "secret=ci\n" "ci wins over dflt"
   assert equal ($feat | path join ci.yaml | path exists) false "type none excludes"
   assert equal ($feat | path join local.toml | path type) symlink "nothing was in the way, so it is placed"
-  assert equal ($feat | path join profile.yaml | path exists) false "machinery never propagates"
+  assert equal ($feat | path join profile.nuon | path exists) false "machinery never propagates"
   let st = open ($root | path join .profiles .state feat.nuon)
   assert equal $st.applied [dflt ci]
   assert equal ($st.entries | select target type profile | sort-by target) [[target type profile]; [.env copy ci] [local.toml symlink ci]]
@@ -177,7 +174,7 @@ def "test override false defers to a file already in the worktree" [] {
   let ci = $root | path join .profiles ci
   mkdir $ci
   "theirs\n" | save ($ci | path join local.toml)
-  "entries:\n  - source: local.toml\n    override: false\n" | save ($ci | path join profile.yaml)
+  { entries: [{ source: local.toml, override: false }] } | to nuon | save ($ci | path join profile.nuon)
   "mine\n" | save ($root | path join main local.toml)
   cd ($root | path join main)
   worktree apply -p ci
@@ -189,14 +186,14 @@ def "test hooks run in the worktree with BW_ variables and a failure stops the c
   let dflt = $root | path join .profiles dflt
   mkdir ($dflt | path join scripts)
   '$"($env.BW_PROFILE) ($env.BW_WORKTREE | path basename) ($env.BW_ROOT | path basename) ($env.PWD | path basename)\n" | save -f hooked' | save ($dflt | path join scripts hook.nu)
-  "hooks:\n  after-add:\n    command: scripts/hook.nu\n" | save ($dflt | path join profile.yaml)
+  { hooks: { after-add: { command: scripts/hook.nu } } } | to nuon | save ($dflt | path join profile.nuon)
   cd $root
   worktree add feat
   let feat = $root | path join feat
   assert equal (open ($feat | path join hooked)) $"dflt feat ($root | path basename) feat\n"
   assert equal ($feat | path join scripts | path exists) false "a hook script is machinery, never placed"
 
-  "hooks:\n  before-apply:\n    command: scripts/boom.nu\n" | save -f ($dflt | path join profile.yaml)
+  { hooks: { before-apply: { command: scripts/boom.nu } } } | to nuon | save -f ($dflt | path join profile.nuon)
   "error make -u { msg: 'boom' }" | save ($dflt | path join scripts boom.nu)
   cd $feat
   let err = try { worktree apply; null } catch {|e| $e.msg }
@@ -256,7 +253,7 @@ def "test discard removes symlinks and keeps a diverged copy" [] {
   let ci = $root | path join .profiles ci
   mkdir $ci
   "ci: true\n" | save ($ci | path join ci.yaml)
-  "entries:\n  - source: ci.yaml\n    type: copy\n" | save ($ci | path join profile.yaml)
+  { entries: [{ source: ci.yaml, type: copy }] } | to nuon | save ($ci | path join profile.nuon)
   let main = $root | path join main
   cd $main
   worktree apply -p ci
