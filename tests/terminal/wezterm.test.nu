@@ -144,6 +144,16 @@ def "test shell writes default_prog with -l and --reset drops it" [] {
   assert equal (wezterm settings | get -o default_prog) null
 }
 
+def "test option writes the two composed-key settings and default drops them" [] {
+  let fake = fake-wezterm
+  terminal option right
+  assert equal (wezterm settings | select send_composed_key_when_left_alt_is_pressed send_composed_key_when_right_alt_is_pressed | values) [true false]
+  terminal option both
+  assert equal (wezterm settings | select send_composed_key_when_left_alt_is_pressed send_composed_key_when_right_alt_is_pressed | values) [false false]
+  terminal option default
+  assert equal (wezterm settings | get -o send_composed_key_when_left_alt_is_pressed) null
+}
+
 def "test reload is true: WezTerm reloads by itself" [] {
   let fake = fake-wezterm
   assert equal (wezterm reload) true

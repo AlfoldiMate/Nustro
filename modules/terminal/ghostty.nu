@@ -244,20 +244,15 @@ export def "ghostty nu-path" []: nothing -> path {
 
 # Make Nushell what a new Ghostty window starts, or hand that back to Ghostty.
 #
-# On macOS the same write makes the right Option key Alt, unless their config
-# already says something about it. Ghostty's default (`macos-option-as-alt`
-# unset) lets Option compose the layout's characters, so Alt+E (the agent),
-# Alt+Enter (a newline) and Alt+arrows (words) type an accent or a symbol
-# instead — Ghostty 1.3.1 default, verified 2026-09-19. `right` keeps the left
-# key for the layout (on a Hungarian ISO layout `@ [ ] { }` are Option+letter;
-# on US it is the accents) and gives the shell the other one.
+# On macOS the same write makes the left Option key Alt, unless their config
+# already says something about it (`ghostty option`, below).
 export def "ghostty shell" [
   --reset  # drop our `command` (and the Option key), so Ghostty falls back to SHELL / passwd again
 ]: nothing -> nothing {
   if $reset {
     ghostty set { command: null, macos-option-as-alt: null }
   } else {
-    let alt = (if $nu.os-info.name == "macos" and (ghostty live "macos-option-as-alt" | default "" | is-empty) { { macos-option-as-alt: "right" } } else { {} })
+    let alt = (if $nu.os-info.name == "macos" and (ghostty live "macos-option-as-alt" | default "" | is-empty) { { macos-option-as-alt: "left" } } else { {} })
     ghostty set ({ command: (ghostty nu-path) } | merge $alt)
   }
   let now = (ghostty live "command")
@@ -265,6 +260,44 @@ export def "ghostty shell" [
     "Ghostty is not installed; the setting is written for when it is"
   } else {
     $"new Ghostty windows start ($now)"
+  })
+}
+
+# ── the Option key ────────────────────────────────────────────────────────────
+#
+# Which Option key is Alt (`macos-option-as-alt`, a macOS key). Ghostty's
+# default lets Option compose the layout's characters on every layout but the
+# two US ones, so Alt+E (the agent) and Alt+B / Alt+F / Alt+D (words) type an
+# accent or a symbol instead — Ghostty 1.3.1, verified 2026-09-19. An Option
+# chord that produces no character — Alt+Enter, Alt+arrows, Alt+Backspace —
+# is Alt whatever this says (Ghostty's own documentation of the key).
+#
+# The base is `left`, written by `ghostty shell` when their config says
+# nothing: the right key is the one a layout's third level is typed with — it
+# is AltGr on every ISO keyboard, and on a Hungarian layout `| \ [ ] { } @ ;
+# < > #` are all Option+key — so the shell gets the other one. It was `right`
+# until 2026-10-01, which took exactly that key away.
+const OPTION_SIDES = { left: "left", right: "right", both: "true", none: "false" }
+
+# Which Option key is Alt in Ghostty: `left`, `right`, `both`, `none`, or
+# `default` to hand the key back to their config. Nothing given: what it is now.
+export def "ghostty option" [
+  side?: string  # left | right | both | none | default
+]: nothing -> nothing {
+  if $side != null {
+    if $side != "default" and $side not-in ($OPTION_SIDES | columns) {
+      error make { msg: $"ghostty option takes left, right, both, none or default, not '($side)'", label: { text: "not a side", span: (metadata $side).span } }
+    }
+    ghostty set { macos-option-as-alt: (if $side == "default" { null } else { $OPTION_SIDES | get $side }) }
+    ghostty reload | ignore
+  }
+  let now = (ghostty live "macos-option-as-alt" | default "" | into string)
+  print (match $now {
+    "left" => "the left Option key is Alt; the right one types the layout's characters"
+    "right" => "the right Option key is Alt; the left one types the layout's characters"
+    "true" => "both Option keys are Alt; neither types the layout's characters"
+    "false" => "neither Option key is Alt; both type the layout's characters"
+    _ => "Ghostty decides: both Option keys are Alt on a US layout, neither on any other"
   })
 }
 

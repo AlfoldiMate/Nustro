@@ -41,17 +41,54 @@ Each has two jobs — make sure `nu` exists, clone this repo — and hands over 
 `install.nu`, written in the shell it installs. Read either first; they are
 short on purpose. Nushell **0.116 or later** is required and nothing older is
 supported: a `nu` that is older gets an offer to upgrade, not a broken
-install. `sh install.sh --yes` asks nothing, and any flag below is handed on
-(`sh install.sh --yes --skip-deps`). Already have Nushell and a checkout?
+install. Already have Nushell and a checkout?
 
 ```nu
 git clone https://github.com/AlfoldiMate/Nustro ~/.local/share/nustro
-nu ~/.local/share/nustro/install.nu              # seven screens, every one skippable
-nu ~/.local/share/nustro/install.nu --defaults   # no questions, the whole thing
-nu ~/.local/share/nustro/install.nu --dry-run    # print the plan, change nothing
-nu ~/.local/share/nustro/install.nu --minimal    # nu-config, nu-complete and terminal only
-nu ~/.local/share/nustro/install.nu --clean      # back up whatever is there, yours included, and start over
+nu ~/.local/share/nustro/install.nu              # guided: seven screens, every one skippable, one yes at the end
 ```
+
+**Which run.** The guided one asks; the other three do not:
+
+| you want | from a checkout | from the one-liner |
+|---|---|---|
+| to be asked | `nu install.nu` | `curl … \| sh` |
+| the default install, no questions | `nu install.nu --defaults` | `curl … \| sh -s -- --yes` |
+| a clean install, no questions | `nu install.nu --defaults --clean` | `curl … \| sh -s -- --yes --clean` |
+| to see the plan first | `nu install.nu --dry-run` | `curl … \| sh -s -- --dry-run` |
+
+**`--defaults`** is the whole install with every screen's default taken: a
+configuration that is not Nustro's is backed up, all the modules are enabled,
+the missing tools are installed, the platform's terminal is installed when
+there is none (Ghostty; WezTerm on Windows) and set to start Nushell, tool
+init files, plugins and Claude Code are wired. Two things it leaves for you,
+because they are a taste: the theme (the shell follows the terminal's own
+sixteen colours until you run `theme`) and the font (`font`). A run with no
+terminal on stdin or stdout — a provisioning script, CI — takes the defaults
+by itself.
+
+**`--clean`** is for a directory that is already Nustro's: a plain re-run
+changes nothing of yours there, `--clean` moves all of it — `settings.nu`,
+drop-ins, state — to `.backup/<stamp>/` and starts from an empty directory.
+History and the plugin registry stay. Alone it still asks the screens; with
+`--defaults` it asks nothing.
+
+| flag | what it does |
+|---|---|
+| `--defaults` | no questions, the whole install (`--yes` on `install.sh`) |
+| `--clean` | back up whatever is there, yours included, and start over |
+| `--keep-existing` | leave an existing configuration's files in place; only its `config.nu` is set aside (the opposite of `--clean`) |
+| `--minimal` | `nu-config`, `nu-complete` and `terminal` only; the rest is `nu-config module enable` away |
+| `--dry-run` | print the plan, change nothing |
+| `--skip-deps` | do not install starship, zoxide, atuin, carapace, vivid (`nu-config deps install` later) |
+| `--skip-terminal` | do not install a terminal |
+| `--skip-tools` | do not generate tool init files (`nu-config tools setup` later) |
+| `--skip-plugins` | do not register plugins |
+| `--skip-harness` | do not register the checkout with Claude Code |
+
+They combine (`--defaults --minimal --skip-terminal`), and `install.sh` hands
+on every one of them; on Windows it is `.\install.ps1 -Yes -Pass '--clean'`.
+`nu install.nu --help` prints the list.
 
 Nothing is written before you say yes to the last screen. What the install
 does, in order ([Install](docs/getting-started/install.md)):

@@ -351,21 +351,28 @@ def replace-span [position: int, len: int]: nothing -> record { { start: ($posit
 # `..`, `~`, `-` and zoxide's ranking (`zoxide query -l`, 12 ms, memoised 30 s
 # per directory), matched on the whole path or on the last component so that
 # `cd nus` finds ~/.config/nushell. Paths with spaces are backtick-quoted the
-# way Nushell's own file completer does it.
-def dir-fallback [partial: string, position: int]: nothing -> list<record> {
-  let fixed = [
-    { value: "..", description: "parent" }
-    { value: "~", description: "home" }
-    { value: "-", description: "previous directory" }
-  ]
+# way Nushell's own file completer does it. The whole database is memoised
+# and the twenty best of what matches are offered, so a place ranked 40th is
+# still found by name. `--places` leaves the three fixed ones out: `zi` takes
+# words to search for, not a path.
+def dir-fallback [partial: string, position: int, --places]: nothing -> list<record> {
+  let fixed = if $places { [] } else {
+    [
+      { value: "..", description: "parent" }
+      { value: "~", description: "home" }
+      { value: "-", description: "previous directory" }
+    ]
+  }
   let frecent = if (which zoxide | is-empty) { [] } else {
     nu-complete cache $"zoxide:($env.PWD)" 30sec {
-      ^zoxide query -l --exclude $env.PWD | lines | first 20
+      ^zoxide query -l --exclude $env.PWD | lines
     } | each {|d| { value: ($d | str replace $env.HOME "~"), description: "zoxide" } }
   }
   let by_path = ($fixed ++ $frecent | nu-complete filter $partial)
-  let by_name = ($frecent | where {|r| [{ value: ($r.value | path basename) }] | nu-complete filter $partial | is-not-empty })
-  $by_path ++ $by_name | uniq-by value | each {|r|
+  # One filter over the last components, not one per place: 60 places cost
+  # 43 ms a key the other way (`nu-complete explain "cd nus"`, 2026-10-01).
+  let by_name = ($frecent | each {|r| { value: ($r.value | path basename), place: $r } } | nu-complete filter $partial | get place)
+  $by_path ++ $by_name | uniq-by value | first (20 + ($fixed | length)) | each {|r|
     let v = if ($r.value =~ '\s') { $"`($r.value)`" } else { $r.value }
     { value: $v, description: $r.description, span: (replace-span $position ($partial | str length)), kind: directory }
   }
@@ -498,7 +505,8 @@ export def "nu-complete smart" [buffer: string, place: record]: nothing -> list<
 # the same code path as Tab, for a slot that offers the wrong thing or is
 # slow. `layer` is one of: nushell (its own answer, deduplicated), lazy (a
 # module not loaded yet), field (a closure parameter's field), directories
-# (the `cd` fallback), columns, operators, values, no-files.
+# (the `cd` fallback), zoxide (`z`, `zi`), columns, operators, values,
+# no-files.
 export def "nu-complete explain" [
   line: string   # the line up to the cursor, as typed
 ]: nothing -> record {
@@ -556,7 +564,7 @@ def answer [buffer: string, place: record, vars: table]: nothing -> record<layer
   let partial = ($buffer | str substring $place.target.start..<$position)
   let shape = ($place.shape? | default "")
   let no_files = ($base | where kind not-in [file directory])
-  let nushell = { layer: "nushell", items: ($base | dedupe) }
+  let nushell = { layer: "nushell", items: ($base | in-slot $buffer $place | or-files $base $partial $place | dedupe) }
 
   # A closure parameter's field: `each {|r| $r.na⌶}` → columns.
   let field = ($partial | parse --regex '^\$(?<var>\w+)\.(?<path>[\w.]*)$' | get -o 0)
@@ -572,6 +580,20 @@ def answer [buffer: string, place: record, vars: table]: nothing -> record<layer
   if $shape == "directory" and ($base | where kind == directory | is-empty) {
     let items = (dir-fallback $partial $position)
     if ($items | is-not-empty) { return { layer: "directories", items: $items } }
+  }
+
+  # `z ⌶`, `zi ⌶`: zoxide's places are what the command is for, so they are
+  # offered every time and not only when nothing here matches — after the
+  # directories here for `z`, which goes to one when its argument is one, and
+  # alone for `zi`, whose arguments are words to search for (Nushell offers
+  # files there). The alias arrives resolved: `place.command` names zoxide's
+  # own `__zoxide_z`.
+  let zoxide = ($place.command | get -o 0 | default "")
+  if $place.kind == "positional" and $zoxide in [__zoxide_z __zoxide_zi] {
+    let jump = ($zoxide == "__zoxide_z")
+    let here = if $jump { $nushell.items | where kind == directory } else { [] }
+    let places = if $jump { dir-fallback $partial $position } else { dir-fallback $partial $position --places }
+    return { layer: "zoxide", items: ($here ++ $places | dedupe) }
   }
 
   # A flag whose value is a column: `move name --after ⌶`.
@@ -649,19 +671,33 @@ def answer [buffer: string, place: record, vars: table]: nothing -> record<layer
   $nushell
 }
 
-# Only what would go into the slot, or extends what is typed. Under `fuzzy`,
-# `ps ⌶` makes Nushell match the head and its space against every multiword
-# command — `polars agg` and 187 more with the plugin, all spanning {0,3},
-# which would replace `ps` itself. `bits r⌶` has the same shape (positional,
-# no shape, candidates from 0) and `bits ror` is right: the line so far is
-# its prefix. A candidate from before the token that does not start with the
-# text it would replace is a rewrite of the command, not a completion
-# (2026-09-28; the pty test drives `bits r`).
+# Only what would go into the slot, or extends the command it is in. Under
+# `fuzzy`, Nushell matches the head and its space against every multiword
+# command: `ps ⌶` offers `polars agg` and 187 more with the plugin, `ps -⌶`
+# 78 beside the four flags, `cd ⌶` 30 beside the directories — all spanning
+# from 0, which would replace the command itself. `bits r⌶` and `polars
+# uniq⌶` have the same shape and `bits ror`, `polars unique` are right: the
+# words before the token are their prefix. A candidate from before the token
+# that does not start with those words is a rewrite of the command, not a
+# completion (2026-09-28; the pty test drives `bits r`). Every answer of
+# Nushell's goes through this since 2026-10-01, not only a slot without files.
 def in-slot [buffer: string, place: record]: list -> list {
   where {|r|
     let start = ($r.span?.start? | default $place.target.start)
-    $start >= $place.target.start or ($r.value | str starts-with ($buffer | str substring $start..<$place.cursor))
+    $start >= $place.target.start or ($r.value | str starts-with ($buffer | str substring $start..<$place.target.start))
   }
+}
+
+# `ls ⌶` is the one slot where those commands arrive instead of the files
+# rather than beside them (0.116.0: `ls d⌶` has both, `open ⌶` only files).
+# When nothing is left of an answer that had something, the slot is asked
+# again as a path, and the spans — offsets into the token — are moved to
+# where the token is.
+def or-files [base: list, partial: string, place: record]: list -> list {
+  let kept = $in
+  if ($kept | is-not-empty) or ($base | is-empty) or $place.kind != "positional" or (($place.shape? | default "") !~ 'glob|path|any') { return $kept }
+  try { $partial | commandline complete --detailed --type path } catch { [] }
+  | each {|r| $r | update span { start: ($r.span.start + $place.target.start), end: ($r.span.end + $place.target.start) } }
 }
 
 # `first ⌶`, `skip ⌶`, `sleep ⌶`: a number is wanted, not a file.

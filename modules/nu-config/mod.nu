@@ -164,9 +164,14 @@ export def doctor []: nothing -> nothing {
   }
   # The ones with no init file — starship, vivid — and the line that gets
   # any missing one: `deps status` is five `which` calls, 1.2 ms (`timeit`, 2026-10-01).
-  let absent = (deps status | where not installed)
-  for t in ($absent | where tool not-in (tools status | get tool)) {
-    print $"  (ansi dark_gray)--(ansi reset) ($t.tool | fill --width 9) not installed"
+  let deps = (deps status)
+  let absent = ($deps | where not installed)
+  for t in ($deps | where tool not-in (tools status | get tool)) {
+    if $t.installed {
+      print $"  ($ok) ($t.tool | fill --width 9) ok"
+    } else {
+      print $"  (ansi dark_gray)--(ansi reset) ($t.tool | fill --width 9) not installed"
+    }
   }
   if ($absent | is-not-empty) { print $"  (ansi dark_gray)install the missing ones with: nu-config deps install(ansi reset)" }
   print ""

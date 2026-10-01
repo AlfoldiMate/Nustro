@@ -6,6 +6,7 @@
 #   terminal use <name>    make one the target, whatever this session runs in
 #   terminal install       install the platform's default, or a named one, after asking
 #   terminal shell         a new window of the target starts Nushell
+#   terminal option        which Option key is Alt: left (the base), right, both, none
 #   terminal status        what the target's configuration holds
 #   terminal set / reset   the target's own `set` / `reset`
 #
@@ -262,6 +263,27 @@ export def "terminal shell" [
   match (terminal require).name {
     "ghostty" => { if $reset { ghostty shell --reset } else { ghostty shell } }
     "wezterm" => { if $reset { wezterm shell --reset } else { wezterm shell (terminal nu-path) } }
+  }
+}
+
+def option-sides []: nothing -> list<record> {
+  [
+    { value: "left", description: "the left Option key is Alt, the right one types the layout's characters — the base" }
+    { value: "right", description: "the right Option key is Alt, the left one types the layout's characters" }
+    { value: "both", description: "both are Alt: no layout characters from Option" }
+    { value: "none", description: "neither is Alt: Alt+letter bindings stop working" }
+    { value: "default", description: "drop ours: your terminal config, or the terminal, decides" }
+  ]
+}
+
+# Which Option (Alt) key the shell gets as Alt; the other one types the
+# layout's third level. Nothing given: what it is now.
+export def "terminal option" [
+  side?: string@option-sides  # left | right | both | none | default
+]: nothing -> nothing {
+  match (terminal require).name {
+    "ghostty" => { ghostty option $side }
+    "wezterm" => { wezterm option $side }
   }
 }
 

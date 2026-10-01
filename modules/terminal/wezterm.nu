@@ -238,6 +238,34 @@ export def "wezterm shell" [
   print (if $now == null { "new WezTerm windows start its own default shell" } else { $"new WezTerm windows start ($now | str join ' ')" })
 }
 
+# ── the Option key ────────────────────────────────────────────────────────────
+
+# Which Alt key is Alt in WezTerm, the other typing the layout's characters:
+# two booleans, `send_composed_key_when_{left,right}_alt_is_pressed`. Its own
+# default is `left` already, so `default` drops both keys.
+export def "wezterm option" [
+  side?: string  # left | right | both | none | default
+]: nothing -> nothing {
+  if $side != null {
+    let keys = (match $side {
+      "left" => [false true]
+      "right" => [true false]
+      "both" => [false false]
+      "none" => [true true]
+      "default" => [null null]
+      _ => (error make { msg: $"wezterm option takes left, right, both, none or default, not '($side)'", label: { text: "not a side", span: (metadata $side).span } })
+    })
+    wezterm set { send_composed_key_when_left_alt_is_pressed: $keys.0, send_composed_key_when_right_alt_is_pressed: $keys.1 }
+  }
+  let s = (wezterm settings)
+  let left = (not ($s | get -o send_composed_key_when_left_alt_is_pressed | default false))
+  let right = (not ($s | get -o send_composed_key_when_right_alt_is_pressed | default true))
+  print (if $left and $right { "both Alt keys are Alt; neither types the layout's characters" }
+    else if $left { "the left Alt key is Alt; the right one types the layout's characters" }
+    else if $right { "the right Alt key is Alt; the left one types the layout's characters" }
+    else { "neither Alt key is Alt; both type the layout's characters" })
+}
+
 # WezTerm watches its config file and reloads every open window when it
 # changes, on every platform, so a write has already reached them by the
 # time this is asked. True, then, whenever WezTerm is installed at all.

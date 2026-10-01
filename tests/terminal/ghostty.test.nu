@@ -157,8 +157,8 @@ def "test shell makes nu the command and --reset drops it" [] {
   ghostty shell
   assert equal (ghostty settings | get command) (ghostty nu-path)
   assert equal (ghostty status | get shell) (ghostty nu-path)
-  # On macOS the right Option key becomes Alt with it, unless they said otherwise.
-  assert equal (ghostty settings | get -o macos-option-as-alt) (if $nu.os-info.name == "macos" { "right" } else { null })
+  # On macOS the left Option key becomes Alt with it, unless they said otherwise.
+  assert equal (ghostty settings | get -o macos-option-as-alt) (if $nu.os-info.name == "macos" { "left" } else { null })
   ghostty shell --reset
   assert equal (ghostty settings | get -o command) null
   assert equal (ghostty settings | get -o macos-option-as-alt) null
@@ -167,11 +167,29 @@ def "test shell makes nu the command and --reset drops it" [] {
 def "test shell leaves an Option key they configured alone" [] {
   if $nu.os-info.name != "macos" { skip-test "macos-option-as-alt is a macOS key" }
   let fake = fake-ghostty
-  "macos-option-as-alt = left
+  "macos-option-as-alt = right
 " | save ($fake.config | path join config.ghostty)
   ghostty shell
   assert equal (ghostty settings | get -o macos-option-as-alt) null "theirs stands"
-  assert equal (ghostty live macos-option-as-alt) "left"
+  assert equal (ghostty live macos-option-as-alt) "right"
+}
+
+def "test option writes the side over theirs and default hands it back" [] {
+  let fake = fake-ghostty
+  "macos-option-as-alt = right
+" | save ($fake.config | path join config.ghostty)
+  terminal option left
+  assert equal (ghostty settings | get macos-option-as-alt) "left"
+  assert equal (ghostty live macos-option-as-alt) "left" "ours is applied last"
+  terminal option both
+  assert equal (ghostty settings | get macos-option-as-alt) "true"
+  terminal option none
+  assert equal (ghostty settings | get macos-option-as-alt) "false"
+  terminal option default
+  assert equal (ghostty settings | get -o macos-option-as-alt) null
+  assert equal (ghostty live macos-option-as-alt) "right"
+  let err = try { terminal option up; null } catch {|e| $e.msg }
+  assert ($err | str contains "left, right, both, none or default") ($err | to nuon)
 }
 
 def "test reload asks Ghostty over AppleScript on macOS and is false elsewhere" [] {

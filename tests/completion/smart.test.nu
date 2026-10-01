@@ -71,6 +71,54 @@ def "test a command with no positional does not offer a command it fuzzy-matches
   assert ("bits ror" in $sub) ($sub | to nuon)
 }
 
+# The same match in a slot Nushell answers itself: beside the flags (`ps -`),
+# beside the directories (`cd `), and in place of the files (`ls `). A
+# subcommand typed loosely (`polars ag`) still starts with the words before it.
+def "polars n-unique" [] { }
+def "tools dir" [] { }
+
+def "test a flag, a directory and a file slot do not offer a command they fuzzy-match" [] {
+  let was = $env.config.completions.algorithm
+  $env.config.completions.algorithm = "fuzzy"
+  let stock = ("ls " | commandline complete)
+  let flags = (smart "ps -")
+  let files = (smart "ls ")
+  let dirs = (kinds "cd ")
+  let sub = (smart "polars ag" | get value)
+  $env.config.completions.algorithm = $was
+  assert ("tools dir" in $stock) $"the fixture fuzzy-matches: ($stock | to nuon)"
+  assert equal ($flags | get value | sort) ["--help" "--long" "-h" "-l"]
+  assert equal ($files | get kind | uniq | sort) [directory file] ($files | to nuon)
+  assert ($files | all {|r| $r.span.start == 3 }) "a file replaces the token, not the line"
+  assert ("command" not-in $dirs) ($dirs | to nuon)
+  assert ("polars agg" in $sub) ($sub | to nuon)
+}
+
+# zoxide's own commands, as `zoxide init nushell` declares them (0.10.0), and
+# a `zoxide` that lists three places whatever it is asked.
+def --env --wrapped __zoxide_z [...rest: directory] { }
+def --env --wrapped __zoxide_zi [...rest: string] { }
+alias z = __zoxide_z
+alias zi = __zoxide_zi
+
+def "test z offers the directories here and the places of zoxide, zi the places alone" [] {
+  if $nu.os-info.name == "windows" { skip-test "which needs an executable bit"; return }
+  let d = scratch
+  "#!/bin/sh\nprintf '/srv/alpha\\n/srv/beta\\n/opt/nushell\\n'\n" | save ($d | path join zoxide)
+  ^chmod +x ($d | path join zoxide)
+  cd $d
+  $env.PATH = [$d]
+  let z = (smart "z ")
+  let named = (smart "z nus" | get value)
+  let zi = (smart "zi ")
+  assert ("file" not-in ($z | get kind)) ($z | to nuon)
+  assert ($z | where kind == directory and description? != "zoxide" | is-not-empty) "the directories of the working directory"
+  assert equal ($z | where description? == "zoxide" | get value) [/srv/alpha /srv/beta /opt/nushell]
+  assert equal $named [/opt/nushell]
+  assert equal ($zi | get value) [/srv/alpha /srv/beta /opt/nushell]
+  assert equal (nu-complete explain "zi " | get layer) zoxide
+}
+
 def "test a number slot stops offering files, before a pipe too" [] {
   assert equal (kinds "first ") []
   assert equal (kinds "sleep ") []
