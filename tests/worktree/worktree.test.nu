@@ -421,3 +421,25 @@ def "test Tab completes worktree names and profile names" [] {
   cd (scratch)
   assert equal ("worktree remove " | commandline complete) [] "outside a layout: nothing, not an error"
 }
+
+def "test a profile.yaml left behind is refused, and convert rewrites it" [] {
+  let root = layout
+  let ci = $root | path join .profiles ci
+  mkdir $ci
+  "ci: true\n" | save ($ci | path join ci.yaml)
+  "# why a copy\nentries:\n  - source: ci.yaml\n    type: copy\nhooks:\n  after-apply:\n    command: scripts/none.nu\n" | save ($ci | path join profile.yaml)
+  let main = $root | path join main
+  cd $main
+  # `rendered`: the profile is loaded inside an `each`, which wraps the message.
+  let err = try { worktree apply -p ci; null } catch {|e| $e.rendered }
+  assert ($err | default "" | str contains "worktree convert") ($err | to nuon)
+  assert equal ($main | path join profile.yaml | path exists) false "refused before anything is placed"
+
+  assert ((printed $main "worktree convert --dry-run") =~ "would rewrite ci/profile.yaml")
+  assert ($ci | path join profile.yaml | path exists)
+  worktree convert
+  assert equal (open ($ci | path join profile.nuon)) { entries: [{ source: ci.yaml, type: copy }], hooks: { after-apply: { command: scripts/none.nu } } }
+  assert equal ($ci | path join profile.yaml | path exists) false
+  assert (open --raw ($root | path join .profiles .state ci.profile.yaml) | str starts-with "# why a copy") "the original, comments included"
+  assert ((printed $main "worktree convert") =~ "no profile.yaml")
+}

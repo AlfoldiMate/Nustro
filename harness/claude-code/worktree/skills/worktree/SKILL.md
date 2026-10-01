@@ -41,7 +41,8 @@ A profile is a directory; every file in it is placed into the worktree at
 the same relative path, as a relative symlink unless the profile's
 `profile.nuon` says `type: copy`. `dflt` first, then the profiles named with
 `-p`, in order; a later entry replaces an earlier one. A git-tracked file is
-never overwritten.
+never overwritten. A `profile.yaml` from before 2026-10-01 is refused:
+`worktree convert` rewrites it as `profile.nuon`.
 
 | Subcommand | Does |
 |---|---|
@@ -51,6 +52,7 @@ never overwritten.
 | `apply [-p a,b] [--to <wt>] [--reset]` | refresh the recorded set; `-p` changes it, `--reset` returns to `dflt` |
 | `discard` | undo what apply placed in this worktree |
 | `which [--on <wt>]` | the applied profiles and every entry, then the profiles that exist |
+| `convert [--dry-run]` | rewrites every `profile.yaml` of the layout as `profile.nuon`; the original is kept under `.profiles/.state/` |
 
 ## What you may run, and what is the user's
 

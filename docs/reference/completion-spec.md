@@ -124,6 +124,7 @@ delta from the line above it:
 | `use brew.nu *` | +2.6 ms |
 | `use git.nu *` | +2.1 ms |
 | `use cargo.nu *` | +3.2 ms |
+| `use uv.nu *` | +2.8 ms (2026-10-01) |
 | all three, measured in a real startup (`nu -l -c ''`, 53.3 ms → 42.9 ms with them commented out) | **10.4 ms** |
 
 **The budget: 3 ms for a module, 20 ms for the directory.** At today's 10.4 ms
