@@ -9,6 +9,7 @@ worktree init                  # in an empty dir: a fresh layout; in a repo: tra
 worktree add main              # a worktree and a branch, the default profile applied
 worktree add fix-42 -p ci      # another, with the `ci` profile on top; Tab completes profiles
 worktree which                 # what is applied here, what exists to apply
+worktree convert               # rewrite every profile.yaml of the layout as profile.nuon
 worktree apply                 # refresh the entries after editing a profile
 worktree remove fix-42         # undo the entries, then `git worktree remove`; Tab completes names
 ```
@@ -46,6 +47,7 @@ names for `remove`, `--to` and `--on`, and profile names for `-p`.
 | `worktree remove <name> [--force]` | the profile entries discarded, then `git worktree remove`; `--force` goes through to git for a worktree with untracked files left |
 | `worktree apply [-p a,b] [--to <wt>] [--reset]` | bare: refresh the set the manifest records; `-p`: change the set (`dflt` plus these, in order); `--reset`: back to `dflt` alone. `--to` names the worktree from the root |
 | `worktree discard` | undo what `apply` placed in this worktree: symlinks always, a copy only while it still matches its source |
+| `worktree convert [--dry-run]` | rewrite every `profile.yaml` in the layout as `profile.nuon`; the original, comments included, is kept as `.profiles/.state/<profile>.profile.yaml` |
 | `worktree which [--on <wt>]` | the applied profiles and every entry, when and from which profile, then the profiles that exist |
 
 ### Profiles
@@ -53,21 +55,30 @@ names for `remove`, `--to` and `--on`, and profile names for `-p`.
 A profile is a directory under `.profiles/`. Every file in it is an entry:
 symlinked into the worktree at the same relative path. `dflt` is always
 applied first; a later profile's entry replaces an earlier one's. An optional
-`profile.yaml` in the profile directory (never itself placed) overrides entries
+`profile.nuon` in the profile directory (never itself placed) overrides entries
 and declares hooks:
 
-```yaml
-entries:
-  - source: .env.local      # relative to the profile dir, or absolute
-    type: copy              # symlink (default) | copy | none (exclude the target)
-    override: true          # false: never replace something already there
-    target: .env.local      # required only when source is absolute
-hooks:
-  before-apply:             # one record or a list of them
-    - command: scripts/seed.nu   # relative: resolved in the profile dir
-      args: ["--fast"]
-  after-apply: ...
+```nuon
+{
+  entries: [
+    { source: .env.local      # relative to the profile dir, or absolute
+      type: copy              # symlink (default) | copy | none (exclude the target)
+      override: true          # false: never replace something already there
+      target: .env.local }    # required only when source is absolute
+  ]
+  hooks: {
+    before-apply: [           # one record or a list of them
+      { command: scripts/seed.nu   # relative: resolved in the profile dir
+        args: ["--fast"] }
+    ]
+  }
+}
 ```
+
+The file was `profile.yaml` until 2026-10-01. One left in a profile that has
+no `profile.nuon` is refused by every command that loads the profile, with
+the line that fixes it — `worktree convert` — because read as an entry it
+would be symlinked into every worktree and its hooks would silently stop.
 
 The hook points: `before-apply`, `after-apply` (both from `apply` and from
 `add`), `after-add` (the worktree stands, profiles applied), `before-remove`
@@ -161,5 +172,5 @@ is written under `$nu.data-dir`.
 
 `nu tests/run.nu worktree` — `tests/worktree/worktree.test.nu` runs every
 command against a layout under the run's scratch directory: init, a
-transform, add with profiles and a `profile.yaml`, apply's refresh and reset,
+transform, add with profiles and a `profile.nuon`, apply's refresh and reset,
 the tracked-file and diverged-copy rules, discard, remove.

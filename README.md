@@ -172,7 +172,7 @@ it.
 | `agent` | Claude Code at the prompt: `ask`, `exec` (proposes; you run it), `skill`, `command`, `completion` | 18 ms, lazy |
 | `odata` | OData V2/V4 services as tables, `where`/`select`/`first` pushed to the server | 97 ms, lazy |
 | `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |
-| `completions/` | brew (16k formulae with descriptions, 10 ms), git (refs by recency, changed files), cargo (workspace members, crates, features) | 10 ms for all three |
+| `completions/` | brew (16k formulae with descriptions, 10 ms), git (refs by recency, changed files), cargo (workspace members, crates, features), uv (Python versions, tools, the project's scripts, extras, groups) | 10 ms for the first three, 2.8 ms for uv |
 | `themes/` | NvChad's 96 palettes and Catppuccin's four, plus Ghostty's own 463 | rendered once |
 | `harness/` | Claude Code plugins, one per module, each a client of the shell command: `worktree` today — `/worktree:worktree`, a hook that denies raw `git worktree add` in a layout. The checkout is the marketplace; the install registers it | 14 ms per Bash call |
 

@@ -7,6 +7,7 @@
 #   worktree apply [-p a,b]       refresh a worktree's profile entries (or change the set)
 #   worktree discard              undo what apply placed; a diverged copy survives
 #   worktree which                what is applied here, what exists to apply
+#   worktree convert              rewrite every profile.yaml of the layout as profile.nuon
 #
 # The layout it creates and expects:
 #
@@ -21,24 +22,32 @@
 #   |- <worktree>/         <- one sibling dir per branch
 #
 # Every file in a profile dir is symlinked into the worktree at the same
-# relative path. An optional profile.yaml (never propagated) overrides entries
+# relative path. An optional profile.nuon (never propagated) overrides entries
 # and declares hooks:
 #
-#   entries:
-#     - source: .env.local      # relative to the profile dir, or absolute
-#       type: copy              # symlink (default) | copy | none (exclude)
-#       override: true          # false: never replace something already there
-#       target: .env.local      # required only when source is absolute
-#   hooks:
-#     before-apply:             # one record or a list of them
-#       - command: scripts/seed.nu   # relative -> resolved in the profile dir
-#         args: ["--fast"]
-#     after-apply: ...          # other points: after-add (worktree stands,
-#                               # profiles applied), before-remove and
-#                               # before-discard (entries still exist),
-#                               # after-init (dflt only, once per transform).
-#                               # cwd = the worktree; BW_ROOT, BW_WORKTREE,
-#                               # BW_PROFILE in the environment.
+#   {
+#     entries: [
+#       { source: .env.local      # relative to the profile dir, or absolute
+#         type: copy              # symlink (default) | copy | none (exclude)
+#         override: true          # false: never replace something already there
+#         target: .env.local }    # required only when source is absolute
+#     ]
+#     hooks: {
+#       before-apply: [           # one record or a list of them
+#         { command: scripts/seed.nu   # relative -> resolved in the profile dir
+#           args: ["--fast"] }
+#       ]
+#     }
+#   }
+#
+# The other hook points: after-apply, after-add (worktree stands, profiles
+# applied), before-remove and before-discard (entries still exist),
+# after-init (dflt only, once per transform). cwd = the worktree; BW_ROOT,
+# BW_WORKTREE, BW_PROFILE in the environment.
+#
+# It was profile.yaml until 2026-10-01. One left behind is refused rather
+# than read or placed — its hooks would silently stop and the file itself
+# would be symlinked into every worktree — and `worktree convert` rewrites it.
 #
 # Profiles apply in order, dflt always first. A later profile's entry replaces
 # an earlier one's unless it says override: false; type: none removes the
@@ -60,9 +69,11 @@ use ../nu-config/missing.nu *
 const PROFILES = ".profiles"
 const DFLT = "dflt"
 const STATE = ".state"
+# A profile's configuration before it was NUON: refused, and `convert` rewrites it.
+const OLD_CONFIG = "profile.yaml"
 const JUNK = [node_modules .venv venv target dist build out .next .cache __pycache__ .pytest_cache .DS_Store]
 
-# Lifecycle points a profile.yaml `hooks:` block may declare. apply runs the
+# Lifecycle points a profile.nuon `hooks:` block may declare. apply runs the
 # apply pair; add runs after-add once the worktree stands; remove/discard run
 # their "before" while the entries still exist; after-init fires once, from
 # dflt only, when a repo transform completes.
@@ -157,25 +168,28 @@ def list-profiles [root: string]: nothing -> list<string> {
     ls -a $pr | where type == dir | get name | path basename | where not ($it starts-with ".")
 }
 
-# profile.yaml allows one hook record or a list of them.
+# profile.nuon allows one hook record or a list of them.
 def as-list [v: any]: nothing -> list {
     if ($v | describe) starts-with "record" { [$v] } else { $v }
 }
 
-# One profile fully resolved: auto-scanned entries merged with profile.yaml.
+# One profile fully resolved: auto-scanned entries merged with profile.nuon.
 # Config entries win over scanned ones for the same target; each entry is
 # {source (abs), target (rel), type, override}.
 def load-profile [root: string, name: string]: nothing -> record {
     let dir = profiles-root $root | path join $name
     if ($dir | path type) != "dir" { fail $"no profile '($name)' in (profiles-root $root)" }
 
-    let cfg_file = $dir | path join "profile.yaml"
+    let cfg_file = $dir | path join "profile.nuon"
+    if ($cfg_file | path type) != "file" and ($dir | path join $OLD_CONFIG | path type) == "file" {
+        fail $"($name)/($OLD_CONFIG): a profile's configuration is profile.nuon now — `worktree convert` rewrites it"
+    }
     let cfg = if ($cfg_file | path type) == "file" { open $cfg_file } else { {} }
     let hooks = $PHASES | reduce -f {} {|ph, acc|
         $acc | insert $ph (as-list ($cfg.hooks? | default {} | get -o $ph | default []))
     }
 
-    # profile machinery never propagates: profile.yaml, and any hook script
+    # profile machinery never propagates: profile.nuon, and any hook script
     # that lives inside the profile dir. The command is split on `/` so the
     # join is native on Windows too, as the scan below is: `scripts/hook.nu`
     # joined whole would never equal `…\scripts\hook.nu`.
@@ -195,10 +209,10 @@ def load-profile [root: string, name: string]: nothing -> record {
 
     let declared = $cfg.entries? | default [] | each {|e|
         let src = $e.source?
-        if $src == null { fail $"($name)/profile.yaml: entry without source" }
+        if $src == null { fail $"($name)/profile.nuon: entry without source" }
         let abs = ($src starts-with "/") or ($src =~ '^[A-Za-z]:[\\/]')
         if $abs and $e.target? == null {
-            fail $"($name)/profile.yaml: absolute source ($src) needs an explicit target"
+            fail $"($name)/profile.nuon: absolute source ($src) needs an explicit target"
         }
         let target = $e.target? | default $src
         {
@@ -263,7 +277,7 @@ def run-hooks [profs: list, phase: string, root: string, wt: string] {
     for p in $profs {
         for h in ($p.hooks | get -o $phase | default []) {
             let cmd = $h.command?
-            if $cmd == null { fail $"($p.name)/profile.yaml: ($phase) hook without command" }
+            if $cmd == null { fail $"($p.name)/profile.nuon: ($phase) hook without command" }
             let local = $p.dir | path join $cmd
             let resolved = if (ptype $local) == "file" { $local } else { $cmd }
             let args = $h.args? | default [] | each { into string }
@@ -456,6 +470,33 @@ export def "worktree discard" [] {
     rm (state-file $c.root $wtname)
     print $"discarded [($st.applied | str join ', ')] from ($wtname)"
     for k in $kept { warn $"kept ($k): copy has diverged from its source" }
+}
+
+# Rewrite every profile.yaml of the layout as profile.nuon: the same record,
+# read by `open` and written by `to nuon`. YAML comments do not survive, so
+# the original is kept as .profiles/.state/<profile>.profile.yaml — the state
+# directory is machinery and never placed. A profile that already has a
+# profile.nuon is left alone, with a warning.
+export def "worktree convert" [
+    --dry-run (-n)  # say what would be rewritten, change nothing
+] {
+    let c = ctx
+    let found = list-profiles $c.root | where {|p| (profiles-root $c.root | path join $p $OLD_CONFIG | path type) == "file" }
+    if ($found | is-empty) { print $"no ($OLD_CONFIG) in (profiles-root $c.root)"; return }
+    for p in $found {
+        let dir = profiles-root $c.root | path join $p
+        let old = $dir | path join $OLD_CONFIG
+        let new = $dir | path join "profile.nuon"
+        if ($new | path exists) { warn $"($p): profile.nuon already exists, ($OLD_CONFIG) left as it is — delete it, or it is placed as an entry"; continue }
+        let cfg = try { open $old | default {} } catch {|e| fail $"($p)/($OLD_CONFIG) does not parse: ($e.msg)" }
+        if ($cfg | describe) !~ '^record' { fail $"($p)/($OLD_CONFIG) is not a mapping" }
+        if $dry_run { print $"would rewrite ($p)/($OLD_CONFIG) as profile.nuon"; continue }
+        $cfg | to nuon --indent 2 | save $new
+        let kept = profiles-root $c.root | path join $STATE $"($p).($OLD_CONFIG)"
+        mkdir ($kept | path dirname)
+        mv -f $old $kept
+        print $"($p): profile.nuon written, the original kept as ($kept | path relative-to $c.root)"
+    }
 }
 
 # Show which profiles a worktree has applied, and what exists to apply.
@@ -651,7 +692,7 @@ def transform [root: string] {
     if ($junk | is-not-empty) {
         warn $"junk landed in .profiles/dflt: ($junk | str join ', ') — delete what a fresh checkout should rebuild"
     }
-    if (ptype (profiles-root $root | path join $DFLT "profile.yaml")) == "file" {
+    if (ptype (profiles-root $root | path join $DFLT "profile.nuon")) == "file" {
         run-hooks [(load-profile $root $DFLT)] "after-init" $root $wt
     }
 

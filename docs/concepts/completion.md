@@ -121,6 +121,9 @@ sample. Memoised 30 s per prefix. `odata People | where ⌶` answers in
 | `cargo build -p ` (workspace members, targets, features) | 31-64 ms (`cargo metadata --no-deps` + `cargo build --help`) | 6 ms |
 | `cargo add ser` (1.5k crate names from the registry cache) | 80 ms, then memoised for a day | 18 ms |
 | `cargo update ` (562 lockfile packages) | 32 ms | 6 ms |
+| `uv ` | 20 ms (`uv -h`) | 5 ms |
+| `uv run ` (the project's scripts, then files) | 38 ms (`uv -h`, `uv run -h`, pyproject.toml) | 5 ms |
+| `uv python install ` (every version uv can see or download) | 250 ms (`uv python list`), then memoised for five minutes | 6 ms |
 | `theme ` before the lazy module is loaded (a child nu sources it) | 140 ms, once per slot | 12-17 ms a key |
 
 Measured 2026-10-01 with `commandline complete` in a `nu -l -c`, unless a
@@ -192,6 +195,7 @@ under `fuzzy`; that part is not the engine's.
 | brew | `completions/brew.nu` | Homebrew's zsh completion, parsed once to JSON — nested ones too (`services`, `bundle`, `analytics`…), their aliases hidden | formulae and casks with descriptions (SQLite from the API cache), installed, services, taps, commands (`help`) | nothing it knows better |
 | git | `completions/git.nu` | `git help -a`, `git <cmd> -h` | refs by recency, changed files, remotes, stashes | config keys, rev ranges, uncommon flags |
 | cargo | `completions/cargo.nu` | `cargo --list` (aliases too), `cargo <cmd> --help` parsed lazily, nested `Commands:` (report, nextest …) | `-p`/`--bin`/`--example`/`--test`/`--bench`/`-F` from `cargo metadata --no-deps`, `--profile` from Cargo.toml, `--target` from rustup, `add`/`install` crate names from the registry cache, `remove` deps, `update`/`tree -i` lockfile, `uninstall` from `.crates.toml`, `+toolchain` | `--config`, `test <name>` (offers nothing), anything else undefined |
+| uv | `completions/uv.nu` | `uv <path> -h` parsed lazily, one level per word typed, nested `Commands:` to any depth (`uv python install`, `uv pip compile`) | Python versions for `python install`/`pin`/`find` and `--python`, uv-managed ones for `uninstall`/`upgrade`; `tool uninstall`/`upgrade` from `uv tool list`; `run` scripts, `--extra`, `--group`, `--index`, `remove` from pyproject.toml; `--package`, `--upgrade-package` from uv.lock; `pip uninstall`/`show` from the environment's `.dist-info` | `add`, `pip install`, `tool install` (a package name: offers nothing), `uvx`, anything else undefined |
 
 ## Teaching it a tool
 

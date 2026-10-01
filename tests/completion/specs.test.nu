@@ -1,15 +1,16 @@
-# The shipped specs (completions/brew.nu, git.nu, cargo.nu) through the real
+# The shipped specs (completions/brew.nu, git.nu, cargo.nu, uv.nu) through the real
 # path: the extern's `@complete` completer, called by `commandline complete`.
 # brew runs against tests/fixtures/brew — a trimmed zsh completion, name
-# lists, a Cellar, a Caskroom and Taps — so it needs no Homebrew; git and
-# cargo run against a repository and a workspace made in a scratch directory,
-# and are skipped where the tool is missing.
+# lists, a Cellar, a Caskroom and Taps — so it needs no Homebrew; git, cargo
+# and uv run against a repository, a workspace and a project made in a
+# scratch directory, and are skipped where the tool is missing.
 use lib.nu *
 use std/assert
 use nu-complete *
 use brew.nu *
 use git.nu *
 use cargo.nu *
+use uv.nu *
 
 # An alias of a spec'd command reaches the spec (Nushell 0.116 expands it in
 # `place.command`).
@@ -241,4 +242,73 @@ def "test cargo flags come from --help" [] {
   cargo-workspace
   let flags = values-of "cargo build --"
   assert ([--release --features --package] | all {|f| $f in $flags }) ($flags | to nuon)
+}
+
+# ── uv ────────────────────────────────────────────────────────────────────────
+
+def --env uv-project [] {
+  if (try { (^uv --version | complete).exit_code } catch { 1 }) != 0 { skip-test "uv is not installed" }
+  let d = scratch
+  [
+    '[project]'
+    'name = "demo"'
+    'version = "0.1.0"'
+    'dependencies = ["requests>=2.31", "rich"]'
+    ''
+    '[project.optional-dependencies]'
+    'docs = ["mkdocs"]'
+    ''
+    '[project.scripts]'
+    'serve = "demo.web:run"'
+    ''
+    '[dependency-groups]'
+    'dev = ["pytest>=8"]'
+    'lint = [{ include-group = "dev" }, "mypy"]'
+  ] | str join (char nl) | save ($d | path join pyproject.toml)
+  [
+    '[[package]]'
+    'name = "demo"'
+    'version = "0.1.0"'
+    'source = { editable = "." }'
+    ''
+    '[[package]]'
+    'name = "requests"'
+    'version = "2.32.3"'
+    'source = { registry = "https://pypi.org/simple" }'
+  ] | str join (char nl) | save ($d | path join uv.lock)
+  cd $d
+}
+
+def "test uv lists its subcommands, nested ones too, with descriptions" [] {
+  uv-project
+  let subs = detailed "uv "
+  assert ([run add remove sync python pip tool] | all {|s| $s in ($subs | get value) }) ($subs | get value | to nuon)
+  assert (($subs | where value == sync | get 0.description) | is-not-empty)
+  let nested = values-of "uv python "
+  assert ([install uninstall pin list] | all {|s| $s in $nested }) ($nested | to nuon)
+}
+
+def "test uv flags come from the help of the command being typed" [] {
+  uv-project
+  let flags = values-of "uv pip install --"
+  assert ([--requirements --editable --python] | all {|f| $f in $flags }) ($flags | to nuon)
+  assert equal (values-of "uv --color ") [auto always never]
+}
+
+def "test uv reads the project: scripts, extras, groups, dependencies, the lockfile" [] {
+  uv-project
+  assert ("serve" in (values-of "uv run "))
+  assert equal (values-of "uv sync --extra ") [docs]
+  assert equal (values-of "uv sync --group ") [dev lint]
+  assert equal (values-of "uv remove ") [requests rich mkdocs pytest mypy]
+  assert equal (values-of "uv lock --upgrade-package ") [demo requests]
+  # A package name is typed: nothing, and not the files of the directory.
+  assert equal (values-of "uv add ") []
+}
+
+def "test uv python install offers versions, not files" [] {
+  uv-project
+  let got = detailed "uv python install "
+  assert ($got | is-not-empty)
+  assert ($got | get value | all {|v| $v =~ '^(\d+\.\d+|[a-z]+@)' }) ($got | get value | to nuon)
 }

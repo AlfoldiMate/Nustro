@@ -26,6 +26,7 @@ $env.NU_SMART_TAB = $SMART_TAB
 use brew.nu *     # subcommands, flags, packages with descriptions, installed, taps
 use git.nu *      # subcommands, branches by recency, remotes, changed files, stashes
 use cargo.nu *    # subcommands, flags from --help, packages/targets/features of the workspace, crate names
+use uv.nu *       # subcommands and flags from `uv -h`, Python versions, tools, the project's scripts, extras, groups, dependencies
 # A completion you fetch is YOURS: `nu-config fetch completion docker` saves it
 # in your completions/, which comes first on NU_LIB_DIRS, and you wire it in
 # from your own settings.nu with `use docker-completions.nu *`.

@@ -50,7 +50,7 @@ proj/                  the root: the container
 
 Why a bare repository, why profiles, why symlinks and where copies come in:
 [Worktrees](../../docs/concepts/worktree.md). Every command and flag, the
-`profile.yaml` format and its hooks:
+`profile.nuon` format and its hooks:
 [worktree](../../docs/reference/modules/worktree.md).
 
 ## A `.claude/` in the layout
