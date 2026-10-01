@@ -190,6 +190,10 @@ def previous-config [user: path]: nothing -> any {
   let dirs = (if ($root | path exists) {
     ls $root | where type == dir | get name
     | where {|d| ($d | path basename) !~ '^nustro-' and ($d | path join .nustro-backup.nuon | path exists) }
+    # A backup `install.nu --clean` made of this distro's own configuration
+    # is not a configuration to go back to: restoring it would install the
+    # distro again.
+    | where {|d| not (open ($d | path join .nustro-backup.nuon) | get -o ours | default false) }
     | sort --reverse
   } else { [] })
   if ($dirs | is-not-empty) {
@@ -202,6 +206,8 @@ def previous-config [user: path]: nothing -> any {
       moves: (
         ($m.entries | each {|e| { from: ($dir | path join $e), to: ($user | path join $e) } })
         ++ ($m.vendor? | default [] | each {|v| { from: ($dir | path join .vendor-autoload $v), to: ($m.vendor_dir | path join $v) } })
+        # The distro's state from beside the vendor directory (`install.nu --clean`, off macOS).
+        ++ (if ($m.state_dir? | default null) != null { [{ from: ($dir | path join .data-state), to: $m.state_dir }] } else { [] })
         | where {|r| $r.from | path exists }
       )
     }

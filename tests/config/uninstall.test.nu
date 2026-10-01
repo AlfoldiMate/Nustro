@@ -72,6 +72,19 @@ def "test uninstall of a first configuration leaves yours in place" [] {
   assert ($again.stdout | str contains "nothing to undo") $again.stdout
 }
 
+def "test a backup --clean made of the distro is not restored" [] {
+  # It holds a config.nu that points at this checkout: putting it back would
+  # be installing again.
+  let user = fresh-homes
+  install | ignore
+  let again = ^$nu.current-exe ($ROOT | path join install.nu) --defaults --clean --skip-deps --skip-plugins --skip-terminal --skip-harness | complete
+  assert equal $again.exit_code 0 ($again.stdout + $again.stderr)
+  let ran = uninstall --yes
+  assert equal $ran.exit_code 0 ($ran.stdout + $ran.stderr)
+  assert not ($user | path join config.nu | path exists)
+  assert not ($ran.stdout | str contains "Put back") $ran.stdout
+}
+
 def "test --dry-run prints the plan and changes nothing" [] {
   let user = fresh-homes
   install | ignore

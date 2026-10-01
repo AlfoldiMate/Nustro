@@ -69,6 +69,48 @@ def "test brew uninstall and list offer what is installed, with versions" [] {
   assert equal (values-of "brew uninstall --formula ") [bat ripgrep]
 }
 
+def "test brew provides reads the executables database, whole words only" [] {
+  let cache = scratch
+  mkdir ($cache | path join api internal)
+  "ripgrep(14.1.0):rg\nripgrep-all:rga rga-fzf\nghostscript:gs gsx\nfoo:rg-like xrg\n" | save ($cache | path join api internal executables.txt)
+  $env.HOMEBREW_CACHE = $cache
+  assert equal (nu-complete brew provides rg) [ripgrep]
+  assert equal (nu-complete brew provides rga-fzf) [ripgrep-all]
+  assert equal (nu-complete brew provides gsx) [ghostscript]
+  assert equal (nu-complete brew provides nonesuch) []
+  # A regex metacharacter in what was typed is text.
+  assert equal (nu-complete brew provides "r.") []
+}
+
+# A package database of the test's own: the payload Homebrew downloads is a
+# JWS header line, then JSON, with an index of byte ranges beside it.
+def --env brew-database [formulae: record] {
+  let cache = scratch
+  mkdir ($cache | path join api internal)
+  let f = ($formulae | to json -r)
+  let c = ('{"zed-app":{"desc":"An editor","version":"1"}}')
+  let body = $"{\"formulae\":($f),\"casks\":($c)}"
+  let p = ($cache | path join api internal packages.test.jws.json.payload)
+  $"header\n($body)" | save $p
+  { top_level: { formulae: [12 ($f | str length)], casks: [(12 + ($f | str length) + 9) ($c | str length)] } } | to json | save $"($p).index"
+  $env.HOMEBREW_CACHE = $cache
+  $env.HOMEBREW_PREFIX = ($ROOT | path join tests fixtures brew)
+  nu-complete brew build-db
+}
+
+def "test brew install offers at most two hundred, the best first" [] {
+  let many = 1..260 | reduce -f {} {|i, acc| $acc | insert $"pkg-($i)" { desc: $"package number ($i)", stable_version: "1" } }
+  brew-database ($many | insert ripgrep { desc: "Search tool like grep and The Silver Searcher", stable_version: "14" })
+  $env.config.completions.algorithm = "fuzzy"
+  assert equal (values-of "brew install pkg" | length) 200
+  assert equal (values-of "brew install pkg-26" | first 2) [pkg-26 pkg-260]
+  assert equal (values-of "brew install zed") [zed-app]
+  # A description is searched as a phrase, and only when few names match:
+  # `pn` is in every description's letters and in no name.
+  assert equal (values-of "brew install \"silver sea") [ripgrep]
+  assert equal (values-of "brew install pn") []
+}
+
 # The prefix comes from PATH when HOMEBREW_PREFIX is unset, and `which brew`
 # there answers with completions/brew.nu itself, the extern that shadows the
 # binary; the binary is the other `which -a` row.
@@ -164,9 +206,9 @@ def "test git lists its subcommands and a subcommand flags" [] {
   assert ([--quiet --detach --patch] | all {|f| $f in $flags }) ($flags | to nuon)
 }
 
-def "test git -C hands the slot to file completion" [] {
+def "test git -C offers directories only" [] {
   git-repo
-  assert ("file" in (detailed "git -C " | get kind? | compact | uniq))
+  assert equal (detailed "git -C " | get kind? | compact | uniq) [directory]
 }
 
 # ── cargo ─────────────────────────────────────────────────────────────────────

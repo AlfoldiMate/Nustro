@@ -44,9 +44,9 @@ def "test filter narrows two thousand values within its budget" [] {
   assert ($fuzzy < 100ms) $"fuzzy filter took ($fuzzy)"
 }
 
-def "test the smart menu answers from its signature table within its budget" [] {
-  # The first call builds the table (140 ms); after that `ps ` is 1.4 ms and
-  # `ls | where ` 2.7 ms from the memoised probe.
+def "test the smart menu answers within its budget" [] {
+  # `ps ` 3.7 ms, `ls | where ` 3.4 ms from the memoised probe (2026-10-01;
+  # the first call of a line pays the probe's subprocess, 40 ms).
   let ps_in = ("ps " | commandline complete --input)
   let cols_in = ("ls | where " | commandline complete --input)
   nu-complete smart $ps_in.buffer $ps_in.place | ignore
@@ -55,4 +55,13 @@ def "test the smart menu answers from its signature table within its budget" [] 
   assert ($ps < 30ms) $"ps took ($ps)"
   let cols = fastest 5 { nu-complete smart $cols_in.buffer $cols_in.place }
   assert ($cols < 50ms) $"ls | where took ($cols)"
+}
+
+def "test a line that may not run is refused once, not per keystroke" [] {
+  # The safety check is one `scope commands` (4 ms); it is inside the
+  # memoised probe, so the second Tab on `^ls | where ` is the bare 1 ms.
+  let i = ("^ls | where " | commandline complete --input)
+  nu-complete smart $i.buffer $i.place | ignore
+  let took = fastest 5 { nu-complete smart $i.buffer $i.place }
+  assert ($took < 30ms) $"a refused line took ($took)"
 }

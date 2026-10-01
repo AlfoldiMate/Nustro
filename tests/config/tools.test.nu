@@ -47,21 +47,76 @@ def "test a second setup changes nothing and remove takes one file out" [] {
   assert not ($dir.data | path join vendor autoload $"($tool).nu" | path exists)
 }
 
-def "test the carapace file rewraps the completer for the named inputs" [] {
+# A carapace that answers from a script and counts its calls: the generated
+# file is tested for what it does with carapace's answers, not for carapace.
+def fake-carapace []: nothing -> record {
+  if $nu.os-info.name == "windows" { skip-test "the fake carapace is a shell script" }
+  let root = scratch
+  let bin = $root | path join bin
+  mkdir $bin
+  # $1 the command, $2 `nushell`, then the spans; the last one is the token.
+  $"#!/bin/sh
+echo \"$*\" >> ($root | path join log | to nuon)
+for last; do :; done
+case \"$1\" in
+  broken\) printf '[{\"value\":\"ERR\",\"display\":\"ERR\",\"description\":\"it broke\"},{\"value\":\"_\",\"display\":\"_\"}]' ;;
+  *\) case \"$last\" in
+       -*\) printf '[{\"value\":\"--name \"},{\"value\":\"--network \"},{\"value\":\"--rm \"}]' ;;
+       zz*\) printf '[{\"value\":\"ZZ-only-carapace-finds-this\"}]' ;;
+       *\) printf '[{\"value\":\"alpha\",\"description\":\"first\"},{\"value\":\"beta\"}]' ;;
+     esac ;;
+esac
+" | save ($bin | path join carapace)
+  ^chmod +x ($bin | path join carapace)
+  { bin: $bin, log: ($root | path join log) }
+}
+
+def "test the carapace file asks carapace once per slot and narrows it itself" [] {
+  let fake = fake-carapace
   let dir = user-dir
-  if (which -a carapace | where type == external | is-empty) { skip-test "carapace is not installed" }
-  nu-l $dir 'nu-config tools setup --quiet' | ignore
+  $env.PATH = ($env.PATH | prepend $fake.bin)
+  let made = nu-l $dir 'nu-config tools setup --quiet'
+  assert equal $made.exit_code 0 $made.stderr
   let f = $dir.data | path join vendor autoload carapace.nu
   let text = open --raw $f
-  assert ($text | str contains "{|place| do $carapace_legacy $place.command }") "the named-inputs wrapper"
   assert ($text | str contains "CARAPACE_BRIDGES") "the bridges"
-  # Sourced twice — the REPL after a `tools setup`, a cookbook's `source` line —
-  # the wrapper must not wrap itself: `$place.command` on a list is an error,
-  # and the specs' `try` would turn it into silent file completion.
-  let twice = ^$nu.current-exe -n -c $"source ($f | to nuon); source ($f | to nuon); do $env.config.completions.external.completer { command: [zoxide ''], cursor: 7, target: { start: 7, end: 7 }, kind: external-arg } | length" | complete
-  assert equal $twice.exit_code 0 $twice.stderr
-  assert (($twice.stdout | str trim | into int) > 0) "carapace still answers after a second source"
-  # A completer the user set first is carapace's to keep, and ours to leave alone.
-  let mine = ^$nu.current-exe -n -c $"$env.config.completions.external.completer = {|place| ['mine'] }; source ($f | to nuon); do $env.config.completions.external.completer { command: [x ''] } | to nuon" | complete
-  assert equal ($mine.stdout | str trim) '[mine]' $mine.stderr
+  assert not ($text | str contains "$env.config = ") "no whole-record assignment"
+  # Standalone: no config, no nu-complete module — and sourced twice, the way
+  # a REPL has it after a `tools setup`.
+  let run = {|code: string| ^$nu.current-exe -n -c $"source ($f | to nuon); source ($f | to nuon); let c = $env.config.completions.external.completer; ($code)" | complete }
+  let calls = {|| if ($fake.log | path exists) { open --raw $fake.log | lines } else { [] } }
+  let typed = do $run 'print (do $c { command: [docker run ""] } | get value | to nuon) (do $c { command: [docker run a] } | get value | to nuon) (do $c { command: [docker run al] } | get value | to nuon)'
+  assert equal $typed.exit_code 0 $typed.stderr
+  assert equal ($typed.stdout | lines) ["[alpha, beta]" "[alpha]" "[alpha]"]
+  assert equal (do $calls) ["docker nushell docker run "] "three keystrokes, one carapace"
+  # The dashes are a slot of their own; a token nothing local matches goes
+  # to carapace as it is.
+  let more = do $run 'print (do $c { command: [docker run --n] } | get value | to nuon) (do $c { command: [docker run zzq] } | get value | to nuon)'
+  assert equal ($more.stdout | lines) ['["--name ", "--network "]' "[ZZ-only-carapace-finds-this]"] $more.stderr
+  assert ("docker nushell docker run --" in (do $calls))
+  assert ("docker nushell docker run zzq" in (do $calls))
+  # The command word alone, and an error carapace reports as candidates,
+  # are Nushell's to answer.
+  let declined = do $run 'print (do $c { command: [docker] } | to nuon) (do $c { command: [broken ""] } | to nuon)'
+  assert equal ($declined.stdout | lines) ["null" "null"] $declined.stderr
+}
+
+def "test an unknown command is looked up without starting brew" [] {
+  # The hook used to run `brew which-formula`: 275 ms before the prompt came
+  # back after a typo. The fake brew logs every call; there must be none.
+  if $nu.os-info.name == "windows" { skip-test "the fake brew is a shell script" }
+  let fake = fake-brew
+  let cache = scratch
+  mkdir ($cache | path join api internal)
+  "ripgrep(14.1.0):rg\nfirst-one:twice other\nsecond-one:twice\n" | save ($cache | path join api internal executables.txt)
+  let dir = user-dir
+  let ask = {|cmd: string| with-env { PATH: ($env.PATH | prepend $fake.bin), HOMEBREW_CACHE: $cache } { nu-l $dir $"do $env.config.hooks.command_not_found ($cmd) | default '-' | ansi strip" } }
+  let rg = do $ask rg
+  assert equal $rg.exit_code 0 $rg.stderr
+  assert equal ($rg.stdout | str trim) "rg is available via Homebrew: brew install ripgrep"
+  assert equal (do $ask twice | get stdout | str trim) "twice is available via Homebrew: brew install first-one (also in second-one)"
+  assert equal (do $ask nonesuch | get stdout | str trim) "-"
+  assert equal (brew-calls $fake) []
+  # A lazy module's word still gets its own answer first.
+  assert (do $ask theme | get stdout | str contains "lazy `terminal` module")
 }

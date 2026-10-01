@@ -126,3 +126,104 @@ def "test cd in a folder with nothing to enter offers parents and places" [] {
   assert equal ($got | first 3 | get value) [".." "~" "-"]
   assert equal ($got | first 3 | get description) [parent home "previous directory"]
 }
+
+# ── What 2026-10-01 added ─────────────────────────────────────────────────────
+
+def "test the first call of a session offers columns, with nothing warmed" [] {
+  # The signature table a background job used to fill: a Tab before it was
+  # done found it empty and offered files. A child, so nothing is cached.
+  let code = $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]; use nu-complete *; let i = \('ls | where ' | commandline complete --input\); nu-complete smart $i.buffer $i.place | get value | to nuon"
+  let out = ^$nu.current-exe -n -c $code | complete
+  assert equal $out.exit_code 0 $out.stderr
+  assert equal ($out.stdout | from nuon) [name type size modified]
+}
+
+def "test a pipeline with where in it is run, not cut back to its head" [] {
+  # `where` is a keyword to `scope commands`, and counted as not built-in.
+  assert equal (smart "[[a b]; [1 2]] | where a > 0 | select a | get " | get value) [a]
+}
+
+# A session of its own with variables in it: `scope variables` is what a
+# shell has at its prompt, which a `let` inside a test command is not. One
+# line of NUON per line asked.
+def in-session [lets: string, lines: list<string>]: nothing -> list {
+  let asks = $lines | each {|l| $"print \(do {|| let i = \(($l | to nuon) | commandline complete --input\); nu-complete smart $i.buffer $i.place | get value | to nuon }\)" } | str join "\n"
+  let code = $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]\nuse nu-complete *\n($lets)\n($asks)"
+  let out = ^$nu.current-exe -n -c $code | complete
+  assert equal $out.exit_code 0 $out.stderr
+  $out.stdout | lines | each {|l| $l | from nuon }
+}
+
+def "test a variable of the session has columns" [] {
+  let got = in-session 'let tbl = [[name qty when]; [apple 3 2026-01-01] [pear 5 2026-02-01]]' [
+    "$tbl | where "
+    "$tbl | where qty > 3 | sort-by "
+    "$tbl | where name == "
+  ]
+  assert equal $got.0 [name qty when]
+  assert equal $got.1 [name qty when]
+  assert equal ($got.2 | sort) [apple pear]
+  assert equal (smart "$nope | where " | where kind? == null) [] "an unknown variable invents nothing"
+}
+
+def "test a variable named like a local of the engine stays yours" [] {
+  # `scope variables` sees the call stack: read anywhere but at the door,
+  # `$rows` was the engine's own empty list.
+  let got = in-session "let rows = [[k v]; [a 1]]\nlet path = { deep: { x: 1, y: 2 } }" [
+    "$rows | where v > 5 | get "
+    "$path | get deep."
+  ]
+  assert equal $got.0 [k v]
+  assert equal ($got.1 | sort) [x y]
+}
+
+def "test a comparison is followed by round bounds, equality by the values" [] {
+  assert equal (smart "ls | where size > " | get value) ["1kb" "10kb" "100kb" "1mb" "10mb" "100mb" "1gb"]
+  assert equal (smart "ls | where size >= 10" | get value) ["10kb" "100kb" "10mb" "100mb"]
+  let dates = smart "ls | where modified > "
+  assert equal ($dates | first | get value) "((date now) - 1hr)"
+  assert equal ($dates | first | get description) "the last hour"
+  assert equal (smart "ls | where type == " | get value | sort) [dir file]
+}
+
+def "test a slot that takes a column without declaring a cell-path" [] {
+  assert equal (smart "ls | uniq-by " | get value) [name type size modified]
+  assert equal (smart "ls | move name --after " | get value) [type size modified]
+  assert equal (smart "ls | histogram ty" | get value) [type]
+  assert equal (smart "ls | join [[name]; [a]] na" | get value) [name]
+  # The first positional of join is the other table, not a column.
+  assert ("name" not-in (smart "ls | join " | get value))
+}
+
+def "test explain names the rule that answered" [] {
+  assert equal (nu-complete explain "ls | where " | get layer) columns
+  assert equal (nu-complete explain "ls | where size " | get layer) operators
+  assert equal (nu-complete explain "ls | where size > " | get layer) values
+  assert equal (nu-complete explain "ps " | get layer) no-files
+  assert equal (nu-complete explain "ls " | get layer) nushell
+  let e = nu-complete explain "ls | where type == dir | get "
+  assert equal $e.pipeline "ls | where type == dir"
+  assert $e.pipeline_runs
+  assert equal (nu-complete explain "^ls | where " | get pipeline_runs) false
+}
+
+def "test a lazy module offers its words at once and its slots from one child" [] {
+  $env.NU_MODULES_LAZY = [terminal]
+  $env.NU_MODULES_LOADED = []
+  $env.NU_MODULES_TRIGGERS = { terminal: [theme font] }
+  $env.NU_LIB_DIRS = [($ROOT | path join modules)]
+  let head = smart "the"
+  assert equal ($head | first | select value kind) { value: theme, kind: command }
+  assert ($head | first | get description | str contains "terminal")
+  # ... and its commands beside it, so `the⌶` already shows what there is.
+  assert ("theme use" in ($head | get value)) ($head | get value | to nuon)
+  assert ($head | where value =~ '^ghostty' | is-empty) "only the words that were typed towards"
+  let subs = smart "theme "
+  assert ("theme use" in ($subs | get value)) ($subs | get value | to nuon)
+  # The same slot with a letter typed: narrowed here, and placed on the token.
+  let narrowed = smart "theme u"
+  assert equal ($narrowed | get value) ["theme use"]
+  # Once loaded, the module is Nushell's own to complete.
+  $env.NU_MODULES_LOADED = [terminal]
+  assert (smart "the" | where value == theme | is-empty)
+}

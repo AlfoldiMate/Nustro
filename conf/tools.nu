@@ -19,13 +19,15 @@ $env.config.hooks.command_not_found = {|cmd|
   if $lazy != null {
     return $"(ansi cyan)($cmd)(ansi reset) is a command of the lazy `($lazy)` module, which a shell loads on the first line that mentions it; from `nu -c` or a script, (ansi green)use ($lazy) *(ansi reset) first"
   }
+  # Homebrew's executables database, read directly: 0.75 ms. It used to be
+  # `brew which-formula`, 275 ms of brew starting up on every typo
+  # (completions/brew.nu, `nu-complete brew provides`).
   if (which brew | is-empty) { return null }
-  let found = (do -i { ^brew which-formula $cmd | complete })
-  if ($found | is-not-empty) and $found.exit_code == 0 and ($found.stdout | str trim | is-not-empty) {
-    $"(ansi cyan)($cmd)(ansi reset) is available via Homebrew: (ansi green)brew install ($found.stdout | str trim)(ansi reset)"
-  } else {
-    null
-  }
+  let formulae = (try { nu-complete brew provides $cmd } catch { [] })
+  if ($formulae | is-empty) { return null }
+  let more = ($formulae | skip 1 | first 4 | str join ", ")
+  let also = (if ($more | is-empty) { "" } else { $" \(also in ($more)\)" })
+  $"(ansi cyan)($cmd)(ansi reset) is available via Homebrew: (ansi green)brew install ($formulae | first)(ansi reset)($also)"
 }
 
 # ── direnv: load .envrc on directory change ───────────────────────────────────

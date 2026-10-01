@@ -239,7 +239,8 @@ def flag-source [f: record]: nothing -> any {
     "--target" => {|ctx| rustup-targets }
     "--registry" => {|ctx| registries }
     "--prune" | "--invert" | "-i" => {|ctx| lock-packages }
-    "--manifest-path" | "--path" | "--target-dir" | "--artifact-dir" | "--root" | "--out-dir" | "-C" => "files"
+    "--manifest-path" | "--path" => "files"
+    "--target-dir" | "--artifact-dir" | "--root" | "--out-dir" | "-C" => "directories"
     "--edition" => [2015 2018 2021 2024]
     "--vcs" => [git hg pijul fossil none]
     "--explain" | "--config" | "--jobs" | "-j" | "--rename" | "--version" | "--token" => []
@@ -319,7 +320,7 @@ export def "nu-complete cargo spec" [focus: string = ""]: nothing -> record {
       { name: "--verbose", short: "-v", description: "Use verbose output (-vv very verbose)" }
       { name: "--quiet", short: "-q", description: "Do not print cargo log messages" }
       { name: "--color", description: "Coloring", arg: [auto always never] }
-      { name: "-C", description: "Change to DIRECTORY before doing anything (nightly)", arg: "files" }
+      { name: "-C", description: "Change to DIRECTORY before doing anything (nightly)", arg: "directories" }
       { name: "--locked", description: "Assert that Cargo.lock will remain unchanged" }
       { name: "--offline", description: "Run without accessing the network" }
       { name: "--frozen", description: "Both --locked and --offline" }

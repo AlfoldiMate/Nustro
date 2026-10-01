@@ -36,7 +36,9 @@
 # description, style), a closure `{|ctx| ... }` returning such a list, the
 # string "files" for Nushell's own path completion, or any other string naming
 # an entry of the spec's `sources` record — which is what lets a generated
-# spec be plain data (JSON) while the closures live in code. The closure gets
+# spec be plain data (JSON) while the closures live in code — or one of
+# Nushell's own completers: "directories", "paths", "commands", "variables",
+# "env-vars". The closure gets
 #   { spans, partial, args, positionals, path }
 # where `positionals` are the values already typed for this (sub)command and
 # `path` is the subcommand chain. Flags declared on the root spec apply
@@ -132,6 +134,13 @@ export def "nu-complete quote" []: list<record> -> list<record> {
   }
 }
 
+# Source names every spec has without declaring them: Nushell's built-in
+# completers, one at a time (`commandline complete --type`, 0.116). "files"
+# is not here — it hands the whole slot to Nushell, which is still the best
+# file completion there is; these are for a slot that is narrower
+# ("directories" for `git -C ⌶`) or that mixes them with its own candidates.
+const BUILTIN_SOURCES = { directories: "directory", paths: "path", commands: "command", variables: "variable", "env-vars": "env-var" }
+
 def run-source [src: any, ctx: record, root: record]: nothing -> any {
   let kind = ($src | describe | str replace --regex '<.*' '')
   match $kind {
@@ -139,8 +148,16 @@ def run-source [src: any, ctx: record, root: record]: nothing -> any {
     "list" | "table" => $src
     "string" => {
       if $src == "files" { return null }
+      # A spec's own source of that name wins over the built-in one.
       let named = ($root.sources? | default {} | get -o $src)
-      if $named == null { [] } else { run-source $named $ctx $root }
+      if $named != null { return (run-source $named $ctx $root) }
+      let builtin = ($BUILTIN_SOURCES | get -o $src)
+      if $builtin == null { [] } else {
+        # Nushell's own completer for one kind of thing, on the token alone.
+        # Its spans are offsets into that token, not into the line, so they
+        # are dropped and the candidate replaces the token like any other.
+        try { $ctx.partial | commandline complete --detailed --type $builtin | reject -o span } catch { [] }
+      }
     }
     _ => []
   }

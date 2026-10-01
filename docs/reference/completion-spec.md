@@ -187,6 +187,11 @@ A `<source>` is any of:
   `{spans, partial, args, positionals, path}` — `positionals` being what has
   already been typed for this subcommand, `path` the subcommand chain;
 - the string `"files"`, handing the slot to Nushell's own path completion;
+- one of Nushell's built-in completers by name — `"directories"`, `"paths"`,
+  `"commands"`, `"variables"`, `"env-vars"` (`commandline complete --type`,
+  on the token) — for a slot narrower than files (`git -C ⌶`) or one that
+  mixes them with candidates of its own; a `sources` entry of the same name
+  wins;
 - the name of an entry in the spec's `sources` record. **An unknown name
   silently yields `[]`**, so a typo here looks like a slot that offers nothing.
 

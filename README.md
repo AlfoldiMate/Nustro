@@ -50,6 +50,7 @@ nu ~/.local/share/nustro/install.nu              # seven screens, every one skip
 nu ~/.local/share/nustro/install.nu --defaults   # no questions, the whole thing
 nu ~/.local/share/nustro/install.nu --dry-run    # print the plan, change nothing
 nu ~/.local/share/nustro/install.nu --minimal    # nu-config, nu-complete and terminal only
+nu ~/.local/share/nustro/install.nu --clean      # back up whatever is there, yours included, and start over
 ```
 
 Nothing is written before you say yes to the last screen. What the install
@@ -58,7 +59,8 @@ does, in order ([Install](docs/getting-started/install.md)):
 - **Backs up what was there.** A Nushell configuration that is not Nustro's —
   `config.nu`, `env.nu`, `login.nu`, drop-ins, scripts — moves whole to
   `<config dir>/.backup/<stamp>/`; history and the plugin registry stay.
-  `--keep-existing` sets only the old `config.nu` aside.
+  `--keep-existing` sets only the old `config.nu` aside; `--clean` does the
+  move for a configuration that is already Nustro's too, and starts over.
 - **Writes yours.** The three-line `config.nu` and your directory's scaffold.
 - **Proves it.** A new shell is started and asked whether the distro loaded
   in it; if not, the install stops there with that shell's own error and the
@@ -95,8 +97,10 @@ nu-config upgrade            # git pull; a shell tells you when there is somethi
 ```
 
 Tab opens a pipeline-aware menu: `ls | where <Tab>` offers the columns with
-a sample value, `brew install <Tab>` every formula in 3 ms, `git checkout
-<Tab>` branches by recency. Ctrl+R is history, F1 help, Alt+E hands the line
+a sample value — of a variable of yours too, `$rows | where <Tab>` — and
+`where size > <Tab>` round bounds; `brew install <Tab>` the two hundred best
+of 16k formulae in 10 ms, `git checkout <Tab>` branches by recency.
+`nu-complete explain "<line>"` says which rule answered and what it cost. Ctrl+R is history, F1 help, Alt+E hands the line
 you are typing to Claude.
 
 ## What it looks like
@@ -129,7 +133,7 @@ it.
 | `agent` | Claude Code at the prompt: `ask`, `exec` (proposes; you run it), `skill`, `command`, `completion` | 18 ms, lazy |
 | `odata` | OData V2/V4 services as tables, `where`/`select`/`first` pushed to the server | 97 ms, lazy |
 | `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |
-| `completions/` | brew (16k formulae with descriptions, 3 ms), git (refs by recency, changed files), cargo (workspace members, crates, features) | 10 ms for all three |
+| `completions/` | brew (16k formulae with descriptions, 10 ms), git (refs by recency, changed files), cargo (workspace members, crates, features) | 10 ms for all three |
 | `themes/` | NvChad's 96 palettes and Catppuccin's four, plus Ghostty's own 463 | rendered once |
 | `harness/` | Claude Code plugins, one per module, each a client of the shell command: `worktree` today — `/worktree:worktree`, a hook that denies raw `git worktree add` in a layout. The checkout is the marketplace; the install registers it | 14 ms per Bash call |
 

@@ -3,6 +3,7 @@
 #   nu-complete run <spec> <spans>     positional completion for an extern, from a spec (engine.nu)
 #   nu-complete spans <token> <place> <buffer>   $place.command, for completions written before 0.116 (engine.nu)
 #   nu-complete smart <buffer> <place> the Tab menu source: pipeline-aware, filtered, deduplicated (smart.nu)
+#   nu-complete explain <line>         which rule answered a line, what it offered, what it cost
 #   nu-complete cache <key> <ttl> {}   memoise a slow source for the session (cache.nu)
 #   nu-complete status                 what is cached, and where
 #
@@ -18,7 +19,4 @@ export use smart.nu *
 # conf/completions.nu, because its look and its keybinding are configuration.
 export def --env "nu-complete activate" []: nothing -> nothing {
   $env.NU_COMPLETE_EVAL = ($env.NU_COMPLETE_EVAL? | default "safe")
-  # The engine keeps every command's signature in stor; building that table
-  # costs ~115 ms, so a background job does it while you type the first line.
-  if $nu.is-interactive { job spawn { nu-complete warm } | ignore }
 }

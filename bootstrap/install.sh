@@ -44,7 +44,7 @@ while [ $# -gt 0 ]; do
       case "$1" in --dir) DIR="$2" ;; --repo) REPO="$2" ;; --ref) REF="$2" ;; esac
       shift ;;
     --no-install) RUN_INSTALLER=0 ;;
-    --minimal|--dry-run|--keep-existing|--skip-deps|--skip-tools|--skip-plugins|--skip-terminal|--skip-harness)
+    --minimal|--dry-run|--keep-existing|--clean|--skip-deps|--skip-tools|--skip-plugins|--skip-terminal|--skip-harness)
       PASS="$PASS $1" ;;
     -h|--help)    sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;

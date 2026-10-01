@@ -162,7 +162,7 @@ def positional-plan []: nothing -> record {
     }
     worktree: {
       subcommands: {
-        add: { description: "Create a worktree", positionals: [ "files" {|ctx| refs [branch remote tag] } ] }
+        add: { description: "Create a worktree", positionals: [ "directories" {|ctx| refs [branch remote tag] } ] }
         list: { description: "List worktrees" }
         remove: { description: "Remove a worktree", positionals: [ "files" ] }
         prune: { description: "Prune worktree information" }
@@ -195,7 +195,7 @@ export def "nu-complete git spec" []: nothing -> record {
     flags: [
       { name: "--version", description: "Print the git version" }
       { name: "--help", description: "Print help" }
-      { name: "-C", description: "Run as if started in this directory", arg: "files" }
+      { name: "-C", description: "Run as if started in this directory", arg: "directories" }
       { name: "-c", description: "Pass a configuration parameter" }
       { name: "--no-pager", description: "Do not pipe output into a pager" }
       { name: "--git-dir", description: "Path to the repository" }

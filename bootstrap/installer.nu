@@ -74,6 +74,7 @@ def main [
   --defaults      # no questions; the whole install — an existing configuration backed up, missing tools and the platform's terminal installed
   --minimal       # the core modules only — nu-config, nu-complete, terminal — and no question about them
   --keep-existing # leave the files of an existing configuration in place; only its config.nu is set aside
+  --clean         # start from an empty directory whatever is there — this distro's own configuration too: all of it moves to .backup/<stamp>/
   --skip-deps     # do not install missing tools (starship, zoxide, atuin, carapace, vivid)
   --skip-tools    # do not generate tool init files
   --skip-plugins  # do not register plugins
@@ -95,7 +96,10 @@ def main [
     print ""
   }
 
-  let where = (screen-where --ask=$ask --keep=$keep_existing --stamp=$stamp)
+  if $clean and $keep_existing {
+    error make --unspanned { msg: "--clean and --keep-existing are opposites: one moves everything out of the config directory, the other nothing but config.nu" }
+  }
+  let where = (screen-where --ask=$ask --keep=$keep_existing --clean=$clean --stamp=$stamp)
   if $where.existing.mode == "stop" {
     print "nothing was changed"
     return
@@ -136,7 +140,7 @@ def main [
 
 # ── 1. Where ──────────────────────────────────────────────────────────────────
 
-def screen-where [--ask, --keep, --stamp: string]: nothing -> record {
+def screen-where [--ask, --keep, --clean, --stamp: string]: nothing -> record {
   print $"(ansi cyan_bold)1. Where(ansi reset)"
   # Nushell's own answer, not a re-derivation of it: this is the directory a
   # new shell will read, XDG_CONFIG_HOME and every platform rule included. It
@@ -157,7 +161,7 @@ def screen-where [--ask, --keep, --stamp: string]: nothing -> record {
   if $same or (($user | path join distro.nu) | path exists) {
     error make { msg: $"($user) is a checkout of the distro. Your configuration has to live somewhere else — that separation is the whole point, and it is what keeps `git pull` clean and your history out of version control." }
   }
-  let existing = (screen-existing $user --ask=$ask --keep=$keep --stamp=$stamp)
+  let existing = (screen-existing $user --ask=$ask --keep=$keep --clean=$clean --stamp=$stamp)
   print ""
   { user: $user, existing: $existing }
 }
@@ -185,17 +189,31 @@ def scan-existing [user: path]: nothing -> record {
   let inside = (($vendor_dir | path expand --no-symlink) | str starts-with ($user | path expand --no-symlink))
   let vendor = (if $inside or (not ($vendor_dir | path exists)) { [] } else { ls $vendor_dir | where type == file and name =~ '\.nu$' | get name | path basename | sort })
   let ours = (($cfg | path exists) and (points-here (open --raw $cfg) $ROOT))
+  # The distro's own state — the theme render, the terminal pin, the update
+  # check — which is under the config dir on macOS and beside the vendor
+  # directory elsewhere. Part of "everything" for --clean.
+  let state_dir = ($nu.data-dir | path join .state)
   {
     state: (if $ours { "ours" } else if ($entries | is-empty) and ($vendor | is-empty) { "none" } else { "foreign" })
     entries: $entries
     vendor: $vendor
     vendor_dir: $vendor_dir
+    state_dir: (if $inside or (not ($state_dir | path exists)) { null } else { $state_dir })
   }
 }
 
-def screen-existing [user: path, --ask, --keep, --stamp: string]: nothing -> record {
+def screen-existing [user: path, --ask, --keep, --clean, --stamp: string]: nothing -> record {
   let found = (scan-existing $user)
   let backup = ($user | path join .backup $stamp)
+  # --clean: no question, and no exception for a configuration that is this
+  # distro's own — the way to see a first install on a machine that has had
+  # one, and the way out of a directory nobody can say the state of.
+  if $clean and $found.state != "none" {
+    print $"  existing        (ansi yellow)(if $found.state == 'ours' { "this distro's" } else { "a configuration that is not this distro's" }) — --clean(ansi reset)"
+    print $"  (ansi dark_gray)                all of it moves to ($backup): settings.nu, your drop-ins, the theme and the terminal pin with it.(ansi reset)"
+    print $"  (ansi dark_gray)                History and the plugin registry stay. (if $found.state == 'ours' { 'To have any of it back, move it back from there' } else { '`nu uninstall.nu` puts it back' }).(ansi reset)"
+    return ($found | insert mode "clean" | insert backup $backup)
+  }
   match $found.state {
     "none" => { print $"  existing        (ansi green)nothing there(ansi reset) — a first configuration" }
     "ours" => {
@@ -722,6 +740,7 @@ def clear-existing [existing: record, user: path, --dry-run]: nothing -> nothing
   print $"(ansi cyan_bold)Existing configuration(ansi reset)  → ($existing.backup)"
   for e in $existing.entries { print $"  (if $dry_run { 'would move' } else { 'moved' })  ($e)" }
   for v in $existing.vendor { print $"  (if $dry_run { 'would move' } else { 'moved' })  ($existing.vendor_dir | path join $v)" }
+  if $existing.state_dir != null { print $"  (if $dry_run { 'would move' } else { 'moved' })  ($existing.state_dir)" }
   if not $dry_run {
     mkdir $existing.backup
     for e in $existing.entries { mv ($user | path join $e) ($existing.backup | path join $e) }
@@ -729,6 +748,7 @@ def clear-existing [existing: record, user: path, --dry-run]: nothing -> nothing
       mkdir ($existing.backup | path join .vendor-autoload)
       for v in $existing.vendor { mv ($existing.vendor_dir | path join $v) ($existing.backup | path join .vendor-autoload $v) }
     }
+    if $existing.state_dir != null { mv $existing.state_dir ($existing.backup | path join .data-state) }
     write-manifest $existing $user $existing.entries
   }
   print ""
@@ -740,9 +760,13 @@ def write-manifest [existing: record, user: path, entries: list<string>]: nothin
     made: (date now)
     by: $ROOT
     from: $user
+    # This distro's own configuration, set aside by --clean: not what
+    # uninstall.nu means by "what was there before".
+    ours: ($existing.state == "ours")
     entries: $entries
     vendor: (if $existing.mode == "clean" { $existing.vendor } else { [] })
     vendor_dir: $existing.vendor_dir
+    state_dir: (if $existing.mode == "clean" { $existing.state_dir } else { null })
   } | to nuon --indent 2 | save -f ($existing.backup | path join .nustro-backup.nuon)
 }
 

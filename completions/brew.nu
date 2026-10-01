@@ -58,7 +58,8 @@ def helper-source [helper: string]: nothing -> string {
     "__brew_any_tap" | "__brew_tapped" | "__brew_official_taps" => "taps"
     "__brew_internal_commands" | "__brew_commands" => "commands"
     "__brew_installed" => "installed"
-    "_files" | "_directories" => "files"
+    "_files" => "files"
+    "_directories" => "directories"
     _ => "none"
   }
 }
@@ -95,7 +96,7 @@ def described-list [lines: list<string>, start: int]: nothing -> record {
 # Bump when the parser's output changes shape: a cached spec is regenerated
 # when Homebrew's zsh file is newer, or when it was written by an older parser
 # (2: nested subcommands, `services`).
-const PARSER = 2
+const PARSER = 3
 
 # Parse the zsh completion into a serialisable spec (sources by name).
 export def "nu-complete brew spec-from-zsh" [file: path]: nothing -> record {
@@ -219,22 +220,32 @@ def ensure-db []: nothing -> bool {
   false
 }
 
+const MAX_PACKAGES = 200
+
 # Every formula and/or cask matching the partial, with descriptions when the
 # database is ready. `kinds` ⊆ [formula cask].
 def packages [partial: string, kinds: list<string>]: nothing -> list<record> {
   if (ensure-db) {
     # The same tiers as `nu-complete filter` (prefix, substring, letters in
-    # order, then the description, contains before letters in order), so the
-    # 2000 rows the query keeps are the best ones and the engine's own pass
-    # over them only confirms the order.
+    # order), so the rows the query keeps are the best ones and the engine's
+    # own pass over them only confirms the order. 200 of them: the menu shows
+    # a screenful, and every row is quoted, ranked and painted again on each
+    # keystroke — it was 2000 until 2026-10-01, 80 ms a key in a pty, and
+    # `ripg` came back with 1335 because any description holding r, i, p, g in
+    # that order counted. Descriptions are searched only when fewer than
+    # twenty names match, and as a phrase: `brew install "silver sea` still
+    # finds ripgrep.
     let algo = $env.config.completions.algorithm
     let pre = $"($partial)%"
     let sub = $"%($partial)%"
     let fz = if $algo == "fuzzy" { "%" + ($partial | split chars | str join "%") + "%" } else { $sub }
     let ks = ($kinds | each {|k| $"'($k)'" } | str join ", ")
-    let hit = if $algo == "prefix" { "name like :pre" } else { "(name like :fz or desc like :fz)" }
-    %open (db-file)
-    | query db $"select name as value, desc as description from packages where kind in \(($ks)\) and ($hit) order by case when name like :pre then 0 when name like :sub then 1 when name like :fz then 2 when desc like :sub then 3 else 4 end, case when name like :fz and name not like :sub then length\(name\) else 0 end, name limit 2000" -p { pre: $pre, sub: $sub, fz: $fz }
+    let hit = if $algo == "prefix" { "name like :pre" } else { "name like :fz" }
+    let db = (%open (db-file))
+    let by_name = ($db | query db $"select name as value, desc as description from packages where kind in \(($ks)\) and ($hit) order by case when name like :pre then 0 when name like :sub then 1 else 2 end, case when name not like :sub then length\(name\) else 0 end, name limit ($MAX_PACKAGES)" -p { pre: $pre, sub: $sub, fz: $fz })
+    if $algo == "prefix" or ($partial | is-empty) or ($by_name | length) >= 20 { $by_name } else {
+      $by_name ++ ($db | query db $"select name as value, desc as description from packages where kind in \(($ks)\) and desc like :sub and not \(($hit)\) order by name limit ($MAX_PACKAGES - ($by_name | length))" -p { sub: $sub, fz: $fz })
+    }
   } else {
     let api = (api-dir)
     let names = (
@@ -253,12 +264,17 @@ def kinds-from [ctx: record, default: list<string>]: nothing -> list<string> {
   if "--cask" in $ctx.args { ["cask"] } else if "--formula" in $ctx.args { ["formula"] } else { $default }
 }
 
+# One `ls` per installed package for its versions: 42 ms for 155 of them, on
+# every keystroke of `brew uninstall …` — so it is kept for ten seconds,
+# which is longer than a menu is open and shorter than an install takes.
 def installed [kind: string]: nothing -> list<record> {
   let dir = (prefix | path join (if $kind == "formula" { "Cellar" } else { "Caskroom" }))
   if not ($dir | path exists) { return [] }
-  ls $dir | where type == dir | each {|d|
-    let versions = (ls $d.name | get name | path basename | where $it != ".metadata")
-    { value: ($d.name | path basename), description: ($versions | str join ", ") }
+  nu-complete cache $"brew:installed:($dir)" 10sec {
+    ls $dir | where type == dir | each {|d|
+      let versions = (ls $d.name | get name | path basename | where $it != ".metadata")
+      { value: ($d.name | path basename), description: ($versions | str join ", ") }
+    }
   }
 }
 
@@ -276,6 +292,38 @@ def taps []: nothing -> list<record> {
   # Sorted: `glob` returns directory order, which differs by file system.
   let dir = $dir | str replace -a '\' '/'
   glob ($dir + "/*/*") | sort | each {|p| { value: ($p | path relative-to $dir | str replace -a '\' '/' | str replace "homebrew-" "") } }
+}
+
+# ── Which formula ships a command ─────────────────────────────────────────────
+#
+# For the `command_not_found` hook (conf/tools.nu). Homebrew's own answer is
+# `brew which-formula`, and its cost is starting brew: 275 ms, which a typo
+# then paid before the prompt came back (425 ms from Enter to prompt against
+# 100 ms without it, in a pty, 2026-10-01). What it reads is a text file in
+# the API cache — `formula(version):exe exe …`, 347 kB — and one regex over it
+# is 0.75 ms. `brew update` keeps the file fresh, as it does for brew itself.
+
+def executables-file []: nothing -> path { api-dir | path join internal executables.txt }
+
+# The formulae that install an executable called `cmd`; [] when none does,
+# or when the database is not there yet — then one background `brew
+# which-formula` fetches it (at most once an hour), and the next typo is
+# answered.
+export def "nu-complete brew provides" [cmd: string]: nothing -> list<string> {
+  let f = (executables-file)
+  if not ($f | path exists) {
+    let lock = (nu-complete cache-dir | path join brew-executables.fetching)
+    let busy = (($lock | path exists) and ((date now) - (ls -D $lock | get 0.modified)) < 1hr)
+    if (not $busy) and (which brew | is-not-empty) {
+      touch $lock
+      job spawn { ^brew which-formula $cmd | complete | ignore } | ignore
+    }
+    return []
+  }
+  # The name ends at `(` or `:`; the executable is a whole word of the rest.
+  %open --raw $f
+  | parse --regex ('(?m)^(?<formula>[^(:\n]+)[^:\n]*:(?:[^\n]* )?' + ($cmd | str escape-regex) + '(?: |$)')
+  | get formula
 }
 
 # ── The spec with its sources, as the engine wants it ─────────────────────────

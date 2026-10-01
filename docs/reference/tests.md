@@ -167,9 +167,9 @@ A file costs two `nu -n` starts (one lists the tests, one runs them) and a
 test that starts a shell against a user directory costs one `nu -l`: about
 60 ms with the distro loaded, 105 ms on the 0.115.1 release build
 (2026-09-19, M-series Mac). The harness file alone, six tests, four of them
-starting a shell: 332 ms. The whole suite, 242 tests in twenty-one files:
-33 s concurrent on 0.116.0 (2026-10-01; 222 tests were 31 s on 2026-09-28;
-the pty file is the long pole at 15 s), 18 s for 137 tests in fourteen files on 2026-09-19, 38 s `--serial`
+starting a shell: 332 ms. The whole suite, 258 tests in twenty-one files:
+38 s concurrent on 0.116.0 (2026-10-01; 222 tests were 31 s on 2026-09-28;
+the pty file, two terminal sessions, is the long pole at 34 s), 18 s for 137 tests in fourteen files on 2026-09-19, 38 s `--serial`
 then (0.55 s for
 the harness alone on the Linux runner, 1.4 s on the macOS one). The slow
 tests are the ones that clone this repository (`config/upgrade`: one

@@ -101,4 +101,7 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   `nu -l -c '"ls | where " | commandline complete --input'` (the `place` a
   completer is handed) and `nu -l -c '"ls | where " | commandline complete
   --input | nu-complete smart $in.buffer $in.place'`. `nu --ide-complete`
-  does not run `@complete` completers.
+  does not run `@complete` completers. `nu -l -c 'nu-complete explain "<line>"'`
+  names the rule that answered and its cost. The Tab menu's source runs on
+  the editor's thread on every keystroke: nothing in it may fork per key —
+  memoise per slot (`nu-complete cache`) and narrow locally.

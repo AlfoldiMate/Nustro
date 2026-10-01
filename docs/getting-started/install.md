@@ -67,6 +67,7 @@ nu install.nu --defaults   # no questions, the whole thing: an existing configur
 nu install.nu --minimal    # nu-config, nu-complete and terminal only; agent, odata, worktree are `nu-config module enable` away
 nu install.nu --dry-run    # print the plan, change nothing
 nu install.nu --keep-existing   # leave an existing configuration's files in place; only its config.nu is set aside
+nu install.nu --clean           # start from an empty directory whatever is there, this distro's own configuration included
 nu install.nu --skip-deps --skip-tools --skip-plugins --skip-terminal --skip-harness
 ```
 
@@ -94,6 +95,14 @@ So a configuration that is not this distro's is not merged with:
   data directory's `vendor/autoload/` too. A manifest (`.nustro-backup.nuon`)
   records what came from where, and `nu uninstall.nu` puts it back.
 - `--keep-existing` moves only the old `config.nu` there and leaves the rest.
+- `--clean` does the same move for a configuration that **is** this distro's,
+  which a plain re-run leaves alone: `settings.nu`, your drop-ins, `.state/`
+  (the theme, the terminal pin) and the generated init files all go to the
+  backup, and what follows is a first install — the way to see one on a
+  machine that has had it, or out of a directory nobody can say the state
+  of. The manifest marks such a backup (`ours: true`), and `uninstall.nu`
+  does not restore it: that would be installing again. To go back to it,
+  move its entries back by hand.
 
 Then the installer **starts a new shell and asks it** whether the distro
 loaded, from this directory. When it did not, the install stops there with

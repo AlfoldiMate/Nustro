@@ -58,13 +58,16 @@ inside closures and subexpressions too, `echo (first ⌶`), and rewrites:
 | `ls \| where size ⌶` | only operators valid for a filesize | Nushell's operator list, narrowed by the column's type |
 | `ls \| where type == ⌶` | `file`, `dir` | distinct values of the column, as Nushell literals |
 | `where … and ⌶` | columns again | |
+| `ls \| where size > ⌶`, `where modified > ⌶` | round bounds — `1kb` … `1gb`, `((date now) - 1day)` — instead of sixty file sizes | after `<` `<=` `>` `>=` on a filesize, duration or datetime; `==` still offers the values |
+| `$rows \| where ⌶`, `$cfg \| get a.⌶` | the columns of a variable of this session | `scope variables` at the door of the source (56 µs), the value handed to the subprocess as NUON on stdin — the first 200 rows of a list, nothing above 256 kB |
+| `ls \| uniq-by ⌶`, `histogram ⌶`, `compact ⌶`, `move name --after ⌶`, `join $t ⌶` | columns, though the slot is declared `string` or `any` | two short lists in `smart.nu`: `COLUMN_POSITIONALS`, `COLUMN_FLAGS` |
 | `ps ⌶`, `version ⌶` (216 built-ins take no positional) | nothing, instead of every file in the directory | `place` has no shape: the command has no positional there |
 | `first ⌶`, `skip ⌶`, `echo (first ⌶` | nothing, instead of files | `place.shape` wants a number |
 | `cd ⌶` in a folder with no subfolders, `cd nus⌶` with no local match | `..`, `~`, `-`, then zoxide's most-used directories (`~/.config/nushell` …) | `place.shape` is `directory` and Nushell found none; `zoxide query -l`, 12 ms, memoised 30 s |
 | a shadowed built-in | listed once | `uniq-by value` |
 | `theme use Cat⌶` → `"Catppuccin Macchiato"` | a value with a space is one argument | `nu-complete quote`: a `string@completer` value is inserted verbatim by Nushell (both releases, both menus), so the engine quotes what the parser would split, `to nuon` style, and matching still works past the quote. Paths (backticks, Nushell's) and carapace's values (its own `"…"`) arrive quoted already |
 | `ll \| where ⌶` | works | aliases are expanded before the pipeline runs |
-| `fon⌶`, `font use ⌶`, `theme use Cat⌶` in a shell that has not loaded the lazy `terminal` module yet | `font list`, the fonts, the themes — what the loaded module would offer | the segment's head is a trigger word of a lazy module not in `$env.NU_MODULES_LOADED` ([Modules](modules.md#lazy-loading)), so a child `nu -n` sources that module's `load.nu` and answers `commandline complete` for the line: 30 ms for `terminal`, 25 for `agent`, 50 for `odata`, until the first Enter loads it for good |
+| `fon⌶`, `font use ⌶`, `theme use Cat⌶` in a shell that has not loaded the lazy `terminal` module yet | `font list`, the fonts, the themes — what the loaded module would offer | the segment's head is a trigger word of a lazy module not in `$env.NU_MODULES_LOADED` ([Modules](modules.md#lazy-loading)), so the word itself comes from the list of trigger words, and what follows it from a child `nu -n` that sources that module's `load.nu` and answers `commandline complete` — once per slot, kept a minute and narrowed here as you type (140 ms for the first `theme ⌶` in a pty, 12-17 ms a key after), until the first Enter loads the module for good |
 | everything else | exactly Nushell's answer | |
 
 ### Running the pipeline: what is allowed
@@ -103,26 +106,55 @@ sample. Memoised 30 s per prefix. `odata People | where ⌶` answers in
 
 | Tab on | first time | again |
 |---|---|---|
-| `ls \| where ` | 28 ms (subprocess) | 2.7 ms |
+| `ls \| where ` | 38 ms (subprocess), the very first Tab of a shell included | 3.4 ms |
 | `ps \| where ` | 150 ms (`ps` itself is slow) | 2 ms |
-| `brew install rip` | 3-5 ms (after a one-off 0.7 s cache build, in the background) | 3 ms |
-| `brew install ` (2000 candidates) | 14 ms | |
-| `brew install rgrep` (fuzzy: 809 candidates ranked, ripgrep first) | 28 ms | |
-| `brew install "terminal emu` (fuzzy, matched in descriptions) | 13 ms | |
-| `brew uninstall ` (107 installed, versions read from the Cellar) | 28 ms | |
+| `brew install rip` (200 candidates at most) | 10 ms (after a one-off 0.7 s cache build, in the background) | 10 ms |
+| `brew install rgrep` (fuzzy: 6 candidates, ripgrep first) | 12 ms | |
+| `brew install "silver sea` (matched in descriptions, as a phrase) | 11 ms | |
+| `brew uninstall ` (155 installed, versions read from the Cellar) | 42 ms | 7 ms for ten seconds |
+| `docker run --n` (carapace: one process per slot, the answer narrowed here) | 41 ms | 1.4 ms |
 | `git ` | 32 ms (`git help -a`) | 4 ms |
 | `git checkout ` | 15-220 ms (`git status`, repo size) | 5 ms |
-| `git log --one` | 60 ms (carapace) | |
+| `git log --one` | 98 ms (carapace) | 7 ms |
 | `cargo ` | 28 ms (`cargo --list`) | 4 ms |
 | `cargo build -p ` (workspace members, targets, features) | 31-64 ms (`cargo metadata --no-deps` + `cargo build --help`) | 6 ms |
 | `cargo add ser` (1.5k crate names from the registry cache) | 80 ms, then memoised for a day | 18 ms |
 | `cargo update ` (562 lockfile packages) | 32 ms | 6 ms |
-| command signatures table | 115 ms, built by a background job at startup | 0.1 ms per lookup |
-| `font use ` before the lazy module is loaded (a child nu sources it) | 30 ms, every keystroke until the first Enter that mentions `font` | — |
+| `theme ` before the lazy module is loaded (a child nu sources it) | 140 ms, once per slot | 12-17 ms a key |
 
-The menu source runs again on every keystroke while the menu is open, which
-is why everything is memoised and why the source never runs an external
-itself.
+Measured 2026-10-01 with `commandline complete` in a `nu -l -c`, unless a
+pty is named.
+
+**What a key costs.** The menu source runs again on every keystroke while
+the menu is open, and it runs on the line editor's own thread: a completer
+attached with `@complete`, a parameter completer and the external completer
+have run on a background worker since 0.115, a menu `source` does not. With
+a 700 ms source in a pty, a key typed 100 ms after Tab echoed after 1.4 s;
+with the same 700 ms in an `@complete` completer on the stock menu, after
+105 ms. So what the source costs is how long a typed character takes to
+appear, and a `Tab` chain cannot hand the cheap slots to the stock menu: an
+`until` whose first menu's source answers `[]` or `null` does not fall
+through to the next (0.116.0, tried 2026-10-01). Everything is therefore
+memoised, per slot rather than per keystroke where an external is behind it.
+In a pty, with the menu open (before → after 2026-10-01):
+
+| typing | a key |
+|---|---|
+| `git checkout m…` | 12-25 ms → 10-20 ms |
+| `ls \| where s…` | 23 ms → 9-13 ms |
+| `docker run --n…` (carapace) | 70-76 ms → 3-10 ms |
+| `brew install r…` | 80 ms → 15-29 ms |
+| `theme u…`, module not loaded | 30 ms and a child `nu` → 12-17 ms |
+
+`tests/pty/menu.test.nu` holds two of these as bounds. Nushell's own way out
+would be the external completer answering for built-ins too
+([nushell#18931](https://github.com/nushell/nushell/pull/18931), open): the
+columns could then come from a completer on the worker and the menu source
+could go.
+
+`nu-complete explain "<line>"` says which of the rules above answered a
+line, what it offered, whether its pipeline was allowed to run, and what the
+first and the next call cost.
 
 ### Filtering
 
@@ -147,7 +179,7 @@ keeps `git checkout` branches by recency. The pass is written column-wise —
 a per-item closure 9 ms — and costs 4 ms (`prefix`), 9 ms (`substring`) or
 15 ms (`fuzzy`) over 2000 candidates with descriptions (measured 2026-09-20).
 A source with more candidates than that pre-ranks the same way where it
-lives: brew's SQLite query orders by the same tiers before its `limit 2000`.
+lives: brew's SQLite query orders by the same tiers before its `limit 200`.
 
 Nushell ranks its own candidates (commands, flags, paths) by match quality
 under `fuzzy`; that part is not the engine's.
@@ -212,9 +244,16 @@ What 0.116 bought, and what it did not (measured 2026-09-27 on 0.116.0):
   generated before 2026-09-27.
 - **`place` replaced the smart menu's own slot resolution** — which positional
   the cursor is on, skipping flags that take a value, and the shape the
-  signature wants there. The signature table stays for the safety check
-  before a pipeline runs, and for recognising a `where` condition, which
-  `place` hands over as one word (`[where, "size > 10 and", ""]`).
+  signature wants there. The table of every command's signature that used
+  to do it (305 ms to build in a background job, and empty for a Tab pressed
+  before it finished) is gone since 2026-10-01: `which` says what kind of
+  command a word is, one `scope commands` inside the memoised probe gives the
+  categories the safety check reads, and whether a command's first
+  positional is a condition is asked once per command and session. A `where`
+  condition is still read from the words: `place` hands it over as one word
+  (`[where, "size > 10 and", ""]`), is `operator` after the column and
+  `variable` while the column is being typed. `std/util structure` was tried
+  for the words and left: it has no token for `;`.
 - **Partial completion is back on.** The sourced-menu span bug
   ([nushell#19053](https://github.com/nushell/nushell/issues/19053)) is fixed
   in 0.116.0; `tests/pty/menu.test.nu` drives the insert and the Tab after it.
@@ -236,8 +275,10 @@ What 0.116 bought, and what it did not (measured 2026-09-27 on 0.116.0):
 
 ## Known limits
 
-- The first Tab in a session pays the signature table (115 ms) unless the
-  background job has finished, and the first `ps | …` pays `ps` (150 ms).
+- The first Tab on a pipeline pays its subprocess (38 ms for `ls`), and the
+  first `ps | …` pays `ps` (150 ms).
+- A variable named `$buffer` or `$place` is not seen: those are the names of
+  the source's own inputs.
 - Externals are never run for column completion, so `^git log | lines |
   where ⌶` gets no columns. `NU_COMPLETE_EVAL = "all"` widens to your own
   commands, not to externals.

@@ -7,6 +7,7 @@
 #   nu install.nu --minimal       nu-config, nu-complete and terminal only; the rest is `nu-config module enable` away
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --keep-existing leave what is in the config directory where it is; only config.nu is replaced
+#   nu install.nu --clean         start from an empty directory, whatever is there: all of it is backed up first
 #   nu install.nu --skip-deps --skip-tools --skip-plugins --skip-terminal --skip-harness
 #
 # Idempotent: safe to re-run after `git pull`, after installing a tool, or

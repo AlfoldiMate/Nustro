@@ -20,8 +20,8 @@ git checkout <Tab>        # branches by recency, then remotes and tags
 | `nu-complete quote` | quote a candidate the line would otherwise split (`Catppuccin Macchiato` → `"Catppuccin Macchiato"`); `run` and `smart` apply it to spec and `string@completer` values, never to commands, flags or paths (`engine.nu`) |
 | `nu-complete cache <key> <ttl> {}` | memoise a slow source for the session (`cache.nu`) |
 | `nu-complete status` | what is cached, and where |
-| `nu-complete warm` | build the signature table (run in a background job at startup) |
-| `nu-complete activate` | seed defaults and spawn the warm job |
+| `nu-complete explain <line>` | which rule answered a line (`columns`, `operators`, `values`, `no-files`, `directories`, `field`, `lazy`, or `nushell` for its own answer), the first candidates, whether the pipeline before the command was allowed to run, and what Nushell's answer, the first call and the next call cost |
+| `nu-complete activate` | seed defaults |
 
 ## Configuration
 
@@ -61,9 +61,10 @@ is rebound rather than configured.
 
 Eager by design: it owns the Tab menu, which has to answer on the first
 keystroke of the first line, so it cannot be lazy. 2 ms to load — the specs it
-runs are parsed by `conf/completions.nu` and are not part of that. Building
-the signature table costs ~115 ms, which is why `activate` hands it to a
-background job instead of blocking startup.
+runs are parsed by `conf/completions.nu` and are not part of that. Nothing
+is built at startup: the table of command signatures a background job used
+to fill (305 ms) went on 2026-10-01, when `place.shape` and `which` had made
+it unnecessary.
 
 ## Files
 
@@ -78,17 +79,22 @@ meta.nuon    description, dependencies, knobs
 
 ## Tests
 
-`nu tests/run.nu completion` — four files under `tests/completion/`, 64
-tests (2026-09-27, Nushell 0.116.0): `engine` (the `place.command` contract
+`nu tests/run.nu completion` — four files under `tests/completion/`, 77
+tests (2026-10-01, Nushell 0.116.0): `engine` (the `place.command` contract
 the specs walk, `external`, filter, quote, `run` over an inline spec),
-`smart` (columns, operators, values, the no-files rules, the eval gating with
-a `save` that must not run), `specs` (brew against `tests/fixtures/brew`,
-git and cargo against a scratch repository and workspace) and `cost` (the
+`smart` (columns, operators, values and bounds, the no-files rules, the eval
+gating with a `save` that must not run, a session's variables, the slots
+that take a column undeclared, a lazy module's words and slots, `explain`),
+`specs` (brew against `tests/fixtures/brew`, its package database capped at
+two hundred, `brew provides`; git and cargo against a scratch repository and
+workspace) and `cost` (the
 numbers above as upper bounds, ten to twenty times the measurement).
 `nu tests/run.nu pty` drives Tab in a real pseudo-terminal
 (`tests/pty/menu.test.nu`): the menu completing and inserting under the
-shipped defaults, and partial completion under prefix matching, where the
-insert nushell#19053 broke has a common prefix to make.
+shipped defaults, partial completion under prefix matching, where the
+insert nushell#19053 broke has a common prefix to make, and what a key
+typed with the menu open costs, read from a log the session's menu source
+writes.
 [Tests](../tests.md) is how to add one.
 
 ## Limits

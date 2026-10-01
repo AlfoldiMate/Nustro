@@ -258,3 +258,14 @@ def "test run matches past a quote the user opened" [] {
 def "test run treats a lone command as a fresh slot" [] {
   assert equal (nu-complete run (spec) [tool] | get value) [build run alpha beta]
 }
+
+def "test run has the built-in sources by name, the spec own first" [] {
+  let d = scratch
+  mkdir ($d | path join alpha) ($d | path join beta)
+  "" | save ($d | path join afile.txt)
+  let spec = { subcommands: { go: { positionals: [directories] }, own: { positionals: [directories] } } }
+  let got = nu-complete run $spec [tool go ($d + "/")]
+  assert equal ($got | get value | each {|v| $v | path basename } | sort) [alpha beta] ($got | to nuon)
+  assert ($got | all {|r| $r.span? == null }) "spans into the token are dropped"
+  assert equal (nu-complete run ($spec | insert sources { directories: [mine] }) [tool own ""] | get value) [mine]
+}

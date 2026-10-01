@@ -3,7 +3,7 @@
 #   irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.ps1 | iex
 #   .\install.ps1 -Yes                      take every default, ask nothing
 #   .\install.ps1 -Dir C:\src\nu-distro     clone somewhere else
-#   .\install.ps1 -Pass '--minimal','--skip-deps'   anything install.nu takes is handed on to it
+#   .\install.ps1 -Pass '--minimal','--clean'      anything install.nu takes is handed on to it
 #
 # The Windows half of bootstrap/install.sh, and it has the same two jobs: make
 # sure `nu` exists, and put the distro on disk. Everything after that is

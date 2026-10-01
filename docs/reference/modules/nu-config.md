@@ -21,7 +21,7 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 | `module help <name> [--path]` | the page `docs:` names in the module's `meta.nuon`, through `glow` when installed and `$PAGER` otherwise — before the module has loaded, when `help theme` still says nothing; `--path` prints where it is |
 | `missing-tool <module> [bin] [--command]` | the error a command raises when its module's tool is not installed, worded from `meta.nuon` — for modules to import from `missing.nu`, not to type |
 | `deps status \| manager \| install [tool …] [--dry-run]` | the five tools the distro is built around — starship, zoxide, atuin, carapace, vivid: which are on PATH, and the line that installs each with this machine's package manager (Homebrew; winget or Scoop on Windows; pacman on Arch, which has no carapace). `install` runs it for every missing one, or the ones named, one tool at a time so a failure is one row, then `tools setup`; with no manager it prints each tool's install page and runs nothing. Package names checked 2026-10-01; only the Homebrew lines have been run |
-| `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
+| `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools. zoxide's and atuin's are the tool's own `init`; carapace's is written here, not by `carapace _carapace nushell`: one direct call per slot, the answer kept twenty seconds and narrowed as you type (70 ms a key → 3 ms in a pty), `place.command` for the spans, no whole-`$env.config` assignment |
 | `upgrade` | fetch; check the upstream out into a throwaway worktree under `<your>/.state/nu-config/`, refuse it when its `nustro.nuon` needs a newer Nushell or its `distro.nu` fails `nu-check` with the running `nu` (the parse error is printed, the checkout untouched); then `git pull --ff-only`, the commits that came in, `user init` for any scaffold file the new version ships and your directory lacks (a README, an example — never a file you have), `tools setup`, and `harness update` when `claude` is on PATH and the checkout is the registered marketplace. After a `rollback`, returns to the branch first |
 | `upgrade rollback [commit]` | `git checkout --detach` of the commit `doctor` last saw parse (`last_good`), else the one the last `upgrade` moved off (`previous`), else the one named; the startup line then says so until `upgrade` returns |
 | `upgrade check \| status \| notice \| stale <every> \| good` | fetch now; the last result, with the pins `last_good`, `previous` and `branch`; the startup line; is the result older than `every` — `conf/update.nu` wires the last two; `good` records HEAD as `last_good` — `doctor`'s parse line calls it |
@@ -161,7 +161,7 @@ meta.nuon    description
 
 ## Tests
 
-`nu tests/run.nu config` — 62 tests in `tests/config/` (2026-10-01):
+`nu tests/run.nu config` — 65 tests in `tests/config/` (2026-10-01):
 `layering` (a `const` and an `$env.` leaf in `settings.nu` reaching the
 `conf/` file that reads them, `knobs` against `defaults.nu` and every
 `meta.nuon`, `--overridden` naming exactly the live lines, the rule that no
@@ -183,7 +183,8 @@ one left in place, `--purge`, `--dry-run`, no `--yes` without a terminal,
 another configuration left alone, a pre-manifest backup), `deps` (`status`,
 `install` against a fake `brew` alone on PATH: once per missing tool, named
 tools only, one failing and the rest going on, no manager) and `tools` (`setup | status | remove`, the files
-parsing, the carapace rewrap). [Tests](../tests.md) is the harness.
+parsing, the carapace file asking a fake carapace once per slot, an unknown
+command looked up without starting brew). [Tests](../tests.md) is the harness.
 
 ## Limits
 

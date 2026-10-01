@@ -135,6 +135,34 @@ def "test --keep-existing sets only config.nu aside" [] {
   }
 }
 
+def "test --clean starts over from a configuration of the distro" [] {
+  let user = fresh-config-home
+  install --defaults | ignore
+  "const SMART_TAB = false\n" | save -a ($user | path join settings.nu)
+  "print mine\n" | save ($user | path join autoload mine.nu)
+  "ls\n" | save ($user | path join history.txt)
+  let state = $env.XDG_DATA_HOME | path join nushell .state
+  mkdir $state
+  "{}" | save ($state | path join marker.nuon)
+  let ran = install --defaults --clean
+  assert equal $ran.exit_code 0 ($ran.stdout + $ran.stderr)
+  # The scaffold as a first install writes it, history kept, nothing of mine.
+  assert equal (files-under $user | where $it !~ '^\.backup/') ($SCAFFOLD ++ [history.txt] | sort)
+  assert not (open --raw ($user | path join settings.nu) | str contains "const SMART_TAB = false\n")
+  assert not ($state | path join marker.nuon | path exists) "the distro's state went with it"
+  let b = ls ($user | path join .backup) | get name | first
+  assert (open --raw ($b | path join settings.nu) | str ends-with "const SMART_TAB = false\n")
+  assert ($b | path join autoload mine.nu | path exists)
+  assert ($b | path join .data-state marker.nuon | path exists)
+  assert (open ($b | path join .nustro-backup.nuon) | get ours)
+  let shell = ^$nu.current-exe -l -c 'print (nu-config install-status | get state) (nu-config knobs --overridden | length)' | complete
+  assert equal ($shell.stdout | lines) [split "0"] $shell.stderr
+  # Opposites are refused before anything moves.
+  let both = install --defaults --clean --keep-existing
+  assert equal $both.exit_code 1
+  assert ($both.stderr | str contains "opposites") $both.stderr
+}
+
 def "test init files of another setup in the data dir move too" [] {
   # Off macOS the vendor autoload dir is not under the config dir, and a
   # starship.nu someone generated there would repaint the distro's prompt.
