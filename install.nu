@@ -3,7 +3,8 @@
 #
 #   nu install.nu                 the interactive installer
 #   nu install.nu --defaults      the whole thing, no questions: an existing configuration backed
-#                                 up, the missing tools and the platform's terminal installed
+#                                 up, the missing tools and the platform's terminal installed,
+#                                 the default theme (doomchad) and font (DejaVu Sans Mono Nerd Font)
 #   nu install.nu --minimal       nu-config, nu-complete and terminal only; the rest is `nu-config module enable` away
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --keep-existing leave what is in the config directory where it is; only config.nu is replaced
