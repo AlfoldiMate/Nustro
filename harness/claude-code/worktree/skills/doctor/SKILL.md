@@ -34,7 +34,7 @@ Read all four and report in at most six lines:
 2. Whether `worktree` printed its subcommand list. `Command \`worktree\` not
    found` or `Module not found` means the login shell is not the Nushell
    distro, or a distro older than the module: install it
-   (`https://github.com/AlfoldiMate/Nustro`) or `nu-config upgrade`.
+   (`https://github.com/AlfoldiMate/Nustro`) or `nustro upgrade`.
    `use` failing on a distro that has the module means `worktree` is not in
    `MODULES` in the user's `settings.nu`.
 3. The layout: `--git-common-dir` ending in `.bare` is a bare-worktree

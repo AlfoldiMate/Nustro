@@ -10,7 +10,7 @@ same refusals and the care points a user has at the prompt.
 ## Install
 
 Requires Nustro as the login shell's configuration (`nu -l`
-must load it — `nu-config doctor` in a shell says so), and `git`.
+must load it — `nustro doctor` in a shell says so), and `git`.
 
 ```
 claude plugin marketplace add AlfoldiMate/Nustro

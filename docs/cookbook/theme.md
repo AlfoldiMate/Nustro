@@ -1,27 +1,27 @@
 # Pick a theme and make it stick
 
 This page was run in Ghostty; with WezTerm being configured (`terminal
-target`) every `theme` line is the same, the theme lands in
+target`) every `terminal theme` line is the same, the theme lands in
 `.state/theme/wezterm/` as a scheme file, and there is no app icon.
 
 ## Pick one
 
 ```nu
-theme                        # scroll the hundred palettes; the window you are in is the preview
-theme --ghostty              # or Ghostty's own 463
-theme use tokyonight         # by name — Tab completes them
+terminal theme                 # scroll the hundred palettes; the window you are in is the preview
+terminal theme --ghostty       # or Ghostty's own 463
+terminal theme use tokyonight  # by name — Tab completes them
 ```
 
-That is the whole of it. `theme use` writes Ghostty's theme and app icon,
+That is the whole of it. `terminal theme use` writes Ghostty's theme and app icon,
 repaints this window and reloads every open one, and renders the shell's
 colours, `LS_COLORS`, the bat theme and the starship prompt into
 `<your>/.state/theme/`, which every new shell reads in 0.36 ms. There is no
 knob to set: what was rendered last is the theme.
 
 ```nu
-theme status                 # what is rendered, from which theme, at which tier, and whether Ghostty agrees
-theme roles                  # every role, its colour, and which tier decided it
-theme reset                  # only after a `theme preview`: hand the terminal back to Ghostty's config
+terminal theme status          # what is rendered, from which theme, at which tier, and whether Ghostty agrees
+terminal theme roles           # every role, its colour, and which tier decided it
+terminal theme reset           # only after a `terminal theme preview`: hand the terminal back to Ghostty's config
 ```
 
 ## Make a palette of your own
@@ -57,14 +57,14 @@ ships, borrowing its sixteen, and names only the roles you care about:
 ```
 
 The file's stem is the slug of its `name` — lowercased, runs of anything but
-letters and digits turned into `-`; `theme slug "TokyoNight Storm"` prints
+letters and digits turned into `-`; `terminal theme slug "TokyoNight Storm"` prints
 `tokyonight-storm`. A role may name one of your `colours` or carry a hex of
 its own. Every role you do not name is blended from the Ghostty theme's own
 hexes (tier two), and the sixteen stay the terminal's (tier one), so six
 colours is a complete palette.
 
 For a theme that is entirely yours, `<your dir>/themes/palettes/example.nuon.off`
-is one already: rename it and `theme use Example` renders it. Its `terminal`
+is one already: rename it and `terminal theme use Example` renders it. Its `terminal`
 block — all sixteen plus background, foreground, cursor and selection — is
 what makes it a Ghostty theme file too; NvChad's
 (`themes/palettes/nvchad/tokyonight.nuon` in the checkout) have the same shape.
@@ -72,15 +72,15 @@ what makes it a Ghostty theme file too; NvChad's
 Check it before you keep it:
 
 ```nu
-theme list | where theme == Harbour          # kind: yours
-theme roles Harbour                          # from: palette for the six, ansi for the sixteen, derived for the rest
-theme resolve Harbour | select name by tier  # the record, nothing written
-theme use Harbour
+terminal theme list | where theme == Harbour          # kind: yours
+terminal theme roles Harbour                          # from: palette for the six, ansi for the sixteen, derived for the rest
+terminal theme resolve Harbour | select name by tier  # the record, nothing written
+terminal theme use Harbour
 ```
 
 Run on 2026-09-19 with the file above in a scratch user directory: listed as
 `yours`; `accent` `#a8dadc` from `palette`, `red` `red` from `ansi`;
-`theme use` took 492 ms and `theme status` then showed `Harbour`, Ghostty
+`terminal theme use` took 492 ms and `terminal theme status` then showed `Harbour`, Ghostty
 resolving `Gruvbox Dark`, and `icons/harbour.png` rendered.
 
 A palette with the same slug as a shipped one shadows it — the same rule as
@@ -93,15 +93,17 @@ pull *can* change is a template — `themes/nushell.nu`, `starship.toml`,
 `vivid.yml`, `icon.svg` — which the rendered files were made from:
 
 ```nu
-theme sync                   # re-resolve and re-render the current theme from the templates as they are now
+terminal theme sync            # re-resolve and re-render the current theme from the templates as they are now
+nustro repair                  # or every wiring step, this one among them
 ```
 
-The update notice at startup says when to; `nu-config doctor`'s Theme line
-shows when the render was made.
+`nustro status` says when to — "a theme template is newer than the render"
+under `attention`; `nustro doctor`'s Theme line shows when the render was
+made.
 
 To change a template rather than a palette — a different prompt layout, say
 — copy it into your `themes/` and edit the copy there. It is picked up over
-the shipped one, `theme sync` renders it, and it must be written in roles,
+the shipped one, `terminal theme sync` renders it, and it must be written in roles,
 never hexes, so that every theme keeps fitting it. The user's copy is chosen
-at parse time for `theme use` in the running session, so a template dropped
+at parse time for `terminal theme use` in the running session, so a template dropped
 in after the module loaded is seen by the next shell.

@@ -104,7 +104,7 @@ export def "nu-complete filter" [partial: string]: list<record> -> list<record> 
 }
 
 # Quote every value the line editor would otherwise split or misparse:
-# `theme use Catppuccin Macchiato` is two arguments, `"Catppuccin Macchiato"`
+# `terminal theme use Catppuccin Macchiato` is two arguments, `"Catppuccin Macchiato"`
 # is one. Nushell quotes the paths its own file completer offers (backticks)
 # and carapace quotes its own, but a `string@completer` value and a spec
 # source are inserted verbatim (0.115.1 and 0.115.2, both menus), so this is

@@ -20,7 +20,7 @@ snippet found online.
    truth. Signatures shown by `help` include the input/output type table, which
    is usually the fastest way to resolve an error.
 2. **Know which of the two directories to edit** when the shell is Nustro:
-   the distro is a git checkout (`nu-config doctor` names it), and the
+   the distro is a git checkout (`nustro status` names it as `distro`), and the
    user's config directory beside it (`$nu.config-path | path dirname`)
    holds only what the user owns. See `references/this-setup.md`.
 3. **Check parse time vs run time first** when a construct "should work" but

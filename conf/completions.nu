@@ -27,16 +27,16 @@ use brew.nu *     # subcommands, flags, packages with descriptions, installed, t
 use git.nu *      # subcommands, branches by recency, remotes, changed files, stashes
 use cargo.nu *    # subcommands, flags from --help, packages/targets/features of the workspace, crate names
 use uv.nu *       # subcommands and flags from `uv -h`, Python versions, tools, the project's scripts, extras, groups, dependencies
-# A completion you fetch is YOURS: `nu-config fetch completion docker` saves it
+# A completion you fetch is YOURS: `nustro completion fetch docker` saves it
 # in your completions/, which comes first on NU_LIB_DIRS, and you wire it in
 # from your own settings.nu with `use docker-completions.nu *`.
 
 # ── External argument completer ───────────────────────────────────────────────
-# When carapace is installed, its generated init file (nu-config tools setup)
+# When carapace is installed, its generated init file (nustro bootstrap tools setup)
 # sets $env.config.completions.external.completer. The specs above hand it
 # whatever they have no opinion on; without carapace those slots fall back to
 # Nushell's own knowledge of a command and then to file paths.
-#   brew install carapace  →  nu-config tools setup
+#   brew install carapace  →  nustro bootstrap tools setup
 
 # ── Tab: the smart menu ───────────────────────────────────────────────────────
 # A custom menu is the only kind whose `source` closure gets the whole buffer

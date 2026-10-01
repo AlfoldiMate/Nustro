@@ -127,7 +127,7 @@ closure when the list is slow to get.
 
 1. `use <tool>.nu *` in `conf/completions.nu`, next to brew and git, with a
    one-line comment of what completes.
-2. `nu-check config.nu` and `nu -l -c 'nu-config doctor'` both clean.
+2. `nu-check config.nu` and `nu -l -c 'nustro doctor'` both clean.
 3. Headless, before trusting anything:
    ```nu
    nu -l -c '"<tool> " | commandline complete --detailed | first 5'
@@ -147,7 +147,7 @@ closure when the list is slow to get.
    ```
    `carapace_only` lists what carapace knows that the spec does not: each
    entry is either a flag to add or a slot to leave to the fallback.
-5. `nu -l -c 'nu-config startup-time'` must stay within noise of before
+5. `nu -l -c 'nustro startup-time'` must stay within noise of before
    (record both numbers). A module that costs more than ~3 ms to parse is
    too big for a literal: move data to JSON.
 6. `nu --ide-complete` does not run `@complete`: never use it as evidence.

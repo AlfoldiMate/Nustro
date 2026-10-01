@@ -1,14 +1,14 @@
 # Enable a module, make it lazy, see what it costs
 
 ```nu
-nu-config module list        # every module: enabled, lazy, loaded in this shell, dependencies, measured cost
+nustro module list           # every module: enabled, lazy, loaded in this shell, dependencies, measured cost
 ```
 
 | module | from | enabled | lazy | loaded | deps | cost |
 |---|---|---|---|---|---|---|
 | agent | distro | true | true | false | claude:ok | 18ms |
 | nu-complete | distro | true | false | true | carapace:ok | 2ms |
-| nu-config | distro | true | false | true | — | 14ms |
+| nustro | distro | true | false | true | — | 14ms |
 | odata | distro | true | true | false | — | 97ms |
 | terminal | distro | true | true | false | ghostty:ok wezterm:alt | 31ms |
 
@@ -19,14 +19,14 @@ of them ([Modules](../concepts/modules.md#cost)).
 ## Turn one off, or on
 
 ```nu
-nu-config module disable odata
-nu-config module enable odata
+nustro module disable odata
+nustro module enable odata
 ```
 
-Each edits one line in your `settings.nu` — `const MODULES = [nu-config
+Each edits one line in your `settings.nu` — `const MODULES = [nustro
 nu-complete terminal agent]` — and says to restart the shell. It is the same
 line you could write yourself; a module you disable is not parsed at all.
-`nu-config` itself refuses to be disabled: it is how you repair everything
+`nustro` itself refuses to be disabled: it is how you repair everything
 else.
 
 Run on 2026-09-19 in a scratch user directory: after `disable`, `module
@@ -45,7 +45,7 @@ const MODULES_LAZY = [agent odata worktree]  # terminal always loaded; the shipp
 ```
 
 `module list` then shows `terminal` as `lazy: false, loaded: true`, and
-`nu-config loaded-files | where filename =~ modules/terminal` lists its seven
+`nustro loaded-files | where filename =~ modules/terminal` lists its seven
 files as parsed. Measured on 2026-09-19, minimum of fifteen cold starts of
 this checkout on an M-series Mac: **69.7 ms** with `terminal` eager against
 **53.4 ms** lazy — 16 ms, which is what its `meta.nuon` said then; it says
@@ -59,9 +59,9 @@ go for a module whose commands do not repeat its name.
 ## See what it costs
 
 ```nu
-nu-config startup-time       # five cold starts of the live config; `startup-time 25` for a median worth quoting
-nu-config loaded-files       # every file this shell parsed, with its size — find the slow import
-nu-config doctor             # the Modules section: state and cost per module, then the startup time
+nustro startup-time          # five cold starts of the live config; `startup-time 25` for a median worth quoting
+nustro loaded-files          # every file this shell parsed, with its size — find the slow import
+nustro doctor                # the Modules section: state and cost per module, then the startup time
 ```
 
 `startup-time` runs `nu -l -c '$nu.startup-time'`, so it measures the
@@ -70,5 +70,5 @@ live, run the same thing against a scratch `config.nu`
 ([Test a change to the distro](test-a-change.md)).
 
 A module of your own goes in `<your>/modules/<name>/` and is `use`d from
-your `settings.nu`; `nu-config module lint` checks it against the contract,
+your `settings.nu`; `nustro module lint` checks it against the contract,
 and its `cost` line is yours to measure.

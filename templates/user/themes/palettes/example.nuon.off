@@ -1,10 +1,10 @@
 # example.nuon.off — a palette of your own, complete. Rename it example.nuon
-# and `theme use Example` renders it for Ghostty, the app icon, tables, ls,
+# and `terminal theme use Example` renders it for Ghostty, the app icon, tables, ls,
 # bat and the prompt; as .off it is inert, because the palette reader opens
-# only *.nuon. The file's stem must be the slug of `name` (`theme slug`).
+# only *.nuon. The file's stem must be the slug of `name` (`terminal theme slug`).
 #
 # Two halves. `terminal` makes this a terminal theme of its own — the sixteen,
-# background, foreground, cursor, selection — which `theme use` writes as a
+# background, foreground, cursor, selection — which `terminal theme use` writes as a
 # Ghostty theme file. `roles` is what the SHELL reads: six of the roles named
 # from `colours`, the rest blended from background and foreground, and the
 # sixteen always the terminal's own, by name. To borrow the sixteen from a

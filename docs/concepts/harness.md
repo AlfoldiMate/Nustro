@@ -41,7 +41,7 @@ first mention of a lazy module, and a `-c` string has no hook to do it. So
 the plugin works whether the module is loaded, lazy, or even disabled in the
 user's `MODULES` — the distro's `modules/` is always on `NU_LIB_DIRS` — and
 what it cannot survive is a login shell that is not this distro at all:
-`Module not found`, which `/worktree:doctor` names and `nu-config harness
+`Module not found`, which `/worktree:doctor` names and `nustro harness
 status` shows beside the module.
 
 That is the alternative rejected: shipping a copy of the script in the
@@ -60,7 +60,7 @@ is installed by the people who use the module, its version moves with the
 module, and its name is the module's, so `/worktree:worktree` at the prompt
 of a session is `worktree` at the prompt of the shell. The marketplace is
 what is shared: one manifest at the root listing them all, one `claude
-plugin marketplace add`, and `nu-config harness status` reading the same
+plugin marketplace add`, and `nustro harness status` reading the same
 file to put each plugin beside its module.
 
 The naming has one cost: Claude Code namespaces a plugin's skills as
@@ -92,7 +92,7 @@ overrides installed version" in the debug log).
 ## What the install does
 
 `install.nu` registers the checkout as the marketplace when `claude` is on
-PATH (`nu-config harness register`, in the same child shell that renders the
+PATH (`nustro harness register`, in the same child shell that renders the
 theme and generates the tool files); `--skip-harness` leaves it out. A
 directory marketplace is used in place — Claude Code records the path and
 reads the manifest from it — so `git pull` is the marketplace update, and
@@ -103,10 +103,10 @@ user's yes.
 
 A plugin, unlike the marketplace, is copied into Claude Code's cache at its
 `version`. A change to one is a bump in its `plugin.json`, and on each
-machine `nu-config harness update`: the marketplace refreshed, then `claude
+machine `nustro harness update`: the marketplace refreshed, then `claude
 plugin update <plugin>@nustro` for every plugin installed from it, 0.7 s
-each. `nu-config upgrade` runs it after its pull, so a pull that brings a
-new plugin version brings the plugin too; `nu-config doctor` shows the
+each. `nustro upgrade` runs it after its pull, so a pull that brings a
+new plugin version brings the plugin too; `nustro doctor` shows the
 installed version beside the one the checkout ships when they differ.
 
 ## Measured
@@ -117,7 +117,7 @@ installed version beside the one the checkout ships when they differ.
 | `PreToolUse(Bash)` hook, a worktree command in a layout (regex, one `git rev-parse`) | 30 ms |
 | the same hook, any other command (the regex misses, git is not called) | 14 ms |
 | the nushell plugin's language server, `initialize` to `exit` on stdin; `hyperfine -N`, 20 runs, 2026-09-27 | `nu --lsp` 188 ms, once per session; `nu -n --lsp` 13 ms, the config is the difference |
-| `nu-config doctor`'s Claude Code section: `claude plugin marketplace list --json` and `claude plugin list --json` | 0.35 s, the slowest line of doctor; skipped without `claude` |
+| `nustro doctor`'s Claude Code section: `claude plugin marketplace list --json` and `claude plugin list --json` | 0.35 s, the slowest line of doctor; skipped without `claude` |
 | Claude Code's skill listing budget: every skill's description in one list, 8000 characters on a 200k-context model (`skillListingBudgetFraction`); over it, descriptions are kept by priority and the rest listed name-only, a new plugin skill last. On this machine, beside 28 other skills on haiku, 230 characters was the most a new skill kept (`claude --plugin-dir … -p --debug-file`, 2026-09-20) | a test keeps a plugin description ≤ 230 characters — the listing is shared, and the plugin's line is the first to go |
 
 ## Testing
@@ -129,7 +129,7 @@ worktree hooks against a real layout under scratch — deny with the root and
 the skill in the reason, context with the worktree and the profiles, silence
 for `git worktree list`, a quoted mention, a plain repository and no payload
 at all; `claude plugin validate --strict` on everything when `claude` is on
-the machine; `nu-config harness status` against a user directory of the
+the machine; `nustro harness status` against a user directory of the
 test's own; the nushell plugin ships both skills under the names Claude
 Code will run them by, the checkout tracks no `.claude/`, and
 `this-setup.md` names no machine's paths; the language server the plugin

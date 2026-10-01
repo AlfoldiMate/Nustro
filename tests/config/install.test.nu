@@ -64,7 +64,7 @@ def "test --defaults writes exactly the scaffold, pointing here, with no overrid
   let cfg = open --raw ($user | path join config.nu)
   assert ($cfg | str contains ($ROOT | to nuon)) $cfg
   # The shell it wrote: split layout, the scaffold as written, no override.
-  let shell = with-env { XDG_DATA_HOME: (scratch) } { ^$nu.current-exe -l -c 'print (nu-config install-status | get state) (nu-config knobs --overridden | length) (nu-config user status | where state != present | length)' | complete }
+  let shell = with-env { XDG_DATA_HOME: (scratch) } { ^$nu.current-exe -l -c 'print (nustro bootstrap layout | get state) (nustro knobs --overridden | length) (nustro bootstrap scaffold status | where state != present | length)' | complete }
   assert equal $shell.exit_code 0 $shell.stderr
   assert equal ($shell.stdout | lines) [split "0" "0"]
 }
@@ -155,7 +155,7 @@ def "test --clean starts over from a configuration of the distro" [] {
   assert ($b | path join autoload mine.nu | path exists)
   assert ($b | path join .data-state marker.nuon | path exists)
   assert (open ($b | path join .nustro-backup.nuon) | get ours)
-  let shell = ^$nu.current-exe -l -c 'print (nu-config install-status | get state) (nu-config knobs --overridden | length)' | complete
+  let shell = ^$nu.current-exe -l -c 'print (nustro bootstrap layout | get state) (nustro knobs --overridden | length)' | complete
   assert equal ($shell.stdout | lines) [split "0"] $shell.stderr
   # Opposites are refused before anything moves.
   let both = install --defaults --clean --keep-existing
@@ -165,7 +165,7 @@ def "test --clean starts over from a configuration of the distro" [] {
 
 # The terminal's file is outside the config directory and the shell's render
 # inside its state, so the two can be left naming different themes — by a
-# restored backup, a `--clean`, a `theme sync` of one side. Every run writes
+# restored backup, a `--clean`, a `terminal theme sync` of one side. Every run writes
 # both from one name: the default on a first or a clean install, the one
 # rendered before on a re-run.
 def "test a run writes one theme to the terminal and the shell" [] {
@@ -178,7 +178,7 @@ def "test a run writes one theme to the terminal and the shell" [] {
   assert equal (open $state | get name) doomchad
   assert (open --raw $ours | str contains "theme/ghostty/doomchad") (open --raw $ours)
   # The shell alone moves to another theme: the terminal still says doomchad.
-  let moved = ^$nu.current-exe -l -c 'use terminal *; theme sync onedark --quiet | ignore' | complete
+  let moved = ^$nu.current-exe -l -c 'use terminal *; terminal theme sync onedark --quiet | ignore' | complete
   assert equal $moved.exit_code 0 $moved.stderr
   assert (open --raw $ours | str contains "theme/ghostty/doomchad")
   let again = install --defaults
@@ -192,7 +192,7 @@ def "test a run writes one theme to the terminal and the shell" [] {
   assert not (open --raw $ours | str contains "font-family") "--skip-terminal: no font is downloaded"
   # Without that flag the plan names the default font, the terminal having none.
   let plan = ^$nu.current-exe ($ROOT | path join install.nu) --dry-run --skip-deps --skip-tools --skip-plugins --skip-harness | complete
-  assert ($plan.stdout | ansi strip | str contains "font use DejaVuSansMono") $plan.stdout
+  assert ($plan.stdout | ansi strip | str contains "terminal font use DejaVuSansMono") $plan.stdout
 }
 
 def "test init files of another setup in the data dir move too" [] {
@@ -213,7 +213,7 @@ def "test init files of another setup in the data dir move too" [] {
 def "test a file that breaks the new shell stops the install, named" [] {
   # The failure this installer was reworked for: something beside config.nu
   # fails at startup, the distro never loads, and every later step used to
-  # say `nu-config` is not a command.
+  # say `nustro` is not a command.
   let user = fresh-config-home
   mkdir $user
   "source /nowhere/gone.nu\n" | save ($user | path join env.nu)
@@ -255,7 +255,7 @@ def front-door [manifest: string, ...files: string]: nothing -> record {
 }
 
 def "test a Nushell older than nustro.nuon requires is refused" [] {
-  let ran = front-door '{ requires_nu: "99.0" }' distro.nu defaults.nu bootstrap/installer.nu modules/nu-config/mod.nu modules/terminal/mod.nu templates/config.nu
+  let ran = front-door '{ requires_nu: "99.0" }' distro.nu defaults.nu bootstrap/installer.nu modules/nustro/mod.nu modules/terminal/mod.nu templates/config.nu
   assert equal $ran.exit_code 1
   let err = $ran.stderr | ansi strip
   assert ($err | str contains $"this is Nushell ((version).version)") $err

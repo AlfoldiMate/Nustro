@@ -1,5 +1,5 @@
 # catppuccin-frappe.nuon — Catppuccin Frappe, all 26 of its colours, for the
-# Ghostty theme of the same name (`theme use "Catppuccin Frappe"`).
+# Ghostty theme of the same name (`terminal theme use "Catppuccin Frappe"`).
 #
 # A palette file is tier three of theme resolution: it names the shaded roles
 # exactly instead of blending them from the theme's background and foreground.

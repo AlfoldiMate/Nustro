@@ -10,12 +10,12 @@
 #
 # Everything in it is read from the module's meta.nuon (`requires`: `why`,
 # `install` per platform, `then`), so the message a command gives, what
-# `nu-config module check` prints and what the installer says are one text
+# `nustro module check` prints and what the installer says are one text
 # from one file, and a module documents its own way back.
 #
-# A module reaches it by path — `use ../nu-config/missing.nu *` — rather than
-# through `use nu-config`: this file is forty lines, nu-config whole is 34 ms
-# of parse (2026-09-20, `nu -n -c 'use nu-config; use terminal *'` against
+# A module reaches it by path — `use ../nustro/missing.nu *` — rather than
+# through `use nustro`: this file is forty lines, nustro whole is 34 ms
+# of parse (2026-09-20, `nu -n -c 'use nustro; use terminal *'` against
 # `use terminal *` alone), and a lazy module pays its imports on first use.
 
 const DISTRO_MODULES = (path self | path dirname | path dirname)
@@ -50,7 +50,7 @@ export def missing-tool [
   let what = ($command | default $module)
   let reqs = (missing-tools $module $bin)
   if ($reqs | is-empty) {
-    error make --unspanned { msg: $"($what) needs ($bin | default 'a tool'), which is not installed", help: $"nu-config module check ($module)" }
+    error make --unspanned { msg: $"($what) needs ($bin | default 'a tool'), which is not installed", help: $"nustro module check ($module)" }
   }
   let names = ($reqs | each {|r| $r.bin } | str join " or ")
   let lines = ($reqs | each {|r|

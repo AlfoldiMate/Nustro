@@ -1,10 +1,10 @@
 # deps — the third-party tools the distro wires in, and getting them installed
 #
-#   nu-config deps status              each tool: installed or not, and the line that installs it here
-#   nu-config deps manager             the package manager those lines use on this machine
-#   nu-config deps install             install every missing one, then `tools setup`
-#   nu-config deps install atuin       only the ones named
-#   nu-config deps install --dry-run   the lines, nothing run
+#   nustro deps status              each tool: installed or not, and the line that installs it here
+#   nustro deps manager             the package manager those lines use on this machine
+#   nustro deps install             install every missing one, then `tools setup`
+#   nustro deps install atuin       only the ones named
+#   nustro deps install --dry-run   the lines, nothing run
 #
 # The distro works without any of them — every use is guarded with `which` —
 # but it is built around all five: zoxide, atuin and carapace get an init file
@@ -120,7 +120,7 @@ export def "deps install" [
 ]: nothing -> table<tool: string, action: string, detail: string> {
   let unknown = ($tools | where $it not-in (tool-names))
   if ($unknown | is-not-empty) {
-    error make --unspanned { msg: $"no tool called ($unknown | str join ', ') here — `nu-config deps status` lists them" }
+    error make --unspanned { msg: $"no tool called ($unknown | str join ', ') here — `nustro deps status` lists them" }
   }
   let rows = (deps status | where {|r| ($tools | is-empty) or $r.tool in $tools })
   let results = ($rows | each {|r|

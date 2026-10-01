@@ -1,4 +1,4 @@
-# `nu-config module list | info | check | lint | enable | disable` against a
+# `nustro module list | info | check | lint | enable | disable` against a
 # user directory holding a module of its own that keeps the contract and one
 # that breaks it every way lint knows (docs/concepts/modules.md).
 use lib.nu *
@@ -24,7 +24,7 @@ export def --env "good activate" [] { $env.GOOD_ON = ($env.GOOD_ON? | default tr
   # lint refuses for a module with a hard dependency.
   let needy = $dir.config | path join modules needy
   mkdir $needy
-  'use nu-config/missing.nu *
+  'use nustro/missing.nu *
 export def "needy go" [] { if (which frobnicate | is-empty) { missing-tool needy frobnicate --command "needy go" }; "went" }
 ' | save ($needy | path join mod.nu)
   "use needy *\n" | save ($needy | path join load.nu)
@@ -35,37 +35,37 @@ export def "needy go" [] { if (which frobnicate | is-empty) { missing-tool needy
 
 def "test module list shows yours beside the shipped ones" [] {
   let dir = modules-dir
-  let ran = nu-l $dir 'nu-config module list | select module from enabled lazy | to nuon'
+  let ran = nu-l $dir 'nustro module list | select module from enabled lazy | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let rows = $ran.stdout | from nuon
   assert equal ($rows | where from == yours | get module | sort) [broken good needy]
-  assert equal ($rows | where module == nu-config | get 0 | select enabled lazy) { enabled: true, lazy: false }
+  assert equal ($rows | where module == nustro | get 0 | select enabled lazy) { enabled: true, lazy: false }
   assert equal ($rows | where module == odata | get 0 | select enabled lazy) { enabled: true, lazy: true }
   assert equal ($rows | where module == good | get 0.enabled) false "not in MODULES, so not enabled"
 }
 
 def "test module info reads meta.nuon and finds the README beside a module of yours" [] {
   let dir = modules-dir
-  let ran = nu-l $dir 'nu-config module info good | to nuon'
+  let ran = nu-l $dir 'nustro module info good | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let info = $ran.stdout | from nuon
   assert equal ($info | select module from description lazy cost) { module: good, from: yours, description: "a module that keeps the contract", lazy: false, cost: 1ms }
   assert equal $info.docs ($dir.config | path join modules good README.md)
   assert equal ($info.knobs | columns) [GOOD_ON]
-  let shipped = nu-l $dir 'nu-config module info terminal | get docs'
+  let shipped = nu-l $dir 'nustro module info terminal | get docs'
   assert equal ($shipped.stdout | str trim) ($ROOT | path join docs reference modules terminal.md)
 }
 
 def "test module info of a missing module is an error" [] {
   let dir = modules-dir
-  let ran = nu-l $dir 'nu-config module info nothing'
+  let ran = nu-l $dir 'nustro module info nothing'
   assert equal $ran.exit_code 1
   assert ($ran.stderr | str contains "no module named 'nothing'") $ran.stderr
 }
 
 def "test module lint names every break of the contract and nothing else" [] {
   let dir = modules-dir
-  let ran = nu-l $dir 'nu-config module lint | to nuon'
+  let ran = nu-l $dir 'nustro module lint | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let problems = $ran.stdout | from nuon
   assert equal ($problems | where module not-in [broken needy]) [] "the shipped modules and `good` are clean"
@@ -83,10 +83,10 @@ def "test module lint names every break of the contract and nothing else" [] {
 
 def "test module check reports a dependency that is missing, and the way back" [] {
   let dir = modules-dir
-  let ran = nu-l $dir 'nu-config module check broken'
+  let ran = nu-l $dir 'nustro module check broken'
   assert equal $ran.exit_code 0 $ran.stderr
   assert ($ran.stdout | ansi strip | str contains "!! nope") $ran.stdout
-  let ran = nu-l $dir 'nu-config module check needy'
+  let ran = nu-l $dir 'nustro module check needy'
   let out = $ran.stdout | ansi strip
   assert ($out | str contains "!! frobnicate it frobnicates") $out
   assert ($out | str contains $"install: (match $nu.os-info.name { macos => 'brew', windows => 'winget', _ => 'apt' })") $out
@@ -108,7 +108,7 @@ def "test a group of dependencies is satisfied by any one member" [] {
   let dir = modules-dir
   # The shipped terminal module wants ghostty OR wezterm. With neither on
   # PATH both are missing; with one, the other is `alt`.
-  let ran = nu-l $dir '$env.PATH = []; hide-env -i GHOSTTY_BIN_DIR WEZTERM_EXECUTABLE_DIR; nu-config module info terminal | get requires | select bin group state | to nuon'
+  let ran = nu-l $dir '$env.PATH = []; hide-env -i GHOSTTY_BIN_DIR WEZTERM_EXECUTABLE_DIR; nustro module info terminal | get requires | select bin group state | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let states = $ran.stdout | from nuon
   assert equal ($states | get group) [terminal terminal]
@@ -122,7 +122,7 @@ def "test a group of dependencies is satisfied by any one member" [] {
 
 def "test the knobs of a module of yours are listed with it as owner" [] {
   let dir = modules-dir
-  let ran = nu-l $dir 'nu-config knobs | where owner == good | select knob about | to nuon'
+  let ran = nu-l $dir 'nustro knobs | where owner == good | select knob about | to nuon'
   assert equal ($ran.stdout | from nuon) [{ knob: GOOD_ON, about: "on or off" }]
 }
 
@@ -137,27 +137,27 @@ def "test a module of yours is wired by a use in settings.nu" [] {
 
 def "test module disable and enable edit one line of settings.nu each" [] {
   let dir = user-dir
-  let off = nu-l $dir 'nu-config module disable odata'
+  let off = nu-l $dir 'nustro module disable odata'
   assert equal $off.exit_code 0 $off.stderr
   let settings = open --raw ($dir.config | path join settings.nu) | lines | where {|l| $l =~ '^const MODULES' }
-  assert equal $settings ["const MODULES = [nu-config nu-complete terminal agent worktree]"]
-  let after = nu-l $dir 'nu-config module list | where module == odata | get 0.enabled'
+  assert equal $settings ["const MODULES = [nustro nu-complete terminal agent worktree]"]
+  let after = nu-l $dir 'nustro module list | where module == odata | get 0.enabled'
   assert equal ($after.stdout | str trim) "false"
 
-  let on = nu-l $dir 'nu-config module enable odata --eager'
+  let on = nu-l $dir 'nustro module enable odata --eager'
   assert equal $on.exit_code 0 $on.stderr
   assert ($on.stdout | ansi strip | str contains "no dependencies") $on.stdout
   let lines = open --raw ($dir.config | path join settings.nu) | lines | where {|l| $l =~ '^const MODULES' }
-  assert equal $lines ["const MODULES = [nu-config nu-complete terminal agent worktree odata]" "const MODULES_LAZY = [terminal agent worktree]"]
-  let back = nu-l $dir 'nu-config module list | where module == odata | get 0 | select enabled lazy loaded | to nuon'
+  assert equal $lines ["const MODULES = [nustro nu-complete terminal agent worktree odata]" "const MODULES_LAZY = [terminal agent worktree]"]
+  let back = nu-l $dir 'nustro module list | where module == odata | get 0 | select enabled lazy loaded | to nuon'
   assert equal ($back.stdout | from nuon) { enabled: true, lazy: false, loaded: true }
-  let overridden = nu-l $dir 'nu-config knobs --overridden | get knob | to nuon'
+  let overridden = nu-l $dir 'nustro knobs --overridden | get knob | to nuon'
   assert equal ($overridden.stdout | from nuon) [MODULES MODULES_LAZY]
 }
 
-def "test nu-config cannot be disabled" [] {
+def "test nustro cannot be disabled" [] {
   let dir = user-dir
-  let ran = nu-l $dir 'nu-config module disable nu-config'
+  let ran = nu-l $dir 'nustro module disable nustro'
   assert equal $ran.exit_code 1
   assert ($ran.stderr | str contains "no way back") $ran.stderr
   assert not ($dir.config | path join settings.nu | path exists) "nothing was written"

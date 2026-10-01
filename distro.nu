@@ -29,7 +29,7 @@ const NU_LIB_DIRS = [
   ($USER_ROOT | path join modules)        # your modules
   ($USER_ROOT | path join completions)    # completions you fetched or wrote
   ($USER_ROOT | path join themes)         # your themes
-  ($DISTRO_ROOT | path join modules)      # shipped modules       → use nu-config
+  ($DISTRO_ROOT | path join modules)      # shipped modules       → use nustro
   ($DISTRO_ROOT | path join completions)  # shipped completions   → use git.nu *
   ($DISTRO_ROOT | path join themes)       # shipped themes        → source catppuccin-mocha.nu
 ]
@@ -41,7 +41,7 @@ const NU_PLUGIN_DIRS = [
 ]
 
 # Nushell resolves `use`/`source` through the const above; publishing the same
-# list as an environment variable lets tooling (`nu-config doctor`) read it too.
+# list as an environment variable lets tooling (`nustro doctor`) read it too.
 $env.NU_LIB_DIRS = $NU_LIB_DIRS
 
 # ── Values: the distro's, then yours ──────────────────────────────────────────
@@ -67,5 +67,5 @@ source ($DISTRO_ROOT | path join conf update.nu)       # "the distro is behind i
 source ($DISTRO_ROOT | path join conf plugins.nu)      # "plugins are registered from files that are gone", after a Nushell upgrade
 
 # After this file Nushell loads, in order:
-#   1. *.nu in $nu.vendor-autoload-dirs — generated tool init files (nu-config tools setup)
+#   1. *.nu in $nu.vendor-autoload-dirs — generated tool init files (nustro bootstrap tools setup)
 #   2. *.nu in <your>/autoload/         — your drop-ins, the last word

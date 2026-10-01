@@ -10,12 +10,12 @@
 #   3. clear     a configuration that is not this distro's is moved, whole, to
 #                <config dir>/.backup/<stamp>/ — an env.nu or a drop-in left
 #                beside the new config.nu is loaded by every new shell, and
-#                one that fails takes `nu-config` down with it
+#                one that fails takes `nustro` down with it
 #   4. write     config.nu and the scaffold
 #   5. prove     a new shell is started and asked whether the distro loaded
 #                in it. Everything after this runs in such a shell, so a
 #                failure here stops with the error and the file it names
-#                instead of five steps each saying `nu-config` is not a command
+#                instead of five steps each saying `nustro` is not a command
 #   6. install   the missing tools, with the machine's package manager
 #   7. wire      terminal, theme, tool init files, plugins, Claude Code — one
 #                shell each, so that one failing step is one line in the
@@ -37,7 +37,7 @@
 # `git pull` is always clean.
 #
 # The test that the layering is right: accept every default and your
-# settings.nu ends up with no live assignment in it at all — `nu-config knobs
+# settings.nu ends up with no live assignment in it at all — `nustro knobs
 # --overridden` comes back empty. Every knob IS in it, commented out at its
 # shipped value, so the file is the list; a commented line is not a mention,
 # and what you never mention keeps its shipped value, including values added
@@ -50,24 +50,26 @@
 const ROOT = path self | path dirname | path dirname
 
 # A script loads no config, so the module search path has to be declared here
-# or nu-config's own imports (`use nu-complete *`) cannot resolve.
+# or nustro's own imports (`use nu-complete *`) cannot resolve.
 const NU_LIB_DIRS = [($ROOT | path join modules)]
-use nu-config
-# The pickers. They are the same ones the installed shell gets — `theme`,
-# `font`, `terminal shell`, `terminal list` — so the installer is a demonstration
-# of the thing it installs rather than a second implementation of it.
+use nustro
+# The pickers. They are the same ones the installed shell gets — `terminal
+# theme`, `terminal font`, `terminal shell`, `terminal list` — so the installer
+# is a demonstration of the thing it installs rather than a second
+# implementation of it. The two the module keeps to itself are named by file.
 use terminal *
+use terminal/registry.nu ["terminal install-plan" "terminal nu-path"]
 # The shipped values, so a choice can be compared against them and only the
 # differences written down. Sourcing beats restating them: one file owns them.
 source ($ROOT | path join defaults.nu)
 
 # What `--minimal` enables: the distro itself, Tab, and the terminal it
 # configures. Everything else in MODULES is a toolbox a `module enable` adds.
-const CORE_MODULES = [nu-config nu-complete terminal]
+const CORE_MODULES = [nustro nu-complete terminal]
 
 # What an install ends with when nothing else was chosen and there is a
 # terminal to write to: the theme a first shell opens in, and the font when
-# the terminal has none configured. Both are `theme use` / `font use` away
+# the terminal has none configured. Both are `terminal theme use` / `terminal font use` away
 # from anything else, and neither is a knob — they are state, like every
 # theme and font chosen later.
 const DEFAULT_THEME = "doomchad"
@@ -80,7 +82,7 @@ const KEPT = [history.txt history.sqlite3 history.sqlite3-wal history.sqlite3-sh
 def main [
   --dry-run       # print what would be done
   --defaults      # no questions; the whole install — an existing configuration backed up, missing tools and the platform's terminal installed
-  --minimal       # the core modules only — nu-config, nu-complete, terminal — and no question about them
+  --minimal       # the core modules only — nustro, nu-complete, terminal — and no question about them
   --keep-existing # leave the files of an existing configuration in place; only its config.nu is set aside
   --clean         # start from an empty directory whatever is there — this distro's own configuration too: all of it moves to .backup/<stamp>/
   --skip-deps     # do not install missing tools (starship, zoxide, atuin, carapace, vivid)
@@ -118,7 +120,7 @@ def main [
     | merge (screen-terminal --ask=$ask --dry-run=$dry_run --skip=$skip_terminal)
   )
   # --minimal: the shell, Tab and the terminal; agent, odata and worktree are
-  # a `nu-config module enable` away, each lazy, so nothing is lost but the
+  # a `nustro module enable` away, each lazy, so nothing is lost but the
   # questions. The lazy set follows, as screen 2 would have made it.
   let plan = (if $minimal {
     $plan | upsert modules { enabled: $CORE_MODULES, lazy: ($MODULES_LAZY | where {|m| $m in $CORE_MODULES }) }
@@ -154,7 +156,7 @@ def screen-where [--ask, --keep, --clean, --stamp: string]: nothing -> record {
   # new shell will read, XDG_CONFIG_HOME and every platform rule included. It
   # used to be a question ("somewhere else"), and any answer but this one
   # wrote a config.nu no shell ever loaded — the steps that follow then ran
-  # in a shell without the distro and failed on `nu-config`.
+  # in a shell without the distro and failed on `nustro`.
   let user = $nu.default-config-dir
   print $"  this checkout   ($ROOT)"
   print $"  your config     ($user)"
@@ -268,7 +270,7 @@ def screen-existing [user: path, --ask, --keep, --clean, --stamp: string]: nothi
 
 def screen-modules [--ask]: nothing -> record {
   print $"(ansi cyan_bold)2. Modules(ansi reset)"
-  let all = (nu-config module list)
+  let all = (nustro module list)
   for m in $all {
     let dep = (if $m.deps == "—" { "" } else { $"  ($m.deps)" })
     let cost = (if $m.cost == 0ns { "" } else { $"($m.cost)" })
@@ -280,13 +282,13 @@ def screen-modules [--ask]: nothing -> record {
   if not $ask { print ""; return { modules: null } }
 
   let chosen = if (yes-no "choose which modules to enable?" --default-no) {
-    # nu-config is not offered: it is how you repair everything else.
-    let optional = ($all | where module != "nu-config")
+    # nustro is not offered: it is how you repair everything else.
+    let optional = ($all | where module != "nustro")
     let picked = (
       $optional
       | input list --multi --display {|m| $"($m.module | fill --width 12) ($m.cost)  ($m.description)" } "space to toggle, enter to accept"
     )
-    (["nu-config"] ++ ($picked | get module))
+    (["nustro"] ++ ($picked | get module))
   } else { $MODULES }
 
   # Lazy is the shipped answer for everything that has a trigger word, and the
@@ -347,7 +349,7 @@ def --env screen-terminal [--ask, --dry-run, --skip]: nothing -> record {
     if ($installed | is-empty) { null }
     else if $here != null and ($here.terminal in $installed) { $here.terminal }
     else if ($installed | length) == 1 { $installed | first }
-    else if $ask { $installed | input list "which one should `theme`, `font` and `terminal shell` configure?" | default ($installed | first) }
+    else if $ask { $installed | input list "which one should `terminal theme`, `terminal font` and `terminal shell` configure?" | default ($installed | first) }
     else if ((terminal default) in $installed) { terminal default }
     else { $installed | first }
   )
@@ -358,10 +360,10 @@ def --env screen-terminal [--ask, --dry-run, --skip]: nothing -> record {
   let disable = (if $chosen != null { false } else {
     print $"  (ansi yellow)without a terminal this distro knows(ansi reset)"
     for l in (without-terminal-lines) { print $"    ($l)" }
-    print $"  (ansi dark_gray)later: install one \(`terminal install`\), open a new shell, `terminal shell` and `theme`(ansi reset)"
+    print $"  (ansi dark_gray)later: install one \(`terminal install`\), open a new shell, `terminal shell` and `terminal theme`(ansi reset)"
     # The module is lazy, so leaving it on costs nothing at startup; turning
-    # it off only takes `theme`, `font` and `terminal` out of the way.
-    $ask and (yes-no "disable the terminal module? (it loads only when you type theme, font, ghostty, wezterm or terminal; nothing is saved at startup)" --default-no)
+    # it off only takes `terminal` out of the way.
+    $ask and (yes-no "disable the terminal module? (it loads only when you type terminal; nothing is saved at startup)" --default-no)
   })
   { terminal: $chosen, in_terminal: ($here != null), shell: (screen-shell --ask=$ask --terminal=$chosen), disable_terminal: $disable }
 }
@@ -371,7 +373,7 @@ def --env screen-terminal [--ask, --dry-run, --skip]: nothing -> record {
 # modules — is the same.
 def without-terminal-lines []: nothing -> list<string> {
   [
-    "theme    stays at the ANSI tier: the shell uses your terminal's own sixteen colours by name; `theme use` can still"
+    "theme    stays at the ANSI tier: the shell uses your terminal's own sixteen colours by name; `terminal theme use` can still"
     "         render a palette for tables, ls, bat and the prompt, but only Ghostty or WezTerm gets it written into its"
     "         config and painted into every open window; the app icon is Ghostty's, and Ghostty's own 463 themes need it"
     "font     nothing: the fifteen Nerd Fonts are installed, previewed and kept through the terminal's config"
@@ -417,7 +419,7 @@ def terminal-shell-key [terminal: string]: nothing -> string {
 #
 # One theme for everything: a palette is written to the terminal as a theme
 # (and an icon, for Ghostty), and rendered for the shell — tables, `ls`, bat
-# and the prompt — by `theme use`, which is what `apply` runs for the choice
+# and the prompt — by `terminal theme use`, which is what `apply` runs for the choice
 # made here. Nothing chosen means the ANSI tier: the shell follows whatever
 # sixteen colours the terminal paints.
 
@@ -426,19 +428,19 @@ def terminal-shell-key [terminal: string]: nothing -> string {
 # terminal's file is outside the config directory, so a `--clean` run or a
 # restored backup left Ghostty on one theme and the prompt rendered from
 # another (doomchad under a Catppuccin prompt, 2026-10-01). So the theme step
-# always writes both, with `theme use`: the theme picked here, else the one
+# always writes both, with `terminal theme use`: the theme picked here, else the one
 # rendered before (unless this run starts clean), else DEFAULT_THEME. Without
 # a terminal there is nothing to disagree with, and the shell stays on the
 # terminal's own sixteen colours.
 def screen-theme [--ask, --terminal: any, --fresh]: nothing -> record {
   print $"(ansi cyan_bold)4. Theme(ansi reset)"
-  print $"  (ansi dark_gray)a hundred palettes \(NvChad's and Catppuccin\), rendered for the terminal, its icon, Nushell, ls, bat and the prompt; `theme` changes it later, `theme --ghostty` picks among Ghostty's own 463(ansi reset)"
+  print $"  (ansi dark_gray)a hundred palettes \(NvChad's and Catppuccin\), rendered for the terminal, its icon, Nushell, ls, bat and the prompt; `terminal theme` changes it later, `terminal theme --ghostty` picks among Ghostty's own 463(ansi reset)"
   if $terminal == null {
     print $"  (ansi dark_gray)no terminal to write it to: the shell uses the terminal's sixteen colours by name(ansi reset)"
     print ""
     return { theme: null, theme_ghostty: false }
   }
-  let before = (if $fresh { null } else { theme current })
+  let before = (if $fresh { null } else { terminal theme current })
   let kept = ($before | default {} | get -o name)
   let fallback = (if $kept != null {
     { theme: $kept, theme_ghostty: (($before | get -o by) == "ghostty") }
@@ -454,27 +456,27 @@ def screen-theme [--ask, --terminal: any, --fresh]: nothing -> record {
 }
 
 # The theme picker, but choosing only: nothing is written here, because the
-# whole plan is confirmed before anything is. `theme preview` paints the live
-# terminal and `theme reset` hands it back, so the preview costs nothing either.
+# whole plan is confirmed before anything is. `terminal theme preview` paints the live
+# terminal and `terminal theme reset` hands it back, so the preview costs nothing either.
 # The list is the palettes — NvChad's and the hand-made ones — the same list
-# `theme` shows; Ghostty's own 463 are a `theme --ghostty` away afterwards.
+# `terminal theme` shows; Ghostty's own 463 are a `terminal theme --ghostty` away afterwards.
 def pick-theme []: nothing -> any {
-  let rows = (theme list --swatches | select theme colours)
+  let rows = (terminal theme list --swatches | select theme colours)
   mut chosen = null
   mut picking = true
   while $picking {
     let pick = ($rows | input list --fuzzy --display {|r| $"($r.theme) ($r.colours)" } "theme")
     if $pick == null { $picking = false; continue }
-    theme preview $pick.theme
+    terminal theme preview $pick.theme
     match ([$"keep ($pick.theme)" "pick another" "leave it as it was"] | input list $"($pick.theme) — this is it") {
       $a if ($a | default "" | str starts-with "keep") => { $chosen = $pick.theme; $picking = false }
-      "pick another" => { theme reset }
-      _ => { theme reset; $picking = false }
+      "pick another" => { terminal theme reset }
+      _ => { terminal theme reset; $picking = false }
     }
   }
   # The paint is left on the screen when a theme was kept; the write happens in
   # `apply`, so a cancelled confirmation still leaves the terminal's config alone.
-  if $chosen == null { theme reset }
+  if $chosen == null { terminal theme reset }
   $chosen
 }
 
@@ -490,7 +492,7 @@ def screen-font [--ask, --dry-run, --skip, --terminal: any]: nothing -> record {
     print ""
     return { font: null }
   }
-  let rows = (font list)
+  let rows = (terminal font list)
   # What the terminal is using, whoever configured it — not only what we wrote.
   let now = (terminal live (terminal target | get font_key))
   print $"  current   ($now | default "the terminal's own built-in JetBrains Mono")"
@@ -508,19 +510,19 @@ def screen-font [--ask, --dry-run, --skip, --terminal: any]: nothing -> record {
   mut picking = true
   while $picking {
     let pick = (
-      font list
+      terminal font list
       | input list --fuzzy --display {|r|
           let mark = (if $r.installed { "✓ " } else { "  " })
           $"($mark)($r.font | fill --width 16) ($r.what)"
         } "Nerd Font"
     )
     if $pick == null { $picking = false; continue }
-    if not $pick.installed { font install $pick.font }
-    let row = (font list | where font == $pick.font | get 0)
+    if not $pick.installed { terminal font install $pick.font }
+    let row = (terminal font list | where font == $pick.font | get 0)
     if not $row.installed { continue }
     match ([$"keep ($row.family)" "see it in a new window" "pick another"] | input list $row.family) {
       $a if ($a | default "" | str starts-with "keep") => { $chosen = $row.font; $picking = false }
-      "see it in a new window" => { font preview $pick.font }
+      "see it in a new window" => { terminal font preview $pick.font }
       "pick another" => { }
       _ => { $picking = false }
     }
@@ -531,9 +533,9 @@ def screen-font [--ask, --dry-run, --skip, --terminal: any]: nothing -> record {
 
 # ── 6. Tools ──────────────────────────────────────────────────────────────────
 #
-# The five tools the distro is built around (`nu-config deps status`), and
+# The five tools the distro is built around (`nustro deps status`), and
 # the offer to install the missing ones with the package manager the machine
-# already has — the same `nu-config deps install` a user runs later, after
+# already has — the same `nustro deps install` a user runs later, after
 # the plan is confirmed, never here. `--defaults` takes all of them: a prompt
 # without starship and a Tab without carapace is half of what was asked for.
 # Where no manager is known the tool's install page is printed and nothing
@@ -544,7 +546,7 @@ def screen-font [--ask, --dry-run, --skip, --terminal: any]: nothing -> record {
 
 def screen-tools [--ask, --skip, --modules: list<string>]: nothing -> record {
   print $"(ansi cyan_bold)6. Tools(ansi reset)"
-  let rows = (nu-config deps status)
+  let rows = (nustro deps status)
   for t in $rows {
     let mark = (if $t.installed { $"(ansi green)ok(ansi reset)" } else { $"(ansi dark_gray)--(ansi reset)" })
     print $"  ($mark) ($t.tool | fill --width 9) ($t.what)"
@@ -557,7 +559,7 @@ def screen-tools [--ask, --skip, --modules: list<string>]: nothing -> record {
   let deps = (
     if ($can | is-empty) { [] }
     else if $skip {
-      print $"  (ansi dark_gray)not installed: ($can | get tool | str join ', ') — `nu-config deps install` does it later(ansi reset)"
+      print $"  (ansi dark_gray)not installed: ($can | get tool | str join ', ') — `nustro deps install` does it later(ansi reset)"
       []
     } else {
       let manager = ($can | first | get manager)
@@ -574,9 +576,9 @@ def screen-tools [--ask, --skip, --modules: list<string>]: nothing -> record {
   # The modules' dependencies. `missing` only: a group's spare member (the
   # other terminal) is not a gap.
   let gaps = (
-    nu-config module list
+    nustro module list
     | where module in $modules
-    | each {|m| nu-config module info $m.module | get requires | where state == "missing" | insert module $m.module }
+    | each {|m| nustro module info $m.module | get requires | where state == "missing" | insert module $m.module }
     | flatten
   )
   if ($gaps | is-not-empty) {
@@ -619,11 +621,11 @@ def plan-lines [plan: record]: nothing -> list<string> {
   ]
   ++ ($settings | each {|l| $"  ($l)" })
   ++ [
-    (if ($plan.terminal? | default null) != null { $"terminal use ($plan.terminal) — what `theme`, `font` and `terminal shell` configure" })
+    (if ($plan.terminal? | default null) != null { $"terminal use ($plan.terminal) — what `terminal theme`, `terminal font` and `terminal shell` configure" })
     (if ($plan.shell? | default false) { $"terminal shell — a new ($plan.terminal) window starts Nushell \((terminal nu-path)\)" })
     (if ($plan.theme? | default null) != null { $"theme ($plan.theme) — ($plan.terminal), its icon on Ghostty, and the shell's colours" })
-    (if ($plan.font? | default null) != null { $"font use ($plan.font) — ($plan.terminal)'s font" })
-    (if ($plan.deps? | default [] | is-not-empty) { $"install ($plan.deps | str join ', ') — nu-config deps install" })
+    (if ($plan.font? | default null) != null { $"terminal font use ($plan.font) — ($plan.terminal)'s font" })
+    (if ($plan.deps? | default [] | is-not-empty) { $"install ($plan.deps | str join ', ') — nustro deps install" })
     "start a new shell and check the distro loaded in it; then render the theme, generate tool init files, register plugins"
   ]) | compact
 }
@@ -653,7 +655,7 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
 
   # Everything below runs in a new shell that loads what was just written:
   # $nu.plugin-path and the autoload dirs were computed by THIS process
-  # before the directory existed, and `theme use`, `tools setup` and the rest
+  # before the directory existed, and `terminal theme use`, `tools setup` and the rest
   # are the distro's own commands. So first: does such a shell have them?
   if not $dry_run {
     let loaded = ((prove-it-loads $user) or (set-suspects-aside $plan.existing $user))
@@ -668,20 +670,20 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
   # terminal, and what it installs is on PATH for the shells started below.
   if ($plan.deps? | default [] | is-not-empty) {
     print $"(ansi cyan_bold)Tools(ansi reset)"
-    for r in (nu-config deps install ...$plan.deps --no-setup --dry-run=$dry_run) {
+    for r in (nustro deps install ...$plan.deps --no-setup --dry-run=$dry_run) {
       let colour = (match $r.action { "installed" | "present" => (ansi green), "failed" => (ansi red), _ => (ansi dark_gray) })
       print $"  ($colour)($r.action | fill --width 9)(ansi reset) ($r.tool | fill --width 9) ($r.detail)"
     }
     print ""
   }
 
-  # The theme is first after the terminal: `theme use` writes Ghostty's theme
+  # The theme is first after the terminal: `terminal theme use` writes Ghostty's theme
   # and icon, paints this window, and renders tables, ls, bat and the prompt
   # from it. Screen 4 always names one when there is a terminal, so the
   # terminal's file and the shell's render are written by the same command;
   # without a terminal the last render is refreshed, or the ANSI tier.
   let theme_name = (if ($plan.theme? | default null) != null { ($plan.theme | to nuon) + (if ($plan.theme_ghostty? | default false) { " --ghostty" } else { "" }) } else { "" })
-  # The terminal: the pin (`terminal use`), which `theme use` below writes
+  # The terminal: the pin (`terminal use`), which `terminal theme use` below writes
   # through; then the shell and the font, in the terminal's own vocabulary
   # through the same commands a user types.
   let terminal_step = (if ($plan.terminal? | default null) == null { null } else {
@@ -690,7 +692,7 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
       "use terminal *"
       (if $dry_run { $"print '  terminal use ($plan.terminal)'" } else { $"terminal use ($name)" })
       (if ($plan.shell? | default false) { (if $dry_run { "print '  terminal shell — a new window starts Nushell'" } else { "terminal shell" }) })
-      (if ($plan.font? | default null) != null { (if $dry_run { $"print '  font use ($plan.font)'" } else { $"font use ($plan.font | to nuon)" }) })
+      (if ($plan.font? | default null) != null { (if $dry_run { $"print '  terminal font use ($plan.font)'" } else { $"terminal font use ($plan.font | to nuon)" }) })
     ] | compact | str join "; "
   })
   # Each step: a title, the code, and the line that repeats it by hand.
@@ -699,29 +701,29 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
     {
       title: "Theme"
       code: (if $dry_run {
-        'use terminal *; theme resolve ' + (if $theme_name == "" { "(theme current | default {} | get -o name)" } else { $theme_name }) + ' | select name tier bat | print'
+        'use terminal *; terminal theme resolve ' + (if $theme_name == "" { "(terminal theme current | default {} | get -o name)" } else { $theme_name }) + ' | select name tier bat | print'
       } else {
-        'use terminal *; ' + (if $theme_name == "" { "theme sync" } else { "theme use " + $theme_name })
+        'use terminal *; ' + (if $theme_name == "" { "terminal theme sync" } else { "terminal theme use " + $theme_name })
       })
-      again: (if $theme_name == "" { "theme sync" } else { $"theme use ($theme_name)" })
+      again: (if $theme_name == "" { "terminal theme sync" } else { $"terminal theme use ($theme_name)" })
     }
     (if not $skip_tools { {
       title: "Tool init files"
-      code: (if $dry_run { 'nu-config tools status | select tool installed state | print' } else { 'print $"  → (nu-config tools dir)"; nu-config tools setup' })
-      again: "nu-config tools setup"
+      code: (if $dry_run { 'nustro bootstrap tools status | select tool installed state | print' } else { 'print $"  → (nustro bootstrap tools dir)"; nustro bootstrap tools setup' })
+      again: "nustro bootstrap tools setup"
     } })
     (if not $skip_plugins { {
       title: "Plugins"
-      code: (if $dry_run { 'nu-config plugins list | select name registered | print' } else { 'nu-config plugins add' })
-      again: "nu-config plugins add"
+      code: (if $dry_run { 'nustro plugins status | select name registered | print' } else { 'nustro plugins add' })
+      again: "nustro plugins add"
     } })
     # The checkout is also a Claude Code plugin marketplace (harness/). Guarded
     # on claude, idempotent, and it only registers: which plugin to install is
     # printed, not decided — a plugin adds hooks to every session.
     (if not ($skip_harness or (which claude | is-empty)) { {
       title: "Claude Code"
-      code: (if $dry_run { 'nu-config harness status | select marketplace registered | print' } else { 'nu-config harness register' })
-      again: "nu-config harness register"
+      code: (if $dry_run { 'nustro harness status | select marketplace registered | print' } else { 'nustro harness register' })
+      again: "nustro harness register"
     } })
   ] | compact)
 
@@ -734,7 +736,7 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
       if $dry_run {
         # -n: report against this checkout without loading anything. NU_LIB_DIRS
         # has to be handed over, because a config-less nu has no search path.
-        with-env { NU_LIB_DIRS: ($ROOT | path join modules) } { "" | ^$nu.current-exe -n -c $"use nu-config; ($s.code)" }
+        with-env { NU_LIB_DIRS: ($ROOT | path join modules) } { "" | ^$nu.current-exe -n -c $"use nustro; ($s.code)" }
       } else {
         # An empty stdin of its own: no step asks anything, and the one this
         # process has may be `/dev/tty` (bootstrap/install.sh), which a tool
@@ -752,7 +754,7 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
     return
   }
   if ($failed | is-empty) {
-    print $"(ansi green_bold)Done.(ansi reset) Open a new terminal, then run `nu-config doctor`."
+    print $"(ansi green_bold)Done.(ansi reset) Open a new terminal, then run `nustro doctor`."
   } else {
     print $"(ansi yellow_bold)Installed, with ($failed | length) step\(s\) that did not finish.(ansi reset) The shell itself loads; in a new terminal:"
     for s in $failed { print $"  ($s.again | fill --width 28) (ansi dark_gray)# ($s.title | str trim)(ansi reset)" }
@@ -820,12 +822,12 @@ def set-suspects-aside [existing: record, user: path]: nothing -> bool {
 
 # Start the shell the user is about to get and ask it one thing: is this
 # distro loaded in you, from this directory? Printed either way, because
-# "nu-config is not a command" five times over is what it replaces.
+# "nustro is not a command" five times over is what it replaces.
 def prove-it-loads [user: path]: nothing -> bool {
   print $"(ansi cyan_bold)A new shell(ansi reset)"
-  # `scope commands`, not a call of nu-config: a command that is not there is
+  # `scope commands`, not a call of nustro: a command that is not there is
   # a parse error of the whole line, with nothing printed to tell from.
-  let code = '{ distro: (scope commands | where name == "nu-config doctor" | is-not-empty), config: $nu.config-path } | to nuon | print'
+  let code = '{ distro: (scope commands | where name == "nustro doctor" | is-not-empty), config: $nu.config-path } | to nuon | print'
   let r = (^$nu.current-exe -l -c $code | complete)
   let said = (try { $r.stdout | lines | last | from nuon } catch { null })
   let errors = ($r.stderr | str trim)
@@ -963,12 +965,12 @@ def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh, --ex
   }
 
   # The scaffold — settings.nu, a README per directory, the examples — is
-  # `nu-config user init`, the same command a user runs after an upgrade or
+  # `nustro bootstrap scaffold init`, the same command a user runs after an upgrade or
   # after deleting a README, so the installer and the command cannot drift.
   # It writes what is missing and nothing else; on a dry run over a layout
   # being replaced (--fresh) the directory is about to be empty, whatever the
   # old symlink still shows.
-  for r in (nu-config user init --dir $user --dry-run=$dry_run --fresh=$fresh) {
+  for r in (nustro bootstrap scaffold init --dir $user --dry-run=$dry_run --fresh=$fresh) {
     let note = (if ($r.note | is-empty) { "" } else { $"  ($r.note)" })
     print $"  ($r.action | fill --width 13) ($r.file)($note)"
   }
@@ -981,7 +983,7 @@ def make-user-dir [user: path, overrides: list<string>, --dry-run, --fresh, --ex
   if ($overrides | is-not-empty) {
     print $"  settings.nu: ($overrides | length) override\(s\)"
     for o in $overrides {
-      if $dry_run { print $"    ($o)" } else { nu-config user set --dir $user $o }
+      if $dry_run { print $"    ($o)" } else { nustro set --dir $user $o }
     }
   }
   print ""

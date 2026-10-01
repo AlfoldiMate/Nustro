@@ -77,7 +77,7 @@ returns the line: `agent exec ... | save cmd.nu`.
 
 On macOS the Option key composes the layout's characters unless the terminal
 is told otherwise: Terminal.app needs "Use Option as Meta key", Ghostty
-`macos-option-as-alt` (unset by default in 1.3.1 — `ghostty shell`, which the
+`macos-option-as-alt` (unset by default in 1.3.1 — `terminal shell`, which the
 installer runs, writes `false` when your config says nothing, so both keys
 type your layout's accents and symbols and Alt+E does not reach the shell
 until `terminal option left` or `right` makes one of them Alt);
@@ -138,7 +138,7 @@ records each checkpoint with its duration.
 The defaults live in this module (`meta.nuon` declares them, `setting` in
 `mod.nu` applies them), so there is nothing to uncomment to get started.
 Override a knob in your own `settings.nu`; machine-local tweaks go in
-`autoload/`. `nu-config knobs | where owner == agent` lists them.
+`autoload/`. `nustro knobs | where owner == agent` lists them.
 
 | Knob | Default | Meaning |
 |---|---|---|
@@ -209,7 +209,7 @@ modules/agent/meta.nuon     description, dependencies, knobs
   flag; the insert key exists for exactly that.
 - **One session per shell, not per directory.** Change directories freely,
   each turn re-states the cwd; use `agent reset` if the thread gets confused.
-- **A checkpoint job started by `nu-config startup-time`** (which opens
+- **A checkpoint job started by `nustro startup-time`** (which opens
   interactive shells) is legitimate but is killed with them; the claim file
   is taken back after 15 minutes.
 
@@ -235,5 +235,5 @@ modules/agent/meta.nuon     description, dependencies, knobs
   so two tabs on the same repo share context.
 - **Learning loop**: when `i` is followed by an edit before Enter, feed the
   diff back as a "revise" so the session learns your corrections.
-- **`nu-config doctor` section**: surface `agent status` in the doctor
+- **`nustro doctor` section**: surface `agent status` in the doctor
   report.

@@ -5,7 +5,7 @@
 #   nu install.nu --defaults      the whole thing, no questions: an existing configuration backed
 #                                 up, the missing tools and the platform's terminal installed,
 #                                 the default theme (doomchad) and font (DejaVu Sans Mono Nerd Font)
-#   nu install.nu --minimal       nu-config, nu-complete and terminal only; the rest is `nu-config module enable` away
+#   nu install.nu --minimal       nustro, nu-complete and terminal only; the rest is `nustro module enable` away
 #   nu install.nu --dry-run       print the plan, change nothing
 #   nu install.nu --keep-existing leave what is in the config directory where it is; only config.nu is replaced
 #   nu install.nu --clean         start from an empty directory, whatever is there: all of it is backed up first
@@ -39,7 +39,7 @@ def --wrapped main [...args: string] {
   }
 
   # 1. The checkout is whole. A clone cut short has some of these and not others.
-  let needed = [nustro.nuon distro.nu defaults.nu bootstrap/installer.nu modules/nu-config/mod.nu modules/terminal/mod.nu templates/config.nu]
+  let needed = [nustro.nuon distro.nu defaults.nu bootstrap/installer.nu modules/nustro/mod.nu modules/terminal/mod.nu templates/config.nu]
   let absent = ($needed | where {|f| not ($ROOT | path join $f | path exists) })
   if ($absent | is-not-empty) {
     (fail $"($ROOT) is not a whole checkout — missing ($absent | str join ', ')"

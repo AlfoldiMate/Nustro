@@ -1,8 +1,8 @@
 # harness — the agent harnesses this distro ships plugins for
 #
-#   nu-config harness status     the harness on PATH, the marketplace registered, each plugin against its module
-#   nu-config harness register   register this checkout as a Claude Code marketplace (idempotent)
-#   nu-config harness update     refresh the marketplace and every plugin installed from it
+#   nustro harness status     the harness on PATH, the marketplace registered, each plugin against its module
+#   nustro harness register   register this checkout as a Claude Code marketplace (idempotent)
+#   nustro harness update     refresh the marketplace and every plugin installed from it
 #
 # One harness today, Claude Code: `harness/claude-code/<plugin>/` holds the
 # `nushell` skill as a plugin of its own and one plugin per module that
@@ -18,12 +18,12 @@
 # plugin, though, is copied into Claude Code's cache at its `version`, and a
 # change to one is a version bump plus `claude plugin update <name>@<market>`
 # — which is what `update` runs, for every plugin installed from here, and
-# `nu-config upgrade` runs `update` after its pull. Registering is
+# `nustro upgrade` runs `update` after its pull. Registering is
 # idempotent: adding the same path again is a no-op, adding another path
 # under the same name re-points it (verified 2026-09-20, Claude Code 2.1.x),
 # which is what a live checkout replacing a dev one wants.
 #
-# This file is modules/nu-config/harness.nu; `distro-root` lives in mod.nu,
+# This file is modules/nustro/harness.nu; `root` lives in roots.nu,
 # which imports this file, so the root is derived here from the file's own
 # location instead.
 
@@ -152,7 +152,7 @@ export def "harness update" [
     return
   }
   if $st.registered != true {
-    if $verbose { print $"(ansi dark_gray)marketplace ($st.marketplace) is not this checkout — nu-config harness register(ansi reset)" }
+    if $verbose { print $"(ansi dark_gray)marketplace ($st.marketplace) is not this checkout — nustro harness register(ansi reset)" }
     return
   }
   let r = claude-run [plugin marketplace update $st.marketplace]

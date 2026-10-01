@@ -1,8 +1,12 @@
-# nustro.nuon — what this checkout requires, read by `nu-config doctor` for
-# its first line and by `nu-config upgrade` before it pulls: an upstream that
-# needs a newer Nushell than the one running is refused, not installed into
-# every next terminal. Raised together with the CI pin (.github/workflows/ci.yml)
+# nustro.nuon — the checkout's version, shown by `nustro status`, and what it
+# requires, read by `nustro doctor` for its first line and by `nustro upgrade`
+# before it pulls: an upstream that needs a newer Nushell than the one running
+# is refused, not installed into every next terminal. Raised together with the CI pin (.github/workflows/ci.yml)
 # and the bootstraps' fallback version.
 {
+  # The distro's own version, shown by `nustro status`. 0.2.0 (2026-10-02): the
+  # commands are `nustro …` and `terminal …` — `nu-config`, `theme`, `font`,
+  # `ghostty` and `wezterm` are no longer command words.
+  version: "0.2.0"
   requires_nu: "0.116"
 }

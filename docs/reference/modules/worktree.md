@@ -106,7 +106,7 @@ reads it from the current directory.
 |---|---|---|
 | `git` | hard | the layout is git's own: a bare repository, linked worktrees, the ignore rules that decide what a profile holds |
 
-`nu-config module check worktree`.
+`nustro module check worktree`.
 
 ## From a Claude Code session
 

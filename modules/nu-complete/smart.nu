@@ -380,10 +380,10 @@ def dir-fallback [partial: string, position: int, --places]: nothing -> list<rec
 
 # ── Lazy modules ──────────────────────────────────────────────────────────────
 #
-# `font use ⌶` in a shell that has not said `font` yet: conf/modules.nu loads
+# `terminal font use ⌶` in a shell that has not said `terminal` yet: conf/modules.nu loads
 # a lazy module from a pre_execution hook, which fires on Enter, so at Tab
 # time Nushell knows neither the command nor its completers and `fon⌶` does
-# not even offer `font`.
+# not even offer `terminal`.
 #
 # The word itself needs nothing but the list of trigger words. What follows
 # it comes from a child `nu -n` that sources the module's own load.nu and
@@ -436,7 +436,7 @@ def lazy-complete [m: string, buffer: string, place: record]: nothing -> list<re
   let stem = ($buffer | str substring 0..<$place.target.start)
   let all = (nu-complete cache $"lazy:($m):($env.PWD):($stem)" 1min { lazy-child $m $stem })
   # A candidate replaces from where the child said — a subcommand is the
-  # whole `theme use`, from the start of `theme` — up to the cursor, and is
+  # whole `terminal theme use`, from the start of `terminal` — up to the cursor, and is
   # matched against the text it would replace.
   $all | each {|r| $r | upsert span { start: ([($r.span?.start? | default $place.target.start) $place.target.start] | math min), end: $place.cursor } }
   | group-by {|r| $r.span.start | into string } | values
@@ -537,7 +537,7 @@ def answer [buffer: string, place: record, vars: table]: nothing -> record<layer
   let seg = ($segs | last)
   let prefix = ($segs | drop 1 | str join "|" | str trim)
   let w = (words $seg)
-  # A custom completer's values (`theme use Cat⌶` → `Catppuccin Macchiato`)
+  # A custom completer's values (`terminal theme use Cat⌶` → `Catppuccin Macchiato`)
   # arrive unquoted and would be inserted as two arguments; files and
   # carapace's values arrive quoted already.
   let base = (try { $buffer | commandline complete --detailed } catch { [] } | nu-complete quote)
@@ -545,7 +545,7 @@ def answer [buffer: string, place: record, vars: table]: nothing -> record<layer
   if $lazy != null {
     if $lazy.head {
       # The words themselves from the list, at once; the module's commands
-      # (`font dir`, `font use` …) from the child, asked once per first
+      # (`terminal font dir`, `terminal font use` …) from the child, asked once per first
       # letter and narrowed here.
       let typed = ($w.tokens | first)
       let span = { start: $place.target.start, end: $position }

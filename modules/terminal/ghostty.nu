@@ -357,7 +357,7 @@ def link []: nothing -> nothing {
     mkdir ($cfg | path dirname)
     [
       "# Ghostty configuration."
-      $"# The line below pulls in ($OURS), which `nu-config` writes."
+      $"# The line below pulls in ($OURS), which `nustro` writes."
       ""
       $INCLUDE
       ""
@@ -406,7 +406,7 @@ def validate []: nothing -> record<ok: bool, err: string> {
 # line, then the files those include (`config-file`). So a `--font-family=X`
 # on the command line lands behind whatever the user's config set, and in
 # front of whatever our included file sets — an empty `--font-family=` reset
-# clears the user's entry but not ours, and once `font use` has written a
+# clears the user's entry but not ours, and once `terminal font use` has written a
 # family every other font read as "not installed". `--config-default-files=
 # false` loads no configuration at all, so the answer is about X alone.
 # Verified with Ghostty 1.3.1, 2026-09-19: an installed family comes back as
@@ -430,7 +430,7 @@ export def "ghostty preview" [family: string, size: number, argv: list<string>]:
     $"--font-size=($size)"
     "--window-width=78"
     "--window-height=16"
-    "--title=font preview"
+    "--title=terminal font preview"
     "-e" ...$argv
   ]
   # On macOS Ghostty refuses to start a window from the CLI — "launching the

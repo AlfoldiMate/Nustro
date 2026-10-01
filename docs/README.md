@@ -10,7 +10,7 @@ jump to a section if it is not.
 | [Reference](#reference) | what a command takes, what a knob does, what a file holds |
 | [Cookbook](#cookbook) | one task per page, in the order you do it, ending with how to check it worked |
 
-Every number in these pages was measured (`timeit`, `nu-config
+Every number in these pages was measured (`timeit`, `nustro
 startup-time`, `hyperfine`) on the day stated next to it, on an M-series Mac
 unless it says otherwise; nothing is estimated, on the Nushell release it names. The distro requires
 Nushell **0.116**.
@@ -21,10 +21,10 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 ## Getting started
 
 1. [Install](getting-started/install.md) — the two bootstrap lines, the seven screens, an existing configuration, what is written where
-2. [Your first shell](getting-started/first-shell.md) — `nu-config doctor`, the keys, the two directories
+2. [Your first shell](getting-started/first-shell.md) — `nustro`, `nustro doctor`, the keys, the two directories
 3. [Your first setting](getting-started/first-setting.md) — `settings.nu`, knobs, values against behaviour
-4. [Your first theme](getting-started/first-theme.md) — `theme`, `font`, `terminal shell`
-5. [Updating](getting-started/updating.md) — `nu-config upgrade`, the notice, after a Nushell upgrade
+4. [Your first theme](getting-started/first-theme.md) — `terminal theme`, `terminal font`, `terminal shell`
+5. [Updating](getting-started/updating.md) — `nustro upgrade`, the notice, `nustro repair`, after a Nushell upgrade
 
 ## Concepts
 
@@ -38,8 +38,8 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Agent](concepts/agent.md) | Claude Code inside the shell: one `claude -p` per turn, exec proposes, the checkpoint sweep |
 | [OData](concepts/odata.md) | pushing `where`/`select`/`first` to the server through a `pre_execution` hook |
 | [Worktrees](concepts/worktree.md) | one bare repository, a directory per branch, the gitignored files kept in profiles and placed into each |
-| [Agent harnesses](concepts/harness.md) | the shell inside Claude Code: `harness/`, the nushell skills as a plugin and one plugin per module as a client of the shell command, the marketplace the install registers and `nu-config upgrade` keeps current |
-| [Plugins](concepts/plugins.md) | why there is no plugin manager, and what `nu-config plugins add` is instead |
+| [Agent harnesses](concepts/harness.md) | the shell inside Claude Code: `harness/`, the nushell skills as a plugin and one plugin per module as a client of the shell command, the marketplace the install registers and `nustro upgrade` keeps current |
+| [Plugins](concepts/plugins.md) | why there is no plugin manager, and what `nustro plugins add` is instead |
 
 ## Reference
 
@@ -53,9 +53,9 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Platforms](reference/platforms.md) | what is proven on macOS, Linux and Windows, and what is not |
 | [Tests](reference/tests.md) | `nu tests/run.nu`: the runner, writing a test, `lib.nu`, the isolation, the cost |
 | **Modules** | |
-| [nu-config](reference/modules/nu-config.md) | `doctor`, `knobs`, `module`, `user`, `tools`, `plugins`, `upgrade`, `startup-time`, `edit` |
+| [nustro](reference/modules/nustro.md) | `status`, `doctor`, `repair`, `upgrade`, `edit`, `set`, `knobs`, `module`, `deps`, `plugins`, `completion`, `harness`, `startup-time`; the plumbing under `bootstrap` |
 | [nu-complete](reference/modules/nu-complete.md) | the engine behind Tab: `run`, `external`, `smart`, `quote`, `cache`, `status` |
-| [terminal](reference/modules/terminal.md) | `theme`, `font`, `terminal`, `ghostty`, `wezterm` — every command, with costs |
+| [terminal](reference/modules/terminal.md) | `terminal`, `terminal theme`, `terminal font` — every command, with costs; the Ghostty and WezTerm backends by file |
 | [agent](reference/modules/agent.md) | `ask`, `exec`, `skill`, `command`, `completion`; the exec menu; the knobs |
 | [odata](reference/modules/odata.md) | every command and flag, the query-option table, completion, knobs, testing |
 | [worktree](reference/modules/worktree.md) | `init`, `add`, `remove`, `apply`, `discard`, `which`; the profile format and its hooks; the rules apply keeps |
@@ -72,9 +72,9 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Write an autoload drop-in](cookbook/autoload.md) | an alias, a hook, a keybinding, a secret — and when it is `settings.nu` instead |
 | [Your directory](cookbook/user-directory.md) | what is there and whose, switching an example on, getting a README back, the knobs an upgrade added |
 | [Pick a theme and make it stick](cookbook/theme.md) | the picker, a palette of your own from six colours, keeping it after a `git pull` |
-| [Pin a font](cookbook/font.md) | `font use`, and installing one by hand on Linux and Windows |
+| [Pin a font](cookbook/font.md) | `terminal font use`, and installing one by hand on Linux and Windows |
 | [Enable a module, make it lazy, see what it costs](cookbook/modules.md) | `module enable`, `MODULES_LAZY`, `startup-time`, `loaded-files` |
-| [Debug Tab](cookbook/debug-tab.md) | `commandline complete --detailed`, `nu-complete smart`, the error the `try` hides |
+| [Debug Tab](cookbook/debug-tab.md) | `nustro completion explain`, `commandline complete --detailed`, `nu-complete smart`, the error the `try` hides |
 | [Test a change to the distro before it is live](cookbook/test-a-change.md) | `nu-check`, `doctor`, `module lint`, a scratch `config.nu` for a second checkout |
 | [Run on Linux and Windows](cookbook/other-platforms.md) | what is the same, what is different, what has not been run |
 | [Undo the whole thing](cookbook/uninstall.md) | `terminal reset`, `rm config.nu`, the checkout; what is yours and stays |

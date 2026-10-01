@@ -7,57 +7,58 @@ inventory.
 ## Your directory
 
 `$nu.default-config-dir` — `~/Library/Application Support/nushell` on macOS,
-`~/.config/nushell` on Linux, `%APPDATA%\nushell` on Windows. `nu-config
-user-root` prints it.
+`~/.config/nushell` on Linux, `%APPDATA%\nushell` on Windows. `nustro
+status` prints it as `yours`.
 
 | | written by | what |
 |---|---|---|
 | `config.nu` | `install.nu`, once | three lines: `const DISTRO = …; source ($DISTRO \| path join distro.nu)` |
 | `.backup/<stamp>/` | `install.nu` | the configuration that was there before, moved whole (or only its `config.nu`, with `--keep-existing`), with `.nustro-backup.nuon` — what it holds and where each entry came from; `uninstall.nu` puts it back. Installs before 2026-10-01 left `config.nu.backup-<stamp>` instead |
 | `.backup/nustro-<stamp>/` | `uninstall.nu` | what the distro had written — `config.nu`, `.state/`, the generated init files, and the scaffold when a previous configuration was restored or with `--purge` — set aside, never deleted |
-| `README.md` | `nu-config user init`, when missing | what every file and directory here is, and whose |
-| `settings.nu` | `nu-config user init`, when missing; then you | every knob in `defaults.nu` and every module's `meta.nuon`, commented out at its shipped value — generated, not copied; uncomment to override. Sourced right after `defaults.nu` |
-| `settings.nu.backup-<stamp>` | `nu-config user init --force settings.nu` | the one replaced |
+| `README.md` | `nustro bootstrap scaffold init` (the installer, `nustro repair`, `nustro edit`), when missing | what every file and directory here is, and whose |
+| `settings.nu` | `nustro bootstrap scaffold init`, when missing; then you | every knob in `defaults.nu` and every module's `meta.nuon`, commented out at its shipped value — generated, not copied; uncomment to override. Sourced right after `defaults.nu` |
+| `settings.nu.backup-<stamp>` | `nustro bootstrap scaffold init --force settings.nu` | the one replaced |
 | `autoload/*.nu` | you | drop-ins Nushell loads last. `README.md` and `example.nu.off` are the scaffold's |
-| `completions/` | you, or `nu-config fetch completion <tool>` | completion modules; first on `NU_LIB_DIRS`. `README.md` and `hello.nu.off` are the scaffold's |
+| `completions/` | you, or `nustro completion fetch <tool>` | completion modules; first on `NU_LIB_DIRS`. `README.md` and `hello.nu.off` are the scaffold's |
 | `modules/` | you | modules of your own, `use`d from `settings.nu`. `README.md` is the scaffold's |
 | `themes/` | you | a copy of any template in the distro's `themes/`, or `palettes/<slug>.nuon` of your own. `README.md` and `palettes/example.nuon.off` are the scaffold's |
 | `plugins/` | you | plugin binaries; first on `NU_PLUGIN_DIRS`. `README.md` is the scaffold's |
 | `history.sqlite3` | Nushell | history (`history.file_format = "sqlite"`) |
-| `plugin.msgpackz` | `plugin add`, `nu-config plugins add` | the plugin registry, protocol-versioned against `nu` |
-| `vendor/autoload/*.nu` | `nu-config tools setup` | generated init files: `zoxide.nu`, `atuin.nu`, `carapace.nu`, … one per installed tool |
+| `plugin.msgpackz` | `plugin add`, `nustro plugins add` | the plugin registry, protocol-versioned against `nu` |
+| `vendor/autoload/*.nu` | `nustro bootstrap tools setup` (the installer, `nustro repair`, `nustro deps install`) | generated init files: `zoxide.nu`, `atuin.nu`, `carapace.nu`, … one per installed tool |
 | `.state/` | the modules | below |
 
 On macOS `$nu.data-dir` is the config directory, so `vendor/` and `.state/`
 sit next to `config.nu`; on Linux they are under `~/.local/share/nushell`.
-`nu-config doctor` prints every one of these paths.
+`nustro doctor` prints every one of these paths.
 
 The scaffold — the READMEs, the three `.off` examples and `settings.nu` — is
 `templates/user/` in the checkout, mirrored file for file, rendered by
-`nu-config user init`: `@DISTRO@` becomes the checkout, and every relative
+`nustro bootstrap scaffold init` — the step the installer, `nustro repair` and
+`nustro edit` run: `@DISTRO@` becomes the checkout, and every relative
 path in a template, written for the template's place in the checkout, is
 rewritten for the file's place in your directory, so a link into `docs/`
 works on GitHub and in your editor alike. `settings.nu`'s body is generated
 from `defaults.nu` and the module `meta.nuon`s rather than copied. Init
-writes only what is missing; `user status` tells `present` from `edited` by
+writes only what is missing; `nustro bootstrap scaffold status` tells `present` from `edited` by
 comparing with what init would write today, never by mtime
-([nu-config](modules/nu-config.md#your-directory)).
+([nustro](modules/nustro.md#your-directory)).
 
 ## State: `$nu.data-dir/.state/`
 
 | | written by | read by |
 |---|---|---|
-| `theme/theme.nuon` | `theme use`, `theme sync` | `conf/theme.nu` at startup, 0.36 ms |
+| `theme/theme.nuon` | `terminal theme use`, `terminal theme sync` | `conf/theme.nu` at startup, 0.36 ms |
 | `theme/starship.toml` | same | starship, through `STARSHIP_CONFIG` (`conf/prompt.nu`) |
 | `theme/ls_colors` | same, via vivid | `conf/theme.nu` → `LS_COLORS`, 0.09 ms |
 | `theme/vivid.yml` | same | vivid, when rendering |
-| `theme/ghostty/<slug>` | `theme use` of a palette with a `terminal` block, Ghostty being configured | Ghostty, through `theme =` in the distro's included file |
-| `theme/wezterm/nustro-<slug>.toml` | `theme use`, WezTerm being configured | WezTerm, through `color_scheme_dirs` and `color_scheme =` in `nustro.lua` |
-| `theme/icons/<slug>.png` | `theme use` (macOS, Ghostty) | Ghostty, through `macos-custom-icon` |
-| `terminal/target.nuon` | `terminal use` (the installer does it) | `terminal target`: which terminal `theme`, `font` and `terminal shell` configure |
-| `nu-config/upgrade.nuon` | the background `git fetch` (`conf/update.nu`); `upgrade`, `rollback` and `doctor` for the pins `previous`, `branch` and `last_good` | every interactive start, 0.3 ms |
-| `nu-config/plugins-ok-<version>` | `nu-config plugins notice` (`conf/plugins.nu`), once every registered plugin's file was found for this Nushell version | every interactive start: one `path exists`; without it the check itself, 1.7 ms |
-| `nu-config/preflight/` | `upgrade`, a throwaway worktree of the fetched upstream, removed once checked | `nu-check`, in a child `nu` |
+| `theme/ghostty/<slug>` | `terminal theme use` of a palette with a `terminal` block, Ghostty being configured | Ghostty, through `theme =` in the distro's included file |
+| `theme/wezterm/nustro-<slug>.toml` | `terminal theme use`, WezTerm being configured | WezTerm, through `color_scheme_dirs` and `color_scheme =` in `nustro.lua` |
+| `theme/icons/<slug>.png` | `terminal theme use` (macOS, Ghostty) | Ghostty, through `macos-custom-icon` |
+| `terminal/target.nuon` | `terminal use` (the installer does it) | `terminal target`: which terminal `terminal theme`, `terminal font` and `terminal shell` configure |
+| `nustro/upgrade.nuon` | the background `git fetch` (`conf/update.nu`); `upgrade`, `rollback` and `doctor` for the pins `previous`, `branch` and `last_good` | every interactive start, 0.3 ms |
+| `nustro/plugins-ok-<version>` | `nustro bootstrap plugins notice` (`conf/plugins.nu`), once every registered plugin's file was found for this Nushell version | every interactive start: one `path exists`; without it the check itself, 1.7 ms |
+| `nustro/preflight/` | `upgrade`, a throwaway worktree of the fetched upstream, removed once checked | `nu-check`, in a child `nu` |
 | `odata/services.nuon` | `odata service add` | the service registry, merged under `$env.ODATA_SERVICES` |
 | `agent/sessions/<id>.nuon` | every `agent` turn | the startup sweep, which checkpoints closed sessions |
 | `agent/commands.nuon` | the first `agent` turn | Tab on `agent skill` / `agent command` |
@@ -75,10 +76,15 @@ here is rebuilt when missing.
 | `odata/<service>.json` | the parsed `$metadata` | after `ODATA_METADATA_TTL` (7 days) or `odata refresh` |
 
 Session-scoped memos (`stor`) hold what the Tab menu asked for in the last
-seconds: `nu-complete status` and `odata status` list them. They die with the
+seconds: `nustro completion status` and `odata status` list them. They die with the
 shell.
 
 ## WezTerm
+
+`terminal set`, `terminal status` and `terminal reset` dispatch to the
+terminal being configured; `wezterm set` and `ghostty set` below are the
+module's internal backends behind them (`modules/terminal/wezterm.nu`,
+`ghostty.nu`), not commands typed at the prompt.
 
 `wezterm set` writes `<wezterm config dir>/nustro.lua` — a Lua table of the
 keys the distro owns and an `apply(config)` that assigns them — and puts one
@@ -98,7 +104,7 @@ one line — `config-file = ?nustro.ghostty` — to Ghostty's own config,
 after copying it to `config.backup-<stamp>`. `ghostty status` shows both;
 `ghostty reset` removes ours and the line. A machine set up before the
 rename to Nustro (2026-09-20) has `nushell-distro.ghostty` and the old
-include line: the first `ghostty` command after the upgrade moves the file
+include line: the first `terminal` command that reads Ghostty's config after the upgrade moves the file
 and rewrites the two lines in place, nothing else in the config touched ([Theming](../concepts/theming.md#one-included-file-never-their-config)).
 
 ## Formats
@@ -132,8 +138,8 @@ is worth keeping anyway: the files a *person* opens — `.state/odata/services.n
 `.state/agent/sessions/*.nuon` — are NUON, and none of them is large.
 
 Files rendered for another tool are in that tool's format, and are read only by
-it: `.state/theme/starship.toml`, `ls_colors`, `ghostty/<slug>` and `icons/*.png` (`theme use`),
-`vendor/autoload/*.nu` (`nu-config tools setup`).
+it: `.state/theme/starship.toml`, `ls_colors`, `ghostty/<slug>` and `icons/*.png` (`terminal theme use`),
+`vendor/autoload/*.nu` (`nustro bootstrap tools setup`).
 
 Written NUON is `to nuon --indent 2`: one key per line, so a diff shows the line
 that changed rather than the whole file, and empty or null fields are dropped

@@ -29,7 +29,7 @@ const ROOT = path self | path dirname
 
 # What the scaffold put at the top of your directory (templates/user/).
 const SCAFFOLD = [settings.nu README.md autoload completions themes modules plugins]
-# The init files `nu-config tools setup` generates (modules/nu-config/tools.nu).
+# The init files `nustro bootstrap tools setup` generates (modules/nustro/tools.nu).
 const GENERATED = [zoxide.nu atuin.nu carapace.nu]
 
 def main [
@@ -131,14 +131,14 @@ def main [
   let lib = { NU_LIB_DIRS: ($ROOT | path join modules) }
   if not $skip_terminal {
     print $"(ansi cyan_bold)Terminal(ansi reset)"
-    let code = 'use terminal *; let done = (terminal list | where configured | get terminal); for t in $done { match $t { "ghostty" => { ghostty reset }, "wezterm" => { wezterm reset } } }; if ($done | is-empty) { print "  nothing of the distro in a terminal config" }'
+    let code = 'use terminal *; use terminal/ghostty.nu *; use terminal/wezterm.nu *; let done = (terminal list | where configured | get terminal); for t in $done { match $t { "ghostty" => { ghostty reset }, "wezterm" => { wezterm reset } } }; if ($done | is-empty) { print "  nothing of the distro in a terminal config" }'
     try { with-env $lib { ^$nu.current-exe -n -c $code } } catch {
       print $"  (ansi yellow)could not be undone from here(ansi reset) — the include line is one line: docs/cookbook/uninstall.md, step 1"
     }
   }
   if (not $skip_harness) and (which claude | is-not-empty) {
     print $"(ansi cyan_bold)Claude Code(ansi reset)"
-    let code = 'use nu-config; let h = (nu-config harness status); if $h.registered == true { for p in ($h.plugins | where installed) { print $"  claude plugin uninstall ($p.plugin)@($h.marketplace)"; "" | ^claude plugin uninstall $"($p.plugin)@($h.marketplace)" | complete | ignore }; print $"  claude plugin marketplace remove ($h.marketplace)"; "" | ^claude plugin marketplace remove $h.marketplace | complete | ignore } else { print "  the marketplace is not this checkout — left alone" }'
+    let code = 'use nustro; let h = (nustro harness status); if $h.registered == true { for p in ($h.plugins | where installed) { print $"  claude plugin uninstall ($p.plugin)@($h.marketplace)"; "" | ^claude plugin uninstall $"($p.plugin)@($h.marketplace)" | complete | ignore }; print $"  claude plugin marketplace remove ($h.marketplace)"; "" | ^claude plugin marketplace remove $h.marketplace | complete | ignore } else { print "  the marketplace is not this checkout — left alone" }'
     try { with-env $lib { ^$nu.current-exe -n -c $code } } catch {
       print $"  (ansi yellow)could not be undone from here(ansi reset) — `claude plugin marketplace list` shows what is registered"
     }

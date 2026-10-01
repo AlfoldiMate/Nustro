@@ -4,8 +4,8 @@
 # overwrite it. To change any value below, copy the line into your own
 # settings.nu (next to your config.nu) and change it there:
 #
-#   nu-config edit user            opens your settings.nu
-#   nu-config knobs                every knob, its default, and your value
+#   nustro edit    opens your settings.nu
+#   nustro knobs   every knob, its default, and your value
 #
 # Your settings.nu is sourced immediately after this file, so a `const` there
 # shadows the one here and an `$env.` assignment there overwrites this one.
@@ -17,7 +17,7 @@
 # exists:  config nu --doc | nu-highlight | less -R
 
 # ── Colours ───────────────────────────────────────────────────────────────────
-# Not a knob. The theme is chosen with `theme use <name>` — one of Ghostty's
+# Not a knob. The theme is chosen with `terminal theme use <name>` — one of Ghostty's
 # 463 — and rendered for everything at once: tables, `ls`, bat and the prompt
 # follow it, in this window and every new one. Until then the shell uses the
 # terminal's own sixteen colours by name. docs/concepts/theming.md.
@@ -144,12 +144,12 @@ $env.config.completions.algorithm = "fuzzy"
 # ── Modules ───────────────────────────────────────────────────────────────────
 # Which modules this shell has. Each is a directory under modules/ with a
 # mod.nu, a load.nu and a meta.nuon — docs/concepts/modules.md is the
-# contract, `nu-config module list` shows what is on.
+# contract, `nustro module list` shows what is on.
 #
 # A module carries its OWN defaults, so its knobs are not listed in this file;
-# `nu-config knobs` reads them out of each module's meta.nuon. To add one of
+# `nustro knobs` reads them out of each module's meta.nuon. To add one of
 # your own, drop it in <your>/modules/ and `use` it from your settings.nu.
-const MODULES = [nu-config nu-complete terminal agent odata worktree]
+const MODULES = [nustro nu-complete terminal agent odata worktree]
 
 # Of those, the ones NOT parsed at startup. A lazy module is loaded by a
 # pre_execution hook on the first line that mentions it — measured at 828 ns
@@ -161,15 +161,13 @@ const MODULES = [nu-config nu-complete terminal agent odata worktree]
 const MODULES_LAZY = [terminal agent odata worktree]
 
 # Extra words that should also trigger a lazy module, beyond its own name.
-# `odata`'s `expand` is a pipeline stage that does not repeat the module name;
-# most of `terminal` is not called "terminal" — `terminal list` is, but the rest
-# of its commands start with `theme`, `ghostty`, `wezterm` or `font`, which is
-# also why typing `ghostty +list-themes` or `wezterm ls-fonts` loads it.
-const MODULES_TRIGGERS = { odata: [expand], terminal: [theme ghostty wezterm font] }
+# `odata`'s `expand` is a pipeline stage that does not repeat the module name.
+# `terminal` needs none: every command of it starts with the word.
+const MODULES_TRIGGERS = { odata: [expand] }
 
 # ── Updates ───────────────────────────────────────────────────────────────────
 # How often an interactive shell checks whether the distro checkout is behind
 # its remote. The check is a background `git fetch`, never on the startup
 # path: a start reads the LAST result and prints one line when there is
-# something to pull — `nu-config upgrade` pulls it. 0sec: never check.
+# something to pull — `nustro upgrade` pulls it. 0sec: never check.
 const UPDATE_CHECK_EVERY = 1day

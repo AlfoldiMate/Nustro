@@ -2,7 +2,7 @@
 #
 #   terminal list          every terminal in the registry: installed, running, configured, how to get it
 #   terminal current       the one this session is running in, or null
-#   terminal target        the one `theme`, `font` and `terminal shell` configure, or null
+#   terminal target        the one `terminal theme`, `terminal font` and `terminal shell` configure, or null
 #   terminal use <name>    make one the target, whatever this session runs in
 #   terminal install       install the platform's default, or a named one, after asking
 #   terminal shell         a new window of the target starts Nushell
@@ -24,16 +24,16 @@
 # for the choice made there); else the first installed one in registry
 # order; else null, and the commands that write say so. Pinned rather than
 # "the one that is installed" because a machine with both should not have
-# its WezTerm reconfigured by a `theme` typed in Ghostty.
+# its WezTerm reconfigured by a `terminal theme` typed in Ghostty.
 #
 # The registry is a table of DATA — name, how to detect it, how to install
 # it, which keys it uses — and the verbs below it dispatch on the name with a
 # `match`: `terminal set`, `terminal shell`, `terminal face`, `terminal
 # write-theme`… each names the backend command Ghostty's and WezTerm's file
-# provide. `theme use`, `font use` and the installer call these verbs and
+# provide. `terminal theme use`, `terminal font use` and the installer call these verbs and
 # never name a terminal, so a third one is a row here, a backend file, and
 # one arm in each verb. Not a row of closures: a table of thirty-four
-# closures cost 28 ms to parse after `nu-config` was loaded (130 ms of
+# closures cost 28 ms to parse after `nustro` was loaded (130 ms of
 # startup with the module eager, against 20 ms for the module before them,
 # 2026-09-20 — every closure is analysed for captures against the whole
 # scope), where a `match` arm is a block and costs nothing measurable.
@@ -42,8 +42,8 @@
 #   program             what TERM_PROGRAM says inside it
 #   install             { <os>: { run: [argv] | null, needs: bin | null, note } }
 #   icon                it can show an app icon (Ghostty)
-#   theme_key           the key `write-theme` sets, for `theme status`
-#   font_key, size_key  the keys `font use` and `font size` set
+#   theme_key           the key `write-theme` sets, for `terminal theme status`
+#   font_key, size_key  the keys `terminal font use` and `terminal font size` set
 
 use ghostty.nu *
 use wezterm.nu *
@@ -184,9 +184,9 @@ export def "terminal use" [name: string@terminal-names]: nothing -> nothing {
   { name: $name, since: (date now) } | to nuon | save -f $f
   let here = (terminal current)
   print (if $here != null and $here.terminal != $name {
-    $"($name) is the terminal `theme`, `font` and `terminal shell` configure from now on — except in a ($here.terminal) window, which configures itself"
+    $"($name) is the terminal `terminal theme`, `terminal font` and `terminal shell` configure from now on — except in a ($here.terminal) window, which configures itself"
   } else {
-    $"($name) is the terminal `theme`, `font` and `terminal shell` configure"
+    $"($name) is the terminal `terminal theme`, `terminal font` and `terminal shell` configure"
   })
 }
 
@@ -238,7 +238,7 @@ export def "terminal require" []: nothing -> any {
   let how = ($plans | each {|p| $"  ($p.terminal | fill --width 8) (if $p.command != null { $p.command } else { $p.note })" } | str join (char nl))
   error make {
     msg: "no terminal this distro can configure is installed — nothing was written"
-    help: $"install one, then open a new shell: `terminal list` shows it found, `terminal shell` starts Nushell in it, `theme` and `font` configure it\n($how)"
+    help: $"install one, then open a new shell: `terminal list` shows it found, `terminal shell` starts Nushell in it, `terminal theme` and `terminal font` configure it\n($how)"
   }
 }
 
@@ -309,8 +309,8 @@ export def "terminal settings" []: nothing -> record {
 }
 
 # Write keys into the target's file — its own vocabulary: Ghostty's
-# `font-family`, WezTerm's `font_family`. `font use` and `theme use` know
-# which; a hand-typed call is `ghostty set` or `wezterm set`.
+# `font-family`, WezTerm's `font_family`. `terminal font use` and `terminal theme use` know
+# which; ghostty.nu and wezterm.nu hold the two `set`s.
 export def "terminal set" [settings: record]: nothing -> nothing {
   match (terminal require).name {
     "ghostty" => { ghostty set $settings }
@@ -367,7 +367,7 @@ export def "terminal preview" [family: string, size: number, argv: list<string>]
 }
 
 # The keys a family and a size are written under, in the target's own
-# vocabulary, with nothing for what was not given — a `font use` without a
+# vocabulary, with nothing for what was not given — a `terminal font use` without a
 # size must not take a size written earlier back out.
 export def "terminal font-keys" [family: any, size: any]: nothing -> record {
   let t = (terminal require)
@@ -375,7 +375,7 @@ export def "terminal font-keys" [family: any, size: any]: nothing -> record {
   | transpose key value | where value != null | transpose --header-row --as-record
 }
 
-# Write a resolved theme (`theme resolve`) into the target's configuration,
+# Write a resolved theme (`terminal theme resolve`) into the target's configuration,
 # with an icon path for a terminal that takes one.
 #
 # Ghostty's `theme =` takes one of its own names, or an absolute path to a
@@ -388,10 +388,10 @@ export def "terminal write-theme" [t: record, icon: any]: nothing -> nothing {
   match (terminal require).name {
     "ghostty" => {
       let value = (if $t.ghostty != "file" { $t.ghostty } else {
-        let dir = (theme state-dir | path join ghostty)
+        let dir = (terminal theme state-dir | path join ghostty)
         mkdir $dir
-        let f = ($dir | path join (theme slug $t.name))
-        theme ghostty-file $t.terminal | save -f $f
+        let f = ($dir | path join (terminal theme slug $t.name))
+        terminal theme ghostty-file $t.terminal | save -f $f
         $f
       })
       ghostty set ({ theme: $value } | merge (if $icon == null { {} } else { { macos-icon: "custom", macos-custom-icon: $icon } }))
@@ -400,10 +400,10 @@ export def "terminal write-theme" [t: record, icon: any]: nothing -> nothing {
       if $t.terminal == null {
         error make { msg: $"($t.name) has no colours WezTerm could be given: it is a Ghostty theme name and Ghostty is not installed here" }
       }
-      let dir = (theme state-dir | path join wezterm)
+      let dir = (terminal theme state-dir | path join wezterm)
       mkdir $dir
-      let name = $"nustro-(theme slug $t.name)"
-      theme wezterm-file $t.terminal $name | save -f ($dir | path join $"($name).toml")
+      let name = $"nustro-(terminal theme slug $t.name)"
+      terminal theme wezterm-file $t.terminal $name | save -f ($dir | path join $"($name).toml")
       wezterm set { color_scheme: $name, color_scheme_dirs: [$dir] }
     }
   }

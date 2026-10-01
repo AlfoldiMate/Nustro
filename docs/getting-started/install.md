@@ -55,24 +55,24 @@ and nothing is written before you say yes to the last one:
 |---|---|
 | 1. Where | the checkout, and your config directory — `$nu.default-config-dir`, the one a new shell will read; it is not a question (set `XDG_CONFIG_HOME` first to have it elsewhere). Then what is already in it: nothing, this distro's (a re-run), or **a configuration that is not this distro's** — its files are listed and the choice is *back it up and start clean* (the default, and what `--defaults` does), *keep the files, replace `config.nu`* (`--keep-existing`), or *stop* |
 | 2. Modules | multi-select, with each module's measured startup cost and its dependency state |
-| 3. Terminal | which of the two terminals — Ghostty (macOS, Linux), WezTerm (macOS, Linux, Windows) — is installed, and whether you are *running* in one. With neither: pick one to install (Enter takes the first; `--defaults` installs the platform's own unasked — Ghostty through the Homebrew cask, WezTerm through winget on Windows; where the plan is a link nothing runs; `--skip-terminal` leaves it out). With both and running in neither: which one `theme`, `font` and `terminal shell` configure (`terminal use` later). Without any the screen says what you do without — the theme stays at the ANSI tier, no `font`, no `terminal shell`, Alt keys depend on your terminal — how to get it back (install one, open a new shell), and offers to disable the `terminal` module (default no: it is lazy and costs nothing left on). Then whether a new window starts Nushell (default yes) |
-| 4. Theme | the theme the run ends with: the one rendered before (a re-run), else `doomchad`, the default — or *pick another* among a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal. Whichever it is, it is written to the terminal (with its icon, on Ghostty) and rendered for tables, `ls`, bat and the prompt by the same `theme use`, so a terminal and a shell configured at different times — after `--clean`, after a restored backup — cannot be left on two themes. Without a terminal nothing is written and the shell follows the terminal's sixteen colours |
+| 3. Terminal | which of the two terminals — Ghostty (macOS, Linux), WezTerm (macOS, Linux, Windows) — is installed, and whether you are *running* in one. With neither: pick one to install (Enter takes the first; `--defaults` installs the platform's own unasked — Ghostty through the Homebrew cask, WezTerm through winget on Windows; where the plan is a link nothing runs; `--skip-terminal` leaves it out). With both and running in neither: which one `terminal theme`, `terminal font` and `terminal shell` configure (`terminal use` later). Without any the screen says what you do without — the theme stays at the ANSI tier, no `terminal font`, no `terminal shell`, Alt keys depend on your terminal — how to get it back (install one, open a new shell), and offers to disable the `terminal` module (default no: it is lazy and costs nothing left on). Then whether a new window starts Nushell (default yes) |
+| 4. Theme | the theme the run ends with: the one rendered before (a re-run), else `doomchad`, the default — or *pick another* among a hundred palettes (NvChad's, Catppuccin), previewed by painting the live terminal. Whichever it is, it is written to the terminal (with its icon, on Ghostty) and rendered for tables, `ls`, bat and the prompt by the same `terminal theme use`, so a terminal and a shell configured at different times — after `--clean`, after a restored backup — cannot be left on two themes. Without a terminal nothing is written and the shell follows the terminal's sixteen colours |
 | 5. Font | fifteen Nerd Fonts, installed on the spot, previewed in a window of the terminal's own. With none picked and none configured in the terminal, yours or ours, DejaVu Sans Mono Nerd Font is installed and written (`--skip-terminal` leaves it out); a font the terminal already has is never replaced unasked |
-| 6. Tools | which of starship / zoxide / atuin / carapace / vivid are present, and for the missing ones: *install all* (the default, and what `--defaults` does), *choose*, or *none* — with the package manager the machine has (`nu-config deps status` shows the lines; `--skip-deps` leaves them out; with no manager the install pages are printed). Then which enabled module is missing the tool it needs (`claude` for `agent`, say), with the install line and what follows once it is there; a module left without its tool is lazy and its commands say what is missing until it arrives |
+| 6. Tools | which of starship / zoxide / atuin / carapace / vivid are present, and for the missing ones: *install all* (the default, and what `--defaults` does), *choose*, or *none* — with the package manager the machine has (`nustro deps status` shows the lines; `--skip-deps` leaves them out; with no manager the install pages are printed). Then which enabled module is missing the tool it needs (`claude` for `agent`, say), with the install line and what follows once it is there; a module left without its tool is lazy and its commands say what is missing until it arrives |
 | 7. The plan | every line that will be written, then one yes |
 
 ```nu
 nu install.nu              # the seven screens
 nu install.nu --defaults   # no questions, the whole thing: an existing configuration backed up, the missing tools and the platform's terminal installed
-nu install.nu --minimal    # nu-config, nu-complete and terminal only; agent, odata, worktree are `nu-config module enable` away
+nu install.nu --minimal    # nustro, nu-complete and terminal only; agent, odata, worktree are `nustro module enable` away
 nu install.nu --dry-run    # print the plan, change nothing
 nu install.nu --keep-existing   # leave an existing configuration's files in place; only its config.nu is set aside
 nu install.nu --clean           # start from an empty directory whatever is there, this distro's own configuration included
 nu install.nu --skip-deps --skip-tools --skip-plugins --skip-terminal --skip-harness
 ```
 
-The theme preview paints the terminal and `theme reset` hands it back, so a
-cancelled installer leaves the terminal's configuration alone. Fonts are the
+The theme preview paints the terminal and `terminal theme reset` hands it
+back, so a cancelled installer leaves the terminal's configuration alone. Fonts are the
 exception, because a font has to exist before it can be shown; the installer
 asks before downloading one.
 
@@ -86,7 +86,7 @@ file in `vendor/autoload/` and `autoload/` — whoever wrote them. A file left
 over from a previous setup that no longer works (a `source` of something that
 moved, a completer in the pre-0.116 shape) is an error at every start, or the
 distro not loading at all; that was the install that "failed because
-`nu-config` was not available" (reproduced 2026-10-01 with a stale `env.nu`).
+`nustro` was not available" (reproduced 2026-10-01 with a stale `env.nu`).
 So a configuration that is not this distro's is not merged with:
 
 - **moved, whole, to `<config dir>/.backup/<stamp>/`** — `config.nu`,
@@ -107,7 +107,7 @@ So a configuration that is not this distro's is not merged with:
 Then the installer **starts a new shell and asks it** whether the distro
 loaded, from this directory. When it did not, the install stops there with
 the shell's own error, the files a shell reads in order and whose each is —
-not with five later steps each failing on `nu-config`. On a re-run over the
+not with five later steps each failing on `nustro`. On a re-run over the
 distro's own `config.nu`, an `env.nu` or `login.nu` that breaks the shell is
 set aside the same way and the shell tried again (not with `--keep-existing`).
 
@@ -124,10 +124,10 @@ and the exit code is 1.
   its shipped value, a `README.md` saying what every file and directory is,
   one in each of `autoload/`, `completions/`, `themes/`, `modules/` and
   `plugins/`, and an example per kind that does nothing until renamed —
-  `nu-config user init` writes the same thing again later, for whatever is
+  `nustro repair` writes the same thing again later, for whatever is
   missing
 - the missing ones of starship, zoxide, atuin, carapace and vivid, through
-  your package manager (`nu-config deps install`), and the init files for
+  your package manager (`nustro deps install`), and the init files for
   whichever of zoxide, atuin and carapace are installed (`vendor/autoload/`)
 - the plugins that ship next to `nu`, into the plugin registry
 - with `claude` on PATH: the checkout registered as a Claude Code plugin
@@ -143,7 +143,7 @@ Nothing you own is ever written inside the checkout, and nothing the distro
 owns is written into your directory except that `config.nu`
 ([Layout](../concepts/layout.md)).
 
-**The test that it went right:** accept every default and `nu-config knobs
+**The test that it went right:** accept every default and `nustro knobs
 --overridden` comes back empty. Your `settings.nu` lists all 64 knobs (counted 2026-09-19) and
 every one is commented out; every value keeps tracking the distro.
 

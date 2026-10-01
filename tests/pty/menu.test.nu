@@ -16,8 +16,8 @@ const CASES = [
   # The first two run in a shell that has not loaded the lazy terminal module
   # yet: the candidates come from a child nu (smart.nu, "Lazy modules"). The
   # Enter of the second is what loads it.
-  { line: "fon", keys: "tab,esc,ctrl-c", screen: ["font dir" "font list" "font use"] }
-  { line: "theme use catp", keys: "tab,tab,tab,tab,enter,enter", want: 'theme use "Catppuccin Macchiato"' }
+  { line: "terminal fo", keys: "tab,esc,ctrl-c", screen: ["terminal font dir" "terminal font list" "terminal font use"] }
+  { line: "terminal theme use catp", keys: "tab,tab,tab,tab,enter,enter", want: 'terminal theme use "Catppuccin Macchiato"' }
   { line: "bits r", keys: "tab,tab,enter,enter", want: "bits ror" }
   { line: "git cher", keys: "tab,tab,enter,enter", want: "git cherry" }
   { line: "str tr", keys: "tab,enter,enter", want: "str trim" }

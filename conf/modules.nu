@@ -2,7 +2,7 @@
 #
 # Which modules exist and which are lazy is decided in defaults.nu (MODULES,
 # MODULES_LAZY) and overridable in your settings.nu. docs/concepts/modules.md explains
-# the contract; `nu-config module list` shows the current state.
+# the contract; `nustro module list` shows the current state.
 #
 # Why this file is repetitive: `use` is parse-time and cannot sit inside an
 # `if` or a loop, so a module cannot be enabled by iterating a list. What CAN
@@ -12,18 +12,21 @@
 
 const MOD_DIR = $DISTRO_ROOT | path join modules
 
-# Published for tooling (`nu-config module list`); the consts are parse-time
+# Published for tooling (`nustro module list`); the consts are parse-time
 # and invisible to a command.
-$env.NU_MODULES = $MODULES
+# `nu-config` is what the first module was called until 2026-10-02; a
+# settings.nu written before then still names it, and `nustro repair`
+# rewrites the line.
+$env.NU_MODULES = ($MODULES | each {|m| if $m == "nu-config" { "nustro" } else { $m } })
 $env.NU_MODULES_LAZY = $MODULES_LAZY
 # `nu-complete smart` reads these two to complete a lazy module's commands
 # before the module is loaded (a child `nu -n` sources its load.nu).
 $env.NU_MODULES_TRIGGERS = $MODULES_TRIGGERS
 
-# ── nu-config ─────────────────────────────────────────────────────────────────
-# First, and never lazy: `nu-config doctor` is how you diagnose everything
+# ── nustro ─────────────────────────────────────────────────────────────────
+# First, and never lazy: `nustro doctor` is how you diagnose everything
 # below it, so it has to load even when something below is broken.
-const M_CONFIG = (if ("nu-config" in $MODULES) { ($MOD_DIR | path join nu-config load.nu) } else { null })
+const M_CONFIG = (if ("nustro" in $MODULES) or ("nu-config" in $MODULES) { ($MOD_DIR | path join nustro load.nu) } else { null })
 source $M_CONFIG
 
 # ── nu-complete ───────────────────────────────────────────────────────────────
@@ -67,7 +70,7 @@ source $M_WORKTREE
 #
 # A module of yours is lazy the same way: `<your>/modules/<name>/load.nu`
 # is looked for first, so `const MODULES_LAZY = [... mine]` in settings.nu is
-# all it takes (`nu-config module enable mine`). The eager path above cannot
+# all it takes (`nustro module enable mine`). The eager path above cannot
 # reach it — `source` wants a parse-time path and a directory cannot be
 # listed at parse time — so an eager module of yours is a `use` in
 # settings.nu. One `path exists` per lazy module at startup.

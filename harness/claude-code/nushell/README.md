@@ -47,4 +47,4 @@ skills through the installed plugin, and `agent completion` loads the
 checkout's copy directly with `--plugin-dir`, so the build skill that runs
 is the one beside the engine it targets. A change to a skill is a bump of
 `version` here and `claude plugin update nushell@nustro` on each machine,
-which `nu-config upgrade` runs.
+which `nustro upgrade` runs.

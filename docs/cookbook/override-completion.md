@@ -8,13 +8,14 @@ no fork, no flag, and the shipped copy goes on updating underneath, untouched.
 **1. Copy it.**
 
 ```nu
-cp ((nu-config distro-root) | path join completions git.nu) ((nu-config user-root) | path join completions git.nu)
+let s = (nustro status)
+cp ($s.distro | path join completions git.nu) ($s.yours | path join completions git.nu)
 ```
 
 **2. Check that the copy is the one loaded.** In a new shell:
 
 ```nu
-nu-config loaded-files | where filename =~ "git.nu"
+nustro loaded-files | where filename =~ "git.nu"
 ```
 
 One row, and its path is under your directory. `conf/completions.nu` still
@@ -48,7 +49,7 @@ rows were `bootstrap/`, `CLAUDE.md`, `completions/` — the directory; after,
   copied it; `git log -- completions/git.nu` in the checkout shows what you
   are missing, and `diff` against the shipped file is how to take it. To go
   back, delete your copy.
-- **A completion you fetched** (`nu-config fetch completion docker`) lands in
+- **A completion you fetched** (`nustro completion fetch docker`) lands in
   the same directory with `-completions` in its name, wired from your
   `settings.nu` rather than shadowing anything.
 - **Spec and sources are one file**, so a fix to a source (how branches are

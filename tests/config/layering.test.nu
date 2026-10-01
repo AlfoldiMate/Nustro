@@ -27,7 +27,7 @@ def "test knobs --overridden names exactly the live lines of settings.nu" [] {
   let dir = user-dir --settings '# const EDITORS = []
 const SMART_TAB = false
 $env.config.edit_mode = "emacs"'
-  let ran = nu-l $dir 'nu-config knobs --overridden | select knob kind owner | to nuon'
+  let ran = nu-l $dir 'nustro knobs --overridden | select knob kind owner | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   # In defaults.nu order.
   assert equal ($ran.stdout | from nuon) [
@@ -38,7 +38,7 @@ $env.config.edit_mode = "emacs"'
 
 def "test a default install overrides nothing" [] {
   let dir = user-dir
-  let ran = nu-l $dir 'nu-config knobs --overridden | length'
+  let ran = nu-l $dir 'nustro knobs --overridden | length'
   assert equal ($ran.stdout | str trim) "0"
 }
 
@@ -55,7 +55,7 @@ def defaults-knobs []: nothing -> list<string> {
 
 def "test knobs lists every assignment in defaults.nu and every module knob" [] {
   let dir = user-dir
-  let ran = nu-l $dir 'nu-config knobs | to nuon'
+  let ran = nu-l $dir 'nustro knobs | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let knobs = $ran.stdout | from nuon
   assert equal ($knobs | where owner == distro | get knob) (defaults-knobs)
@@ -92,14 +92,14 @@ def "test a lazy module is not parsed at startup and an eager one is" [] {
   let parsed = $ran.stdout | from nuon
   # agent's stub.nu is parsed for every shell (the session id, Alt+E); its
   # mod.nu is not.
-  assert equal $parsed [agent nu-complete nu-config]
+  assert equal $parsed [agent nu-complete nustro]
   let stub = nu-l $dir 'view files | get filename | where $it =~ "modules[/\\\\]agent" | path basename | to nuon'
   assert equal ($stub.stdout | from nuon) [stub.nu]
 }
 
 def "test MODULES_LAZY in settings.nu makes a module eager or lazy" [] {
   let dir = user-dir --settings 'const MODULES_LAZY = [agent odata]'
-  let ran = nu-l $dir 'print ("terminal" in $env.NU_MODULES_LAZY); nu-config module list | where module == terminal | get 0 | select lazy loaded | to nuon | print; view files | get filename | where $it =~ "modules[/\\\\]terminal" | length | print'
+  let ran = nu-l $dir 'print ("terminal" in $env.NU_MODULES_LAZY); nustro module list | where module == terminal | get 0 | select lazy loaded | to nuon | print; view files | get filename | where $it =~ "modules[/\\\\]terminal" | length | print'
   assert equal $ran.exit_code 0 $ran.stderr
   # Every file of the module: mod, load, ghostty, wezterm, theme, registry, palette, font.
   assert equal ($ran.stdout | lines) ["false" "{lazy: false, loaded: true}" "8"]
@@ -113,7 +113,7 @@ def "test the lazy hook sources the module on a trigger word" [] {
   assert ($code | str contains ($ROOT | path join modules terminal load.nu)) $code
   # The hook's code is a string Nushell parses into the session; running it
   # from -c is the same parse, and the module's commands are there after it.
-  let loaded = nu-l $dir $"($code); print \(theme slug 'A B'\) \($env.NU_MODULES_LOADED | to nuon\)"
+  let loaded = nu-l $dir $"($code); print \(terminal theme slug 'A B'\) \($env.NU_MODULES_LOADED | to nuon\)"
   assert equal $loaded.exit_code 0 $loaded.stderr
   assert equal ($loaded.stdout | lines) [a-b "[terminal]"]
 }
@@ -124,12 +124,13 @@ def "test the trigger words come from MODULES_TRIGGERS and fire once" [] {
   let ran = nu-l $dir '
     let cond = ($env.config.hooks.pre_execution | where {|h| ($h.code? | default "") =~ "terminal" } | get 0.condition)
     let fires = {|line| commandline edit --replace $line; do $cond }
-    print (do $fires "palette list") (do $fires "ls | terminal") (do $fires "theme use x") (do $fires "ls themes")
+    print (do $fires "palette list") (do $fires "ls | terminal") (do $fires "theme use x") (do $fires "ls palettes")
     $env.NU_MODULES_LOADED = [terminal]
     print (do $fires "palette list")'
   assert equal $ran.exit_code 0 $ran.stderr
-  # `theme` is no longer a trigger once the knob is overridden; a word inside
-  # another does not count; a loaded module is not loaded twice.
+  # The knob's words and the module's own name fire; `theme` is not one of
+  # them; a word inside another does not count; a loaded module is not loaded
+  # twice.
   assert equal ($ran.stdout | lines) ["true" "true" "false" "false" "false"]
 }
 

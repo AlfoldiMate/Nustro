@@ -1,16 +1,16 @@
 # tools.nu — hooks and keybindings for tools that ship no Nushell init file
 #
 # Tools that DO emit a .nu init file (zoxide, atuin, carapace) are handled by
-# `nu-config tools setup`, which writes them into the vendor autoload dir where
-# Nushell loads them after this config. See modules/nu-config/tools.nu for the
-# registry. vivid and starship are the theme's: `theme use` renders both.
+# `nustro bootstrap tools setup`, which writes them into the vendor autoload dir where
+# Nushell loads them after this config. See modules/nustro/tools.nu for the
+# registry. vivid and starship are the theme's: `terminal theme use` renders both.
 #
 # Everything here is guarded with `which`, so a missing binary is a no-op.
 
 # ── An unknown command: a lazy module's, or a Homebrew formula's ──────────────
 # One hook, two answers. A lazy module loads on the first interactive line
 # that mentions it (conf/modules.nu), but `nu -c '…'` and a script run no
-# pre_execution hook, so there `theme status` is "command not found" with
+# pre_execution hook, so there `terminal theme status` is "command not found" with
 # nothing to say that `use terminal *` is all it takes. MODULES_TRIGGERS names
 # the words a module's commands start with; the module's own name is one too.
 $env.config.hooks.command_not_found = {|cmd|

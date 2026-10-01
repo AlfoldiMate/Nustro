@@ -65,10 +65,10 @@ inside closures and subexpressions too, `echo (first ⌶`), and rewrites:
 | `first ⌶`, `skip ⌶`, `echo (first ⌶` | nothing, instead of files | `place.shape` wants a number |
 | `cd ⌶` in a folder with no subfolders, `cd nus⌶` with no local match | `..`, `~`, `-`, then zoxide's most-used directories (`~/.config/nushell` …) | `place.shape` is `directory` and Nushell found none; `zoxide query -l`, 12 ms, memoised 30 s |
 | `z ⌶`, `z do⌶`, `zi ⌶` | for `z` the directories here, `..`, `~`, `-`, then zoxide's places, the twenty best of what matches; for `zi` the places alone, instead of files | the command is zoxide's `__zoxide_z` or `__zoxide_zi` (the alias arrives resolved in `place.command`); the same memoised `zoxide query -l`, 3-5 ms a key (2026-10-01) |
-| `ls ⌶`, `ps -⌶`, `cd ⌶` under `fuzzy` | files, the four flags, directories — without `polars agg`, `nu-config tools dir` and every other multiword command the line fuzzy-matches (192, 78 and 30 of them) | a candidate that starts before the token must start with the words before it, or it is a rewrite of the command; `ls ⌶` gets them *instead of* the files (0.116.0), so that slot is asked again with `commandline complete --type path` |
-| `theme use Cat⌶` → `"Catppuccin Macchiato"` | a value with a space is one argument | `nu-complete quote`: a `string@completer` value is inserted verbatim by Nushell (both releases, both menus), so the engine quotes what the parser would split, `to nuon` style, and matching still works past the quote. Paths (backticks, Nushell's) and carapace's values (its own `"…"`) arrive quoted already |
+| `ls ⌶`, `ps -⌶`, `cd ⌶` under `fuzzy` | files, the four flags, directories — without `polars agg`, `nustro bootstrap tools dir` and every other multiword command the line fuzzy-matches (192, 78 and 30 of them) | a candidate that starts before the token must start with the words before it, or it is a rewrite of the command; `ls ⌶` gets them *instead of* the files (0.116.0), so that slot is asked again with `commandline complete --type path` |
+| `terminal theme use Cat⌶` → `"Catppuccin Macchiato"` | a value with a space is one argument | `nu-complete quote`: a `string@completer` value is inserted verbatim by Nushell (both releases, both menus), so the engine quotes what the parser would split, `to nuon` style, and matching still works past the quote. Paths (backticks, Nushell's) and carapace's values (its own `"…"`) arrive quoted already |
 | `ll \| where ⌶` | works | aliases are expanded before the pipeline runs |
-| `fon⌶`, `font use ⌶`, `theme use Cat⌶` in a shell that has not loaded the lazy `terminal` module yet | `font list`, the fonts, the themes — what the loaded module would offer | the segment's head is a trigger word of a lazy module not in `$env.NU_MODULES_LOADED` ([Modules](modules.md#lazy-loading)), so the word itself comes from the list of trigger words, and what follows it from a child `nu -n` that sources that module's `load.nu` and answers `commandline complete` — once per slot, kept a minute and narrowed here as you type (140 ms for the first `theme ⌶` in a pty, 12-17 ms a key after), until the first Enter loads the module for good |
+| `termi⌶`, `terminal font use ⌶`, `terminal theme use Cat⌶` in a shell that has not loaded the lazy `terminal` module yet | `terminal` and its subcommands, the fonts, the themes — what the loaded module would offer | the segment's head is the name or a trigger word of a lazy module not in `$env.NU_MODULES_LOADED` ([Modules](modules.md#lazy-loading)), so the word itself comes from that list, and what follows it from a child `nu -n` that sources that module's `load.nu` and answers `commandline complete` — once per slot, kept a minute and narrowed here as you type (140 ms for the first `terminal theme ⌶` in a pty, 12-17 ms a key after), until the first Enter loads the module for good |
 | everything else | exactly Nushell's answer | |
 
 ### Running the pipeline: what is allowed
@@ -156,7 +156,7 @@ would be the external completer answering for built-ins too
 columns could then come from a completer on the worker and the menu source
 could go.
 
-`nu-complete explain "<line>"` says which of the rules above answered a
+`nustro completion explain "<line>"` says which of the rules above answered a
 line, what it offered, whether its pipeline was allowed to run, and what the
 first and the next call cost.
 
@@ -225,8 +225,8 @@ them:
 |---|---|---|
 | `completions/*.nu` | `def complete-<tool> [place: record]` | `$place.command`, the span list the spec walks |
 | `conf/completions.nu` | `source: {\|buffer, place\| nu-complete smart $buffer $place }` | the line, and the slot at the cursor |
-| the generated `vendor/autoload/carapace.nu` | `{\|place\| do $carapace_legacy $place.command }`, appended by `nu-config tools setup`, because carapace 1.8.0 still generates `{\|spans\| …}` | `$place.command` |
-| odata, `theme use`, `worktree -p` | `[place: record]`, `[buffer: string]`, `[token: record]` | the command, the whole line (`odata … \| expand ⌶`), the value being typed |
+| the generated `vendor/autoload/carapace.nu` | `{\|place\| do $carapace_legacy $place.command }`, appended by `nustro bootstrap tools setup`, because carapace 1.8.0 still generates `{\|spans\| …}` | `$place.command` |
+| odata, `terminal theme use`, `worktree -p` | `[place: record]`, `[buffer: string]`, `[token: record]` | the command, the whole line (`odata … \| expand ⌶`), the value being typed |
 
 `commandline complete --input` returns the three inputs without running a
 completer — the fastest way to see what a slot looks like:

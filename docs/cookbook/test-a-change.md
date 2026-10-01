@@ -8,7 +8,7 @@ not the one your `config.nu` points at, in a shell pointed at *yours*.
 ## Which checkout is live
 
 ```nu
-nu-config distro-root        # what your config.nu sources
+nustro bootstrap root        # what your config.nu sources
 ```
 
 If that is the directory you are editing, every command below works as
@@ -20,7 +20,7 @@ anything about your edit. Point a scratch `config.nu` at yours:
 ```nu
 mkdir /tmp/nu-scratch
 $"const DISTRO = (pwd | to nuon)\nsource \($DISTRO | path join distro.nu\)\n" | save -f /tmp/nu-scratch/config.nu
-nu -l --config /tmp/nu-scratch/config.nu -c 'nu-config distro-root'   # yours
+nu -l --config /tmp/nu-scratch/config.nu -c 'nustro bootstrap root'   # yours
 ```
 
 `--config` replaces `config.nu` only. `$nu.data-dir` is unchanged, so
@@ -31,37 +31,37 @@ next to the scratch `config.nu` is what gets read. That is also how to
 override a knob for one measurement — `const MODULES_LAZY = [agent odata]`
 there makes `terminal` eager without touching your own file.
 
-Run on 2026-09-19: `distro-root` printed the checkout, `user-root` the
-scratch directory, `install-status` still `split`.
+Run on 2026-09-19: `bootstrap root` printed the checkout, `bootstrap
+user-root` the scratch directory, `bootstrap layout` still `split`.
 
 ## The three checks
 
 ```nu
 nu-check distro.nu                       # parse, following every `source` — the check that would break terminals
-nu -l -c 'nu-config doctor'              # loads the config for real; every section ok
+nu -l -c 'nustro doctor'                 # loads the config for real; every section ok
 nu -n -c '<snippet>'                     # one snippet, no config at all
 ```
 
-With a scratch config, the middle one is `nu -l --config /tmp/nu-scratch/config.nu -c 'nu-config doctor'`.
+With a scratch config, the middle one is `nu -l --config /tmp/nu-scratch/config.nu -c 'nustro doctor'`.
 
 `nu-check distro.nu` does not reach a **lazy** module, which is sourced by a
 hook string at runtime; a syntax error there survives every startup and shows
-up when someone types its name. `nu-config module lint` runs `nu-check` on
+up when someone types its name. `nustro module lint` runs `nu-check` on
 every module's `load.nu` and is the only check that covers them:
 
 ```nu
-nu -l -c 'nu-config module lint'         # an empty table is the pass
+nu -l -c 'nustro module lint'            # an empty table is the pass
 ```
 
 `nu -n` has no `NU_LIB_DIRS`, so `nu-check` on a file that imports a module
 reports `false` there for reasons unrelated to the file — `nu -n -c
-'nu-check modules/nu-config/mod.nu'` is `false`, `nu -l -c` of the same is
+'nu-check modules/nustro/mod.nu'` is `false`, `nu -l -c` of the same is
 `true` (2026-09-19). To exercise one module in isolation under `nu -n`, name
 the search path as a const or import by path:
 
 ```nu
-nu -n -c 'const NU_LIB_DIRS = ["modules"]; use terminal *; theme slug "A B"'    # a-b
-nu -n -c 'use modules/terminal *; theme slug "A B"'
+nu -n -c 'const NU_LIB_DIRS = ["modules"]; use terminal *; terminal theme slug "A B"'    # a-b
+nu -n -c 'use modules/terminal *; terminal theme slug "A B"'
 ```
 
 ## The suite
@@ -85,8 +85,8 @@ write one.
 | `defaults.nu`, `conf/*.nu`, `distro.nu` | `nu-check distro.nu`, then `doctor` |
 | a module | `module lint`, then the module's own reference page's *Verify* or *Testing* section |
 | a completion | `commandline complete --detailed` on the slots, `timeit` on each ([Debug Tab](debug-tab.md)) |
-| a theme template or palette | `theme resolve <name>`, `theme roles <name>` — nothing written; then `theme sync` |
-| anything on the startup path | `nu-config startup-time` before and after, or the `--config` form of it: `1..15 \| each { ^$nu.current-exe -l --config /tmp/nu-scratch/config.nu -c '$nu.startup-time' \| into duration } \| math min` |
+| a theme template or palette | `terminal theme resolve <name>`, `terminal theme roles <name>` — nothing written; then `terminal theme sync` |
+| anything on the startup path | `nustro startup-time` before and after, or the `--config` form of it: `1..15 \| each { ^$nu.current-exe -l --config /tmp/nu-scratch/config.nu -c '$nu.startup-time' \| into duration } \| math min` |
 | the installer | `nu install.nu --dry-run`, then a real run with `XDG_CONFIG_HOME` and `XDG_DATA_HOME` pointed at scratch directories and `--skip-deps --skip-terminal --skip-harness`; `nu uninstall.nu --yes --skip-harness` in the same environment takes it back |
 | the docs | every command in the page, run as written |
 | anything with a test | `nu tests/run.nu <its name>`, then the whole suite before the commit |
@@ -99,6 +99,6 @@ they prove nothing about any of this. CI runs the installer, `nu-check`,
 ## Then make it live
 
 If the checkout you edited is the live one, the next terminal has it. If it
-is a second clone, commit, push, and `nu-config upgrade` in the live one — or
+is a second clone, commit, push, and `nustro upgrade` in the live one — or
 point `config.nu` at the clone you edit, which is the arrangement this page
 assumes you did not want.

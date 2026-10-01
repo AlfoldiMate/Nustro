@@ -1,12 +1,12 @@
 # font — pick a Nerd Font, install it, and let the terminal render the preview
 #
-#   font                    the picker: fifteen popular Nerd Fonts, install and keep
-#   font list               what is in the registry, and what is installed here
-#   font install <name>     download and install it, after asking
-#   font preview <name>     a real window of the terminal in that font, showing a specimen
-#   font specimen           the sample text, in the font this terminal is using now
-#   font use <name> [-s N]  install if needed, then keep it in the terminal's config, at a size
-#   font size [N|--reset]   the point size alone: show, set, or hand it back to the terminal
+#   font                              the picker: fifteen popular Nerd Fonts, install and keep
+#   terminal font list                what is in the registry, and what is installed here
+#   terminal font install <name>      download and install it, after asking
+#   terminal font preview <name>      a real window of the terminal in that font, showing a specimen
+#   terminal font specimen            the sample text, in the font this terminal is using now
+#   terminal font use <name> [-s N]   install if needed, then keep it in the terminal's config, at a size
+#   terminal font size [N|--reset]    the point size alone: show, set, or hand it back to the terminal
 #
 # The terminal is `terminal target` (registry.nu): Ghostty or WezTerm, whichever
 # this session runs in or was pinned. Each answers the two questions a font
@@ -54,7 +54,7 @@ use registry.nu *
 #
 # `family` is a claim about the installed font, so nothing trusts it: a font
 # counts as installed only when the terminal resolves the family to itself
-# (`font face`), and this value is only the pattern used to ask.
+# (`terminal font face`), and this value is only the pattern used to ask.
 def registry []: nothing -> table {
   [
     { name: "JetBrainsMono"   asset: "JetBrainsMono"   stem: "JetBrainsMonoNerdFont"   family: "JetBrainsMono Nerd Font"   cask: "font-jetbrains-mono-nerd-font"   what: "ligatures, the most installed of them all — and the built-in font of Ghostty and WezTerm" }
@@ -98,12 +98,12 @@ const FACES = ["Regular" "Bold" "Italic" "BoldItalic"]
 # both fall back silently to their built-in "JetBrains Mono" for a family they
 # cannot find, so the test is whether the face named is the family asked for.
 # Null without a terminal to ask.
-export def "font face" [family: string]: nothing -> any {
+export def "terminal font face" [family: string]: nothing -> any {
   terminal face $family
 }
 
 def installed? [family: string]: nothing -> bool {
-  let face = (font face $family)
+  let face = (terminal font face $family)
   $face != null and ($face | str starts-with $family)
 }
 
@@ -114,7 +114,7 @@ def installed? [family: string]: nothing -> bool {
 # `current` is judged by what the terminal reports it is using, not by what
 # this distro wrote: a family in the user's own config is just as current, and
 # the variant they chose ("JetBrainsMono Nerd Font Mono") is the same font.
-export def "font list" []: nothing -> table<font: string, installed: bool, current: bool, family: string, what: string> {
+export def "terminal font list" []: nothing -> table<font: string, installed: bool, current: bool, family: string, what: string> {
   let t = (terminal target)
   let now = (if $t == null { "" } else { terminal live $t.font_key | default "" })
   registry | par-each {|f|
@@ -133,14 +133,14 @@ def font-names []: nothing -> list<string> { registry | get name }
 
 def entry [name: string]: nothing -> record {
   let f = (registry | where name == $name | get -o 0)
-  if $f == null { error make { msg: $"no font called '($name)' — `font list`" } }
+  if $f == null { error make { msg: $"no font called '($name)' — `terminal font list`" } }
   $f
 }
 
 # ── Installing ────────────────────────────────────────────────────────────────
 
 # Where a user's own fonts go on this platform.
-export def "font dir" []: nothing -> path {
+export def "terminal font dir" []: nothing -> path {
   match $nu.os-info.name {
     "macos" => ($nu.home-dir | path join Library Fonts)
     "windows" => ($env.LOCALAPPDATA | path join Microsoft Windows Fonts)
@@ -151,21 +151,21 @@ export def "font dir" []: nothing -> path {
 # Install one font. Homebrew's cask is preferred on macOS because it is what
 # will also upgrade the font later; everywhere else the release archive is
 # fetched and exactly four files are taken out of it.
-export def "font install" [
+export def "terminal font install" [
   name: string@font-names
   --yes (-y)      # do not ask
   --archive       # skip the package manager and use the release archive
 ]: nothing -> nothing {
   let f = (entry $name)
-  if ((font list | where font == $name | get 0.installed)) {
+  if ((terminal font list | where font == $name | get 0.installed)) {
     print $"($name) is already installed"
     return
   }
   let brew = ($nu.os-info.name == "macos" and (which brew | is-not-empty) and not $archive)
-  let how = if $brew { $"brew install --cask ($f.cask)" } else { $"download ($f.asset) from the Nerd Fonts release into (font dir)" }
+  let how = if $brew { $"brew install --cask ($f.cask)" } else { $"download ($f.asset) from the Nerd Fonts release into (terminal font dir)" }
   if not $yes {
     if not ((is-terminal --stdin) and (is-terminal --stdout)) {
-      error make { msg: $"($name) is not installed, and there is no terminal to ask on — `font install ($name) --yes`" }
+      error make { msg: $"($name) is not installed, and there is no terminal to ask on — `terminal font install ($name) --yes`" }
     }
     if ([$how "no"] | input list $"install ($name)?") != $how { print "left alone"; return }
   }
@@ -176,9 +176,9 @@ export def "font install" [
   }
   let t = (terminal target)
   if $t == null {
-    print $"($name) installed into (font dir) — no terminal here to check it with"
+    print $"($name) installed into (terminal font dir) — no terminal here to check it with"
   } else if not (settled? $f.family) {
-    print $"(ansi yellow)installed, but ($t.name) still resolves '($f.family)' to ((font face $f.family)) — the Nerd Fonts naming may have changed(ansi reset)"
+    print $"(ansi yellow)installed, but ($t.name) still resolves '($f.family)' to ((terminal font face $f.family)) — the Nerd Fonts naming may have changed(ansi reset)"
   } else {
     print $"($name) installed — ($t.name) renders it as '($f.family)'"
   }
@@ -224,7 +224,7 @@ def install-from-archive [f: record]: nothing -> nothing {
     }
     print $"  unpacking ((ls $archive | get 0.size))"
     ^tar -xf $archive -C $tmp
-    let dest = (font dir)
+    let dest = (terminal font dir)
     mkdir $dest
     let wanted = ($FACES | each {|face| $"($f.stem)-($face).ttf" })
     # Nerd Fonts archives are flat today, but a glob costs nothing and a
@@ -252,7 +252,7 @@ def install-from-archive [f: record]: nothing -> nothing {
 def register-fonts [files: list<path>]: nothing -> nothing {
   match $nu.os-info.name {
     "linux" => {
-      if (which fc-cache | is-not-empty) { ^fc-cache -f (font dir) } else {
+      if (which fc-cache | is-not-empty) { ^fc-cache -f (terminal font dir) } else {
         print "  fontconfig's fc-cache is not installed — the font may not appear until you log in again"
       }
     }
@@ -294,7 +294,7 @@ def specimen-lines [family: string]: nothing -> list<string> {
 
 # Print the specimen in whatever font this terminal is using. Honest about it:
 # unless the font named IS the current one, this shows your font, not that one.
-export def "font specimen" []: nothing -> nothing {
+export def "terminal font specimen" []: nothing -> nothing {
   let t = (terminal target)
   let now = (if $t == null { null } else { terminal settings | get -o $t.font_key } | default "your terminal's current font")
   specimen-lines $now | each {|l| print $l }
@@ -303,11 +303,11 @@ export def "font specimen" []: nothing -> nothing {
 
 # Open a new window of the terminal in this font, showing the specimen. The
 # window is yours to close; it is a separate instance and touches no config.
-export def "font preview" [name: string@font-names]: nothing -> nothing {
+export def "terminal font preview" [name: string@font-names]: nothing -> nothing {
   let f = (entry $name)
-  let row = (font list | where font == $name | get 0)
+  let row = (terminal font list | where font == $name | get 0)
   if not $row.installed {
-    error make { msg: $"($name) is not installed, and a font cannot be rendered before it exists — `font install ($name)`" }
+    error make { msg: $"($name) is not installed, and a font cannot be rendered before it exists — `terminal font install ($name)`" }
   }
   let t = (terminal require)
   let script = (specimen-lines $row.family | each {|l| $"print '($l | str replace --all "'" "''")'" } | str join "; ")
@@ -320,14 +320,14 @@ export def "font preview" [name: string@font-names]: nothing -> nothing {
 # Keep a font: the terminal's config, then a reload so every open window
 # takes it — WezTerm always, Ghostty on macOS through AppleScript; elsewhere
 # the window you are in keeps the font it started with.
-export def "font use" [
+export def "terminal font use" [
   name: string@font-names
   --size (-s): number   # the point size as well, written next to the family
 ]: nothing -> nothing {
   let t = (terminal require)
-  let row = (font list | where font == $name | get 0)
-  if not $row.installed { font install $name }
-  let after = (font list | where font == $name | get 0)
+  let row = (terminal font list | where font == $name | get 0)
+  if not $row.installed { terminal font install $name }
+  let after = (terminal font list | where font == $name | get 0)
   if not $after.installed { error make { msg: $"($name) is still not installed; nothing was written" } }
   if $size != null { check-size $size }
   terminal set (terminal font-keys $after.family $size)
@@ -340,7 +340,7 @@ export def "font use" [
 # terminal falls back to its own default (13 in Ghostty 1.3.1, 12 in WezTerm)
 # or to the user's config. A size on the command line is the one thing ⌘+/⌘-
 # lose on the next window, which is why it is a setting and not a keystroke.
-export def "font size" [
+export def "terminal font size" [
   size?: number   # points; halves are fine (14.5)
   --reset         # remove the key
 ]: nothing -> nothing {
@@ -369,13 +369,13 @@ def check-size [size: number]: nothing -> nothing {
 # The picker. Installed fonts are marked, because an uninstalled one costs a
 # download before it can be seen, and that is the only real difference between
 # the rows.
-export def main []: nothing -> nothing {
+export def "terminal font" []: nothing -> nothing {
   if not ((is-terminal --stdin) and (is-terminal --stdout)) {
-    error make { msg: "`font` is the interactive picker; `font use <name>` is not" }
+    error make { msg: "`terminal font` is the interactive picker; `terminal font use <name>` is not" }
   }
   mut picking = true
   while $picking {
-    let rows = (font list)
+    let rows = (terminal font list)
     let pick = (
       $rows
       | input list --fuzzy --display {|r|
@@ -386,17 +386,17 @@ export def main []: nothing -> nothing {
     if $pick == null { print "unchanged"; return }
 
     if not $pick.installed {
-      font install $pick.font
-      if not (font list | where font == $pick.font | get 0.installed) { continue }
+      terminal font install $pick.font
+      if not (terminal font list | where font == $pick.font | get 0.installed) { continue }
     }
-    let row = (font list | where font == $pick.font | get 0)
+    let row = (terminal font list | where font == $pick.font | get 0)
 
     match ([$"keep ($pick.font)" "see it in a new window" "pick another" "leave it as it was"] | input list $"($row.family)") {
       $a if ($a | default "" | str starts-with "keep") => {
-        font use $pick.font
+        terminal font use $pick.font
         $picking = false
       }
-      "see it in a new window" => { font preview $pick.font }
+      "see it in a new window" => { terminal font preview $pick.font }
       "pick another" => { }
       _ => { print "unchanged"; $picking = false }
     }

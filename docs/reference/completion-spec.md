@@ -273,7 +273,7 @@ Where the line goes depends on whose module it is. Both directories are on
 | The module is | It lives in | The `use` line goes in |
 |---|---|---|
 | shipped by the distro | `completions/` here | `conf/completions.nu`, next to the others, with a comment naming what completes |
-| yours, or fetched (`nu-config fetch completion docker`) | `completions/` in your config dir | your own `settings.nu` |
+| yours, or fetched (`nustro completion fetch docker`) | `completions/` in your config dir | your own `settings.nu` |
 
 ```nu
 use <tool>.nu *   # subcommands, flags, <the positionals that matter>
@@ -294,7 +294,7 @@ this is optional, and "it looks right" is not evidence.
 
 ```nu
 nu -l -c 'nu-check distro.nu'                                   # parses, following every source
-nu -l -c 'nu-config doctor'                                     # loads for real
+nu -l -c 'nustro doctor'                                        # loads for real
 nu -l -c '"<tool> " | commandline complete --detailed | first 5'
 nu -l -c '"<tool> sub " | commandline complete --detailed | select value description'
 nu -l -c '"<tool> sub --" | commandline complete --detailed | get value'
@@ -302,7 +302,7 @@ nu -l -c '"<tool> sub --flag " | commandline complete --detailed | get value'
 nu -l -c 'nu-complete run (nu-complete <tool> spec) [<tool> sub ""]'   # the error the `try` hides
 nu -l -c 'timeit { "<tool> sub " | commandline complete --detailed }'
 nu -l -c '"<tool> sub " | commandline complete --input | nu-complete smart $in.buffer $in.place'   # the Tab menu path
-nu -l -c 'nu-config startup-time'                               # within noise of before
+nu -l -c 'nustro startup-time'                                  # within noise of before
 ```
 
 Two traps worth knowing before they cost you an hour:

@@ -1,10 +1,17 @@
 # modules/terminal/wezterm.nu against the fake wezterm: where the config is,
 # our file and the line that applies it, `set`/`reset`/`live`/`shell`, the
-# validation through `ls-fonts`, and `theme use` / `font use` through the
+# validation through `ls-fonts`, and `terminal theme use` / `terminal font use` through the
 # registry with WezTerm as the target.
 use lib.nu *
 use std/assert
 use terminal *
+# What the module keeps to itself, by file: the two backends and the plumbing.
+use terminal/ghostty.nu *
+use terminal/wezterm.nu *
+use terminal/registry.nu *
+use terminal/theme.nu *
+use terminal/palette.nu *
+use terminal/font.nu *
 
 const INCLUDE = 'pcall(function() dofile(require("wezterm").config_dir .. "/nustro.lua").apply(config) end)'
 
@@ -162,10 +169,10 @@ def "test reload is true: WezTerm reloads by itself" [] {
 
 # ── through the registry ──────────────────────────────────────────────────────
 
-def "test theme use writes a scheme file and points WezTerm at it" [] {
+def "test terminal theme use writes a scheme file and points WezTerm at it" [] {
   let fake = fake-wezterm
-  theme use onedark
-  let dir = theme state-dir | path join wezterm
+  terminal theme use onedark
+  let dir = terminal theme state-dir | path join wezterm
   let file = $dir | path join nustro-onedark.toml
   assert ($file | path exists) $file
   let toml = open --raw $file | from toml
@@ -174,48 +181,48 @@ def "test theme use writes a scheme file and points WezTerm at it" [] {
   assert equal ($toml.colors.brights | length) 8
   assert equal $toml.colors.background "#1e222a"
   assert equal (wezterm settings) { color_scheme: "nustro-onedark", color_scheme_dirs: [$dir] }
-  assert equal (theme status | select name terminal terminal_theme icon) { name: onedark, terminal: wezterm, terminal_theme: "nustro-onedark", icon: null }
-  assert equal (theme current | select name tier) { name: onedark, tier: palette }
+  assert equal (terminal theme status | select name terminal terminal_theme icon) { name: onedark, terminal: wezterm, terminal_theme: "nustro-onedark", icon: null }
+  assert equal (terminal theme current | select name tier) { name: onedark, tier: palette }
 }
 
-def "test theme use of a palette that only extends a Ghostty theme is an error before anything is written" [] {
+def "test terminal theme use of a palette that only extends a Ghostty theme is an error before anything is written" [] {
   let fake = fake-wezterm
   # A palette with no sixteen of its own, extending a theme no Ghostty has:
   # nothing anywhere WezTerm could be given.
   let dir = $nu.config-path | path dirname | path join themes palettes
   mkdir $dir
   { name: "Nowhere", ghostty: "No Such Theme", colours: {}, roles: {} } | to nuon | save ($dir | path join nowhere.nuon)
-  let err = try { theme use Nowhere; null } catch {|e| $e.msg }
+  let err = try { terminal theme use Nowhere; null } catch {|e| $e.msg }
   assert ($err | str contains "no colours WezTerm could be given") $err
   assert equal (wezterm settings) {}
 }
 
-def "test theme icon is Ghostty only" [] {
+def "test terminal theme icon is Ghostty only" [] {
   let fake = fake-wezterm
-  let err = try { theme icon; null } catch {|e| $e.msg }
+  let err = try { terminal theme icon; null } catch {|e| $e.msg }
   assert ($err | str contains "Ghostty's") $err
 }
 
-def "test font use writes the family WezTerm reports, with a size, and font size alone changes it" [] {
+def "test terminal font use writes the family WezTerm reports, with a size, and terminal font size alone changes it" [] {
   let fake = fake-wezterm
   "Hack Nerd Font" | save ($fake.root | path join faces)
-  assert equal (font list | where installed | get font) [Hack]
-  font use Hack --size 15
+  assert equal (terminal font list | where installed | get font) [Hack]
+  terminal font use Hack --size 15
   assert equal (wezterm settings | select font_family font_size) { font_family: "Hack Nerd Font", font_size: 15 }
-  assert equal (font list | where current | get font) [Hack]
-  font size 14.5
+  assert equal (terminal font list | where current | get font) [Hack]
+  terminal font size 14.5
   assert equal (wezterm settings | get font_size) 14.5
-  font use Hack
+  terminal font use Hack
   assert equal (wezterm settings | get font_size) 14.5 "a use without a size keeps the size"
-  font size --reset
+  terminal font size --reset
   assert equal (wezterm settings | get -o font_size) null
   assert equal (wezterm settings | get font_family) "Hack Nerd Font" "the family is untouched"
 }
 
-def "test font preview opens a window through --config font" [] {
+def "test terminal font preview opens a window through --config font" [] {
   let fake = fake-wezterm
   "Hack Nerd Font" | save ($fake.root | path join faces)
-  font preview Hack
+  terminal font preview Hack
   let call = wezterm-calls $fake | where {|c| "start" in $c } | first
   assert equal ($call | first 4) ["--config" 'font=wezterm.font("Hack Nerd Font")' "--config" "font_size=14"]
   assert ("--always-new-process" in $call)

@@ -64,7 +64,7 @@
 # every command. Lazy: `worktree` is the trigger word (meta.nuon).
 
 # The error for a missing git, worded from meta.nuon.
-use ../nu-config/missing.nu *
+use ../nustro/missing.nu *
 
 const PROFILES = ".profiles"
 const DFLT = "dflt"

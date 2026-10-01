@@ -258,20 +258,20 @@ def "test explain names the rule that answered" [] {
 def "test a lazy module offers its words at once and its slots from one child" [] {
   $env.NU_MODULES_LAZY = [terminal]
   $env.NU_MODULES_LOADED = []
-  $env.NU_MODULES_TRIGGERS = { terminal: [theme font] }
+  $env.NU_MODULES_TRIGGERS = { odata: [expand] }
   $env.NU_LIB_DIRS = [($ROOT | path join modules)]
-  let head = smart "the"
-  assert equal ($head | first | select value kind) { value: theme, kind: command }
+  let head = smart "termi"
+  assert equal ($head | first | select value kind) { value: terminal, kind: command }
   assert ($head | first | get description | str contains "terminal")
-  # ... and its commands beside it, so `the⌶` already shows what there is.
-  assert ("theme use" in ($head | get value)) ($head | get value | to nuon)
-  assert ($head | where value =~ '^ghostty' | is-empty) "only the words that were typed towards"
-  let subs = smart "theme "
-  assert ("theme use" in ($subs | get value)) ($subs | get value | to nuon)
+  # ... and its commands beside it, so `termi⌶` already shows what there is.
+  assert ("terminal theme use" in ($head | get value)) ($head | get value | to nuon)
+  assert ($head | where value =~ '^ghostty' | is-empty) "what the module keeps to itself is not offered"
+  let subs = smart "terminal theme "
+  assert ("terminal theme use" in ($subs | get value)) ($subs | get value | to nuon)
   # The same slot with a letter typed: narrowed here, and placed on the token.
-  let narrowed = smart "theme u"
-  assert equal ($narrowed | get value) ["theme use"]
+  let narrowed = smart "terminal theme u"
+  assert equal ($narrowed | get value) ["terminal theme use"]
   # Once loaded, the module is Nushell's own to complete.
   $env.NU_MODULES_LOADED = [terminal]
-  assert (smart "the" | where value == theme | is-empty)
+  assert (smart "termi" | where description =~ "loads on first use" | is-empty)
 }

@@ -6,9 +6,9 @@ your settings live in your own config directory, in a file the distro does
 not ship, and a `const` there shadows the one here. So `git pull` never
 conflicts, a knob you never mention keeps tracking the distro, and nothing
 you own is ever written inside the checkout. A pull that would break the
-shell does not land: `nu-config upgrade` checks the update out into a
+shell does not land: `nustro upgrade` checks the update out into a
 throwaway worktree and `nu-check`s it — your `settings.nu` included — before
-it fast-forwards, and what parses but misbehaves `nu-config upgrade
+it fast-forwards, and what parses but misbehaves `nustro upgrade
 rollback` takes back. Nushell **0.116**; macOS, Linux and Windows, by CI on
 every push.
 
@@ -64,8 +64,8 @@ there is none (Ghostty; WezTerm on Windows) and set to start Nushell, tool
 init files, plugins and Claude Code are wired. The theme is `doomchad`,
 written to the terminal and rendered for the shell by one command so the two
 always agree — or, on a re-run, the theme you had; the font is DejaVu Sans
-Mono Nerd Font when the terminal has none configured (`theme` and `font`
-change either). A run with no
+Mono Nerd Font when the terminal has none configured (`terminal theme` and
+`terminal font` change either). A run with no
 terminal on stdin or stdout — a provisioning script, CI — takes the defaults
 by itself.
 
@@ -80,11 +80,11 @@ History and the plugin registry stay. Alone it still asks the screens; with
 | `--defaults` | no questions, the whole install (`--yes` on `install.sh`) |
 | `--clean` | back up whatever is there, yours included, and start over |
 | `--keep-existing` | leave an existing configuration's files in place; only its `config.nu` is set aside (the opposite of `--clean`) |
-| `--minimal` | `nu-config`, `nu-complete` and `terminal` only; the rest is `nu-config module enable` away |
+| `--minimal` | `nustro`, `nu-complete` and `terminal` only; the rest is `nustro module enable` away |
 | `--dry-run` | print the plan, change nothing |
-| `--skip-deps` | do not install starship, zoxide, atuin, carapace, vivid (`nu-config deps install` later) |
+| `--skip-deps` | do not install starship, zoxide, atuin, carapace, vivid (`nustro deps install` later) |
 | `--skip-terminal` | do not install a terminal or the default font |
-| `--skip-tools` | do not generate tool init files (`nu-config tools setup` later) |
+| `--skip-tools` | do not generate tool init files (`nustro repair` later) |
 | `--skip-plugins` | do not register plugins |
 | `--skip-harness` | do not register the checkout with Claude Code |
 
@@ -107,7 +107,7 @@ does, in order ([Install](docs/getting-started/install.md)):
 - **Installs the tools** it is built around — starship, zoxide, atuin,
   carapace, vivid — with the package manager you have (Homebrew; winget or
   Scoop; pacman). The guided run asks: all, choose, or none; `--defaults`
-  takes all; `--skip-deps` none; `nu-config deps install` does it later.
+  takes all; `--skip-deps` none; `nustro deps install` does it later.
 - **Wires the rest**: the terminal, the theme, tool init files, plugins,
   Claude Code. Each in a shell of its own, so one that fails is one line in
   the summary with the command that repeats it.
@@ -127,31 +127,34 @@ puts the configuration you had before back where it was
 ## The first ten minutes
 
 ```nu
-nu-config doctor             # both directories, every path, parse, tools, theme, plugins, modules, startup time
-theme                        # a hundred palettes; the window you are in is the preview
-font                         # fifteen Nerd Fonts, installed on the spot, previewed in a window of their own
-nu-config edit user          # your directory: a README in every directory, settings.nu with every knob commented out
-nu-config knobs              # every value the distro ships, and whether you changed it
-nu-config upgrade            # git pull; a shell tells you when there is something to pull
+nustro               # where it stands: version, behind or not, and what needs attention, each with its fix
+nustro doctor        # the long form: both directories, every path, parse, tools, theme, plugins, modules, startup time
+terminal theme       # a hundred palettes; the window you are in is the preview
+terminal font        # fifteen Nerd Fonts, installed on the spot, previewed in a window of their own
+nustro edit          # your directory: a README in every directory, settings.nu with every knob commented out
+nustro knobs         # every value the distro ships, and whether you changed it
+nustro upgrade       # git pull; a shell tells you when there is something to pull
+nustro repair        # re-run every wiring step: scaffold, init files, plugins, theme; nothing of yours replaced
 ```
 
 Tab opens a pipeline-aware menu: `ls | where <Tab>` offers the columns with
 a sample value — of a variable of yours too, `$rows | where <Tab>` — and
 `where size > <Tab>` round bounds; `brew install <Tab>` the two hundred best
 of 16k formulae in 10 ms, `git checkout <Tab>` branches by recency.
-`nu-complete explain "<line>"` says which rule answered and what it cost. Ctrl+R is history, F1 help, Alt+E hands the line
-you are typing to Claude.
+`nustro completion explain "<line>"` says which rule answered and what it
+cost. Ctrl+R is history, F1 help, Alt+E hands the line you are typing to
+Claude.
 
 ## What it looks like
 
-<p align="center"><img src="docs/assets/demo.gif" width="960" alt="One Ghostty window: Tab offers the columns of a pipeline, brew formulae with descriptions and crates; theme use recolours the window live, font use swaps the font, an OData query is pushed to the server, agent exec turns a sentence into a pipeline"></p>
+<p align="center"><img src="docs/assets/demo.gif" width="960" alt="One Ghostty window: Tab offers the columns of a pipeline, brew formulae with descriptions and crates; terminal theme use recolours the window live, terminal font use swaps the font, an OData query is pushed to the server, agent exec turns a sentence into a pipeline"></p>
 
 One window, a hundred seconds, one cut (six seconds of waiting for Claude).
 Tab after `ls | where` offers
 the columns, each with its type and a sample value; `brew install` completes
-sixteen thousand formulae with their descriptions; `theme use` recolours the
+sixteen thousand formulae with their descriptions; `terminal theme use` recolours the
 terminal you are sitting in — prompt, tables, `ls`, the app icon — and
-`font use` swaps the font in every open window; `odata People | where … |
+`terminal font use` swaps the font in every open window; `odata People | where … |
 select … | first 4` sends the server one request with `$filter`, `$select`
 and `$top`; and `agent exec` turns a sentence into a pipeline that you run
 with Enter. Every keystroke is real; the shell is the one this repo installs,
@@ -166,9 +169,9 @@ it.
 
 | | | cost |
 |---|---|---|
-| `nu-config` | doctor, knobs, modules, tools, plugins, upgrade, startup time | 14 ms |
+| `nustro` | status, doctor, repair, upgrade, knobs, modules, tools, plugins, startup time | 17 ms |
 | `nu-complete` | the engine behind Tab: pipeline columns, specs per tool, carapace as the fallback | 2 ms |
-| `terminal` | `theme`, `font`, `terminal shell`: one palette rendered for the terminal — Ghostty, or WezTerm on Windows too — tables, `ls`, bat, the prompt and the app icon | 31 ms, lazy |
+| `terminal` | `terminal theme`, `terminal font`, `terminal shell`: one palette rendered for the terminal — Ghostty, or WezTerm on Windows too — tables, `ls`, bat, the prompt and the app icon | 31 ms, lazy |
 | `agent` | Claude Code at the prompt: `ask`, `exec` (proposes; you run it), `skill`, `command`, `completion` | 18 ms, lazy |
 | `odata` | OData V2/V4 services as tables, `where`/`select`/`first` pushed to the server | 97 ms, lazy |
 | `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |
@@ -196,6 +199,6 @@ starts in a config directory of its own ([Tests](docs/reference/tests.md)).
 CI runs the real installer and then loads the config for real on macOS,
 Linux and Windows, every push. That is the floor. The ceiling: Ghostty,
 WezTerm and fonts have been run by hand on macOS only; there is no Ghostty
-for Windows, so the Windows default is WezTerm, and no `ghostty reload` off
+for Windows, so the Windows default is WezTerm, and no reload of open Ghostty windows off
 macOS. [Platforms](docs/reference/platforms.md)
 is the exact table.

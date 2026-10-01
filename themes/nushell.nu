@@ -1,7 +1,7 @@
 # nushell.nu — THE Nushell theme. There is one, and it is written in roles.
 #
 # `$c` is defined by whoever sources this file: conf/theme.nu at startup and
-# `theme use` in a running session. It is the resolved role record — `$c.accent`,
+# `terminal theme use` in a running session. It is the resolved role record — `$c.accent`,
 # `$c.border`, `$c.orange` — and each value is a Nushell colour, either an ANSI
 # name (`blue`, `dark_gray`) or a hex. Which it is depends on the tier the
 # palette resolved at (docs/concepts/theming.md): with only the terminal's sixteen the

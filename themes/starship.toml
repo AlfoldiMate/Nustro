@@ -1,9 +1,9 @@
-# starship.toml — the prompt, written in roles. `theme use` renders it.
+# starship.toml — the prompt, written in roles. `terminal theme use` renders it.
 #
 # The distro owns starship's configuration: conf/prompt.nu points
 # STARSHIP_CONFIG at the RENDERED copy, <your dir>/.state/theme/starship.toml,
 # which is this file with `[palettes.distro]` replaced by the theme's resolved
-# roles. Until `theme use` has run this file is used as it is, and the block at
+# roles. Until `terminal theme use` has run this file is used as it is, and the block at
 # the bottom is the ANSI tier (themes/palettes/ansi.nuon in starship's own
 # spellings), so the prompt follows the terminal's sixteen colours from the
 # first start.
@@ -18,7 +18,7 @@
 # Never write a hex here.
 #
 # To change the prompt, copy this file to <your dir>/themes/starship.toml and
-# `theme sync`: yours is rendered instead. Keep `palette = 'distro'` and stick
+# `terminal theme sync`: yours is rendered instead. Keep `palette = 'distro'` and stick
 # to roles, and every theme keeps fitting it.
 
 "$schema" = 'https://starship.rs/config-schema.json'
@@ -189,7 +189,7 @@ show_notifications = false
 min_time_to_notify = 45000
 
 
-# ── the ANSI tier; `theme use` replaces this block ────────────────────────────
+# ── the ANSI tier; `terminal theme use` replaces this block ────────────────────────────
 [palettes.distro]
 fg_muted = "bright-black"
 bg = "black"

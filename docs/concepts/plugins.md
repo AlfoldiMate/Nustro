@@ -1,7 +1,7 @@
 # Plugins: there is no plugin manager
 
 The question this page answers: *why does this distro have its own
-`nu-config plugins add`, instead of using Nushell's plugin manager?*
+`nustro plugins add`, instead of using Nushell's plugin manager?*
 
 Because Nushell does not have one.
 
@@ -30,18 +30,18 @@ package manager.
 
 One trap in `plugin list`: by default it reports what the **engine** loaded, not
 what the file holds. `plugin list --registry --plugin-config $nu.plugin-path`
-reports the file, and is what `nu-config plugins list` asks for — under `nu -n`
+reports the file, and is what `nustro plugins status` asks for — under `nu -n`
 nothing is loaded, so the plain form comes back empty and every plugin looks
 unregistered. A config-less `nu` also refuses to default that flag to
 `$nu.plugin-path`, although it will happily print the path.
 
-## What `nu-config plugins add` is
+## What `nustro plugins add` is
 
 The same mechanism, run over whatever was installed next to `nu`:
 
 ```nu
-nu-config plugins list     # nu_plugin_* beside the nu binary, and whether each is registered
-nu-config plugins add      # plugin add, for each one that is not a developer example
+nustro plugins status     # nu_plugin_* beside the nu binary, and whether each is registered
+nustro plugins add      # plugin add, for each one that is not a developer example
 ```
 
 Homebrew ships eight `nu_plugin_*` binaries alongside `nu`. Three of them —
@@ -53,8 +53,8 @@ five are registered, which on this machine is:
 formats  gstat  inc  polars  query        all 0.115.1, polars alone adding 187 commands
 ```
 
-`nu-config doctor` lists them with `ok` when registered and `--` when not, and
-tells you to run `nu-config plugins add` when something is missing. The
+`nustro doctor` lists them with `ok` when registered and `--` when not, and
+tells you to run `nustro plugins add` when something is missing. The
 installer runs it once at the end, which is the only reason it is not a manual
 step on a fresh machine.
 
@@ -66,7 +66,7 @@ after `brew upgrade nushell` the entries describe a protocol the new binary no
 longer speaks:
 
 ```nu
-nu-config plugins add      # after every `brew upgrade nushell`
+nustro plugins add      # after every `brew upgrade nushell`
 ```
 
 The binaries are upgraded by Homebrew at the same time as `nu`; it is only the
@@ -90,7 +90,7 @@ path for a plugin nothing else installs — one you wrote, `cargo install
 nu_plugin_<name>`, or a release binary:
 
 ```nu
-cp nu_plugin_foo ~/Library/Application\ Support/nushell/plugins/   # or wherever `nu-config doctor` says
+cp nu_plugin_foo ~/Library/Application\ Support/nushell/plugins/   # or wherever `nustro doctor` says
 plugin add nu_plugin_foo      # resolves through NU_PLUGIN_DIRS
 plugin use foo                # now, or just restart the shell
 ```

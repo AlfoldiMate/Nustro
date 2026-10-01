@@ -1,4 +1,4 @@
-# `nu-config tools setup | status | remove`: the init files generated for
+# `nustro bootstrap tools setup | status | remove`: the init files generated for
 # installed tools land in the vendor autoload dir of the user directory
 # under test, parse, and are removed again for a tool that is gone. Which
 # tools exist is the machine's business: the generators run only for what
@@ -9,7 +9,7 @@ use std/assert
 
 def "test setup writes a parsing file per installed tool and nothing else" [] {
   let dir = user-dir
-  let ran = nu-l $dir 'nu-config tools setup; nu-config tools status | to nuon'
+  let ran = nu-l $dir 'nustro bootstrap tools setup; nustro bootstrap tools status | to nuon'
   assert equal $ran.exit_code 0 $ran.stderr
   let status = $ran.stdout | lines | last | from nuon
   let vendor = $dir.data | path join vendor autoload
@@ -24,7 +24,7 @@ def "test setup writes a parsing file per installed tool and nothing else" [] {
 
 def "test the generated files are what a shell loads after config.nu" [] {
   let dir = user-dir
-  let ran = nu-l $dir 'print (nu-config tools dir) ($nu.vendor-autoload-dirs | last)'
+  let ran = nu-l $dir 'print (nustro bootstrap tools dir) ($nu.vendor-autoload-dirs | last)'
   assert equal $ran.exit_code 0 $ran.stderr
   let lines = $ran.stdout | lines
   assert equal ($lines | first) ($lines | last) "tools dir is the last vendor autoload dir"
@@ -33,17 +33,17 @@ def "test the generated files are what a shell loads after config.nu" [] {
 
 def "test a second setup changes nothing and remove takes one file out" [] {
   let dir = user-dir
-  nu-l $dir 'nu-config tools setup' | ignore
-  let again = nu-l $dir 'nu-config tools setup'
+  nu-l $dir 'nustro bootstrap tools setup' | ignore
+  let again = nu-l $dir 'nustro bootstrap tools setup'
   assert equal $again.exit_code 0 $again.stderr
   let out = $again.stdout | ansi strip
   assert not ($out | str contains "created") $out
   assert not ($out | str contains "file(s) changed") $out
-  let installed = nu-l $dir 'nu-config tools status | where installed | get tool | to nuon' | get stdout | from nuon
+  let installed = nu-l $dir 'nustro bootstrap tools status | where installed | get tool | to nuon' | get stdout | from nuon
   if ($installed | is-empty) { skip-test "no tool with an init file is installed here" }
   let tool = $installed | first
-  let removed = nu-l $dir $"nu-config tools remove ($tool); nu-config tools status | where tool == ($tool) | get 0.state"
-  assert ($removed.stdout | str contains "missing: run `nu-config tools setup`") $removed.stdout
+  let removed = nu-l $dir $"nustro bootstrap tools remove ($tool); nustro bootstrap tools status | where tool == ($tool) | get 0.state"
+  assert ($removed.stdout | str contains "missing: run `nustro repair`") $removed.stdout
   assert not ($dir.data | path join vendor autoload $"($tool).nu" | path exists)
 }
 
@@ -75,7 +75,7 @@ def "test the carapace file asks carapace once per slot and narrows it itself" [
   let fake = fake-carapace
   let dir = user-dir
   $env.PATH = ($env.PATH | prepend $fake.bin)
-  let made = nu-l $dir 'nu-config tools setup --quiet'
+  let made = nu-l $dir 'nustro bootstrap tools setup --quiet'
   assert equal $made.exit_code 0 $made.stderr
   let f = $dir.data | path join vendor autoload carapace.nu
   let text = open --raw $f
@@ -118,7 +118,7 @@ def "test an unknown command is looked up without starting brew" [] {
   assert equal (do $ask nonesuch | get stdout | str trim) "-"
   assert equal (brew-calls $fake) []
   # A lazy module's word still gets its own answer first.
-  assert (do $ask theme | get stdout | str contains "lazy `terminal` module")
+  assert (do $ask expand | get stdout | str contains "lazy `odata` module")
 }
 
 # `nu` reached through two symlinks, the plugins beside the second: the list
@@ -134,7 +134,7 @@ def "test plugins are found through the symlinks nu is reached by" [] {
   ^ln -s ($second | path join nu) ($first | path join nu)
   "#!/bin/sh\n" | save ($second | path join nu_plugin_fake)
   let mods = $ROOT | path join modules
-  let r = ^($first | path join nu) -n -c $"const NU_LIB_DIRS = [($mods | to nuon)]; use nu-config; nu-config plugins list | to nuon" | complete
+  let r = ^($first | path join nu) -n -c $"const NU_LIB_DIRS = [($mods | to nuon)]; use nustro; nustro plugins status | to nuon" | complete
   assert equal $r.exit_code 0 $r.stderr
   assert equal ($r.stdout | from nuon) [{ name: fake, registered: false, path: ($second | path join nu_plugin_fake) }]
 }
@@ -151,8 +151,8 @@ def "test a plugin registered from a file that is gone is one line at the start"
   let config = $d | path join config.nu
   cp $plugin $copy
   ^$nu.current-exe -n -c $"plugin add --plugin-config ($registry | to nuon) ($copy | to nuon)"
-  $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]\nuse nu-config\n" | save $config
-  let run = {|| with-env { XDG_DATA_HOME: ($d | path join data) } { ^$nu.current-exe --plugin-config $registry --config $config -c 'nu-config plugins notice' | complete } }
+  $"const NU_LIB_DIRS = [($ROOT | path join modules | to nuon)]\nuse nustro\n" | save $config
+  let run = {|| with-env { XDG_DATA_HOME: ($d | path join data) } { ^$nu.current-exe --plugin-config $registry --config $config -c 'nustro bootstrap plugins notice' | complete } }
   let fine = do $run
   assert equal ($fine.stdout | str trim) "" $fine.stderr
   rm $copy
@@ -161,5 +161,5 @@ def "test a plugin registered from a file that is gone is one line at the start"
   rm -r ($d | path join data)
   let gone = do $run
   assert ($gone.stdout | ansi strip | str contains "plugins: inc registered from files that are gone") ($gone.stdout + $gone.stderr)
-  assert ($gone.stdout | ansi strip | str contains "nu-config plugins add")
+  assert ($gone.stdout | ansi strip | str contains "nustro plugins add")
 }

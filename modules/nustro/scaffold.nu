@@ -4,18 +4,18 @@
 # these 350 lines cost 4.4 ms to parse (measured 2026-09-19, minimum of
 # fifteen `nu -n -c "use user.nu"` against an empty `nu -n`), and a shell
 # that never regenerates its directory should not pay that at every start.
-# user.nu is the 40-line face — `nu-config user init | status | render |
+# user.nu is the 40-line face — `nustro bootstrap scaffold init | status | render |
 # set` — and hands every call here with `--dir` spelled out, because a
 # config-less child does not know which directory the parent's config came
 # from. Each verb prints NUON, which user.nu turns back into the table.
 #
-#   nu scaffold.nu init --dir <yours>                write every scaffold file that is missing;
-#                                                    append the knobs settings.nu has never heard of, commented
-#   nu scaffold.nu init --dir <yours> --dry-run      the list only, nothing written
-#   nu scaffold.nu init --dir <yours> --force settings.nu   replace one file, keeping <file>.backup-<stamp>
-#   nu scaffold.nu status --dir <yours>              every scaffold file: present / edited / missing
-#   nu scaffold.nu render settings.nu --dir <yours>  what init would write for one file
-#   nu scaffold.nu set 'const MODULES = [nu-config]' --dir <yours>   one assignment into settings.nu, in place
+#   nu scaffold.nu init --dir <yours>                             write every scaffold file that is missing;
+#                                                                 append the knobs settings.nu has never heard of, commented
+#   nu scaffold.nu init --dir <yours> --dry-run                   the list only, nothing written
+#   nu scaffold.nu init --dir <yours> --force settings.nu         replace one file, keeping <file>.backup-<stamp>
+#   nu scaffold.nu status --dir <yours>                           every scaffold file: present / edited / missing
+#   nu scaffold.nu render settings.nu --dir <yours>               what init would write for one file
+#   nu scaffold.nu set 'const MODULES = [nustro]' --dir <yours>   one assignment into settings.nu, in place
 #
 # The scaffold is templates/user/ in the checkout, mirrored file for file into
 # your directory: a README per directory saying what the directory is for, and
@@ -26,8 +26,8 @@
 # settings.nu is the one file that is generated rather than copied. Its body is
 # every knob in defaults.nu and every module's meta.nuon, in its section, with
 # its comment, commented out at its shipped value: the file you open IS the
-# knob list, and `nu-config knobs` reads the same two sources. A knob the
-# distro grows later is appended by the next `user init`, commented, under a
+# knob list, and `nustro knobs` reads the same two sources. A knob the
+# distro grows later is appended by the next `scaffold init`, commented, under a
 # dated mark — the only thing init ever writes into a file you have.
 #
 # Rendering substitutes two things. A relative path in a template — a
@@ -41,7 +41,7 @@
 # "Edited" is judged by comparing a file with what init would write today —
 # never by mtime, which a `cp` or a sync changes.
 
-# This file is modules/nu-config/scaffold.nu, three levels down.
+# This file is modules/nustro/scaffold.nu, three levels down.
 const ROOT = path self | path dirname | path dirname | path dirname
 
 def distro-root []: nothing -> path { $ROOT | path expand }
@@ -65,7 +65,7 @@ def walk [dir: path]: nothing -> list<string> {
 # A file's contents with every substitution applied, for a directory.
 def render-file [rel: string, root: path]: nothing -> string {
   let t = (templates-dir | path join $rel)
-  if not ($t | path exists) { error make { msg: $"no scaffold file called ($rel) — `nu-config user status` lists them" } }
+  if not ($t | path exists) { error make { msg: $"no scaffold file called ($rel) — `nustro bootstrap scaffold status` lists them" } }
   let text = (open --raw $t)
   let text = (if $rel == "settings.nu" { ($text | str trim --right --char (char nl)) + (char nl) + (char nl) + (settings-body $root) } else { $text })
   render-text $text ($t | path dirname) ($root | path join $rel | path dirname)
@@ -244,7 +244,7 @@ def settings-body [root: path]: nothing -> string {
 def append-nl []: string -> string { $in + (char nl) }
 
 # The knobs a settings.nu never mentions, live or commented: what a later
-# `nu-config upgrade` brought in. Each comes with its comment block.
+# `nustro upgrade` brought in. Each comes with its comment block.
 def missing-knobs [text: string, root: path]: nothing -> list<record> {
   ((default-items) ++ (module-items $root))
   | where kind == "knob"
@@ -269,7 +269,7 @@ def "main status" [--dir: path] {
     let have = (open --raw $dest)
     let note = (if $rel == "settings.nu" {
       let n = (missing-knobs $have $dir | length)
-      if $n == 0 { "" } else { $"($n) knob(if $n == 1 { '' } else { 's' }) not mentioned — `nu-config user init` appends them" }
+      if $n == 0 { "" } else { $"($n) knob(if $n == 1 { '' } else { 's' }) not mentioned — `nustro bootstrap scaffold init` appends them" }
     } else { "" })
     { file: $rel, state: (if (same-text $have (render-file $rel $dir)) { "present" } else { "edited" }), note: $note }
   } | to nuon
@@ -286,7 +286,7 @@ def "main init" [
 ] {
   let stamp = (date now | format date '%Y%m%d-%H%M%S')
   if $force != null and $force not-in (scaffold) {
-    error make { msg: $"no scaffold file called ($force) — `nu-config user status` lists them" }
+    error make { msg: $"no scaffold file called ($force) — `nustro bootstrap scaffold status` lists them" }
   }
   let said = (if $dry_run { { write: "would write", replace: "would replace", append: "would append" } } else { { write: "written", replace: "replaced", append: "appended" } })
   scaffold | each {|rel|
@@ -303,7 +303,7 @@ def "main init" [
     } else if $rel == "settings.nu" and (missing-knobs $have $dir | is-not-empty) {
       let add = (missing-knobs $have $dir)
       let block = (
-        ["" (section-line $"Added by `nu-config user init` on (date now | format date '%Y-%m-%d')")]
+        ["" (section-line $"Added by `nustro bootstrap scaffold init` on (date now | format date '%Y-%m-%d')")]
         ++ ["# Knobs the distro has grown since this file was written, at their shipped values."]
         ++ ($add | each {|it| [""] ++ (render-item $it) } | flatten)
       )
@@ -330,7 +330,7 @@ def "main set" [line: string, --dir: path] {
   let pattern = ($head + ($name | str replace --all '.' '\.') + '\s*=')
   let hit = ($src | enumerate | where {|r| $r.item =~ $pattern } | get -o 0)
   let out = if $hit == null {
-    $src ++ ["" $"# set by `nu-config user set` on (date now | format date '%Y-%m-%d')" $line]
+    $src ++ ["" $"# set by `nustro set` on (date now | format date '%Y-%m-%d')" $line]
   } else {
     # How many lines the old value spans: its own, plus continuation lines
     # while a bracket is still open — commented ones included.

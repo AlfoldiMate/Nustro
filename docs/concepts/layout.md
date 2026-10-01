@@ -37,7 +37,7 @@ that get worse the moment anyone else uses it:
   next to `config.nu`, which is inside the checkout. The old `.gitignore` spent
   most of its lines excluding them.
 - **On macOS it is worse still.** `$nu.data-dir` is the config directory there,
-  so `nu-config tools setup` wrote generated files *into the repo*.
+  so the tool init files were generated *into the repo*.
 
 Splitting the two fixes all three at once, and the `.gitignore` drops to four
 lines.
@@ -99,7 +99,7 @@ knobs cannot be read from a NUON file and why `settings.nu` is `.nu`
 ([Files and formats](../reference/files.md)).
 
 **The test that the layering is right:** accept every default in the installer
-and your `settings.nu` has no live assignment in it at all — `nu-config knobs
+and your `settings.nu` has no live assignment in it at all — `nustro knobs
 --overridden` comes back empty, against 64 knobs that exist (2026-09-19). Every knob *is*
 in the file, commented out at its shipped value, so that the file you open is
 the list; but a commented line is not a mention, and a value you never
@@ -137,7 +137,7 @@ still wins ([Modules](modules.md)).
 2. `defaults.nu` — every knob, shipped values
 3. `<your>/settings.nu` — your overrides *(optional)*
 4. `conf/*.nu` — behaviour, reading the values settled above
-5. `use nu-config` — maintenance commands
+5. `use nustro` — the distro's own command
 6. `$nu.vendor-autoload-dirs/*.nu` — generated tool init files
 7. `<your>/autoload/*.nu` — your drop-ins, the last word
 
@@ -166,18 +166,21 @@ itself lives in ([Plugins](plugins.md)).
 
 | Want to | Do |
 |---|---|
-| Change a setting | uncomment it in your `settings.nu` — `nu-config edit user` |
-| See what is in your directory, get a README or an example back | `README.md` there; `nu-config user status`, `nu-config user init` ([Your directory](../cookbook/user-directory.md)) |
+| Change a setting | uncomment it in your `settings.nu` — `nustro edit` — or `nustro set '<assignment>'`, which puts one line in its place |
+| See what is in your directory, get a README or an example back | `README.md` there; `nustro repair` writes whatever is missing (`nustro bootstrap scaffold status` lists each file) ([Your directory](../cookbook/user-directory.md)) |
 | Add an alias, a hook, a keybinding | a file in your `autoload/`, loaded last |
-| Add a module | drop it in your `modules/`, `use` it from `settings.nu`; [Modules](modules.md) is the contract `nu-config module lint` enforces |
-| Turn a shipped module off | `const MODULES = [...]` without it, or `nu-config module disable <name>` |
+| Add a module | drop it in your `modules/`, `use` it from `settings.nu`; [Modules](modules.md) is the contract `nustro module lint` enforces |
+| Turn a shipped module off | `const MODULES = [...]` without it, or `nustro module disable <name>` |
 | Add completions for a tool | `agent completion <tool>`, or by hand ([Add Tab completion for a tool](../cookbook/add-completion.md)) |
-| Change the theme | `theme` ([Theming](theming.md)) |
-| Wire up a tool that emits a Nushell init file | add it to the registry in `modules/nu-config/tools.nu`, run `nu-config tools setup` |
+| Change the theme | `terminal theme` ([Theming](theming.md)) |
+| Wire up a tool that emits a Nushell init file | add it to the registry in `modules/nustro/tools.nu`, run `nustro repair` (its `tools` step is `nustro bootstrap tools setup`) |
 | Wire up a tool that does not | a file in your `autoload/`, guarded with `which` |
 | Add a plugin | put the binary in your `plugins/`, `plugin add <name>`, restart ([Plugins](plugins.md)) |
 | Use a module from a Claude Code session | `claude plugin install <module>@nustro` — the checkout is a marketplace, registered by the install ([Agent harnesses](harness.md)) |
 
-`nu-config doctor` reports the layout as `split` (the target), `in-place` (the
-checkout is still doubling as the config directory — run `nu install.nu`) or
-`other` (something else is live).
+`nustro status` and `nustro doctor` report the layout as `split` (the
+target), `in-place` (the checkout is still doubling as the config directory
+— run `nu install.nu`) or `other` (something else is live). When the wiring
+between the two directories is off — a scaffold file missing, an init file
+out of step, a plugin unregistered — `nustro status` lists it under
+`attention` and `nustro repair` puts it back.

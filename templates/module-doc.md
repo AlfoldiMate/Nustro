@@ -20,7 +20,7 @@ This is the reference page: `docs/reference/modules/<name>.md`, named by
 ## Configuration
 
 Defaults live in this module (`meta.nuon` declares them, `activate` applies
-them). Override in your own `settings.nu`; `nu-config knobs | where owner ==
+them). Override in your own `settings.nu`; `nustro knobs | where owner ==
 <name>` lists them.
 
 | Knob | Default | Meaning |
@@ -28,7 +28,7 @@ them). Override in your own `settings.nu`; `nu-config knobs | where owner ==
 
 ## Dependencies
 
-What must be installed, why, and what degrades without it. `nu-config module
+What must be installed, why, and what degrades without it. `nustro module
 check <name>`.
 
 ## Design
@@ -38,7 +38,7 @@ story twice.
 
 ## Measured
 
-Real numbers from `timeit` / `nu-config startup-time`, with the date and the
+Real numbers from `timeit` / `nustro startup-time`, with the date and the
 Nushell version. Not adjectives.
 
 ## Files

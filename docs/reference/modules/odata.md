@@ -386,7 +386,7 @@ After any change:
 
 ```nu
 nu-check modules/odata/mod.nu
-nu -l -c 'nu-config doctor'
+nu -l -c 'nustro doctor'
 nu -l -c '"odata Peo" | commandline complete --detailed'
 ```
 

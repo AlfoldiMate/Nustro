@@ -5,6 +5,13 @@
 use lib.nu *
 use std/assert
 use terminal *
+# What the module keeps to itself, by file: the two backends and the plumbing.
+use terminal/ghostty.nu *
+use terminal/wezterm.nu *
+use terminal/registry.nu *
+use terminal/theme.nu *
+use terminal/palette.nu *
+use terminal/font.nu *
 
 def config-of [fake: record]: nothing -> string { open --raw ($fake.config | path join config.ghostty) }
 def ours-of [fake: record]: nothing -> string { open --raw ($fake.config | path join nustro.ghostty) }

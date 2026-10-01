@@ -3,7 +3,7 @@
 # module tree, every hook a plugin declares exists and parses, the worktree
 # plugin's two hooks answer a real layout the way a session would see them
 # (deny, context, silence), and `claude plugin validate` passes when claude
-# is on the machine. `nu-config harness status` reads the same manifest.
+# is on the machine. `nustro harness status` reads the same manifest.
 use lib.nu *
 use std/assert
 use worktree *
@@ -207,7 +207,7 @@ def "test claude plugin validate passes for the marketplace and every plugin" []
 
 def "test harness status reads the manifest and pairs each plugin with its module" [] {
   let dir = user-dir
-  let r = nu-l $dir 'nu-config harness status | to nuon'
+  let r = nu-l $dir 'nustro harness status | to nuon'
   assert equal $r.exit_code 0 $r.stderr
   let st = $r.stdout | from nuon
   assert equal $st.marketplace "nustro"
@@ -228,11 +228,11 @@ def "test harness update is quiet when the marketplace is not this checkout" [] 
   # (that is the live checkout, or nothing), so update must do nothing and
   # say why only when asked.
   let dir = user-dir
-  let quiet = nu-l $dir 'nu-config harness update'
+  let quiet = nu-l $dir 'nustro harness update'
   assert equal $quiet.exit_code 0 $quiet.stderr
-  let st = nu-l $dir 'nu-config harness status | get registered | to nuon' | get stdout | from nuon
+  let st = nu-l $dir 'nustro harness status | get registered | to nuon' | get stdout | from nuon
   if $st == true { skip-test "this checkout is the registered marketplace on this machine" }
   assert equal ($quiet.stdout | str trim) ""
-  let loud = nu-l $dir 'nu-config harness update --verbose' | get stdout | ansi strip
+  let loud = nu-l $dir 'nustro harness update --verbose' | get stdout | ansi strip
   assert (($loud | str contains "not on PATH") or ($loud | str contains "not this checkout")) $loud
 }

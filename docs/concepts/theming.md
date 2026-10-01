@@ -1,18 +1,18 @@
 # Theming: one theme, rendered for everything
 
 ```nu
-theme                          # pick from a hundred palettes; the window is the preview
-theme --ghostty                # pick from Ghostty's own 463 instead
-theme use tokyonight           # by name: terminal, app icon, tables, ls, bat, prompt — now and persistently
-theme use --ghostty "Gruvbox Dark"
-theme list [--ghostty]         # the palettes (or Ghostty's list), with swatches
-theme roles                    # every role, its colour, and which tier decided it
-theme status                   # what is rendered, from which theme, and what Ghostty has
-theme sync                     # re-render after a `git pull` changed a template, or a copy of yours
-theme icon [--off]             # the app icon again, or none
+terminal theme                  # pick from a hundred palettes; the window is the preview
+terminal theme --ghostty        # pick from Ghostty's own 463 instead
+terminal theme use tokyonight   # by name: terminal, app icon, tables, ls, bat, prompt — now and persistently
+terminal theme use --ghostty "Gruvbox Dark"
+terminal theme list [--ghostty] # the palettes (or Ghostty's list), with swatches
+terminal theme roles            # every role, its colour, and which tier decided it
+terminal theme status           # what is rendered, from which theme, and what Ghostty has
+terminal theme sync             # re-render after a `git pull` changed a template, or a copy of yours
+terminal theme icon [--off]     # the app icon again, or none
 ```
 
-There is one theme and everything is rendered from it. `theme use` hands
+There is one theme and everything is rendered from it. `terminal theme use` hands
 the terminal a theme (and Ghostty an app icon), repaints the window you are
 in (and reloads every open one, where the terminal can), and renders the
 shell's own colours from the same palette, so a table separator, a `ls`
@@ -31,13 +31,13 @@ keeping it, or making a palette of your own, is
 
 | | how many | what |
 |---|---|---|
-| **palettes** — `theme list` | 100 | files in `themes/palettes/`: NvChad's 96 base46 themes (`themes/palettes/nvchad/`, imported) and the four Catppuccin flavours (hand-made). A palette carries the shaded roles exactly, so these are tier three |
-| **Ghostty's** — `theme list --ghostty` | 463 | Ghostty's own theme files: the sixteen, background, foreground. Tier two: the shades are blended |
+| **palettes** — `terminal theme list` | 100 | files in `themes/palettes/`: NvChad's 96 base46 themes (`themes/palettes/nvchad/`, imported) and the four Catppuccin flavours (hand-made). A palette carries the shaded roles exactly, so these are tier three |
+| **Ghostty's** — `terminal theme list --ghostty` | 463 | Ghostty's own theme files: the sixteen, background, foreground. Tier two: the shades are blended |
 
 The two are different kinds of thing, which is why they are two lists. A
 Ghostty theme is sixteen colours; a palette is thirty — NvChad's `grey_fg`,
 `one_bg2`, `orange`, `teal` are exactly what the shell's roles ask for, which
-is why base46 was worth importing. `theme use <name>` looks for a palette
+is why base46 was worth importing. `terminal theme use <name>` looks for a palette
 first and falls back to Ghostty's list; `--ghostty` skips the palettes.
 
 ## Roles, and the three tiers
@@ -67,20 +67,20 @@ each fill in only what the one before could not say:
 
 | tier | source | what it gives |
 |---|---|---|
-| **1 ansi** | `themes/palettes/ansi.nuon` | every role an ANSI name. `red` is whatever the terminal paints red; `fg_muted` has to be `dark_gray` and `orange` has to be `yellow`. What a machine without Ghostty gets, and the shell before the first `theme use`. |
+| **1 ansi** | `themes/palettes/ansi.nuon` | every role an ANSI name. `red` is whatever the terminal paints red; `fg_muted` has to be `dark_gray` and `orange` has to be `yellow`. What a machine without Ghostty gets, and the shell before the first `terminal theme use`. |
 | **2 derived** | the sixteen as hex — a palette's `terminal` block, or Ghostty's theme file | the shaded roles are **blended**: `fg_muted` is the foreground pulled halfway to the background, `border` the background a quarter of the way to the foreground, `orange` red mixed with yellow. Every one of Ghostty's 463 gets this. |
 | **3 palette** | `themes/palettes/**/<slug>.nuon` | the shaded roles named exactly — Catppuccin's `overlay1`, NvChad's `grey_fg` and `one_bg2` — and a bat and a vivid theme that already match. |
 
 The sixteen stay names in every tier on purpose. A hex is right only while the
 terminal paints the palette it came from; a name is right in an SSH session, in
 tmux, and after someone edits Ghostty's config by hand. So the shell pins only
-what ANSI has no word for, and `theme roles` shows which is which.
+what ANSI has no word for, and `terminal theme roles` shows which is which.
 
 ## Two kinds of palette file
 
 | key | means | shipped |
 |---|---|---|
-| `terminal: {…}` | the palette **is** a terminal theme: its own sixteen, background, foreground, cursor, selection. `theme use` writes it as a theme file under the state dir — Ghostty's format, pointed at by `theme =` (an absolute path is accepted), or a WezTerm scheme named by `color_scheme =` | NvChad's 96 |
+| `terminal: {…}` | the palette **is** a terminal theme: its own sixteen, background, foreground, cursor, selection. `terminal theme use` writes it as a theme file under the state dir — Ghostty's format, pointed at by `theme =` (an absolute path is accepted), or a WezTerm scheme named by `color_scheme =` | NvChad's 96 |
 | `ghostty: "Name"` | the palette **extends** a theme Ghostty ships, whose file supplies the sixteen. Needs Ghostty installed to resolve; a WezTerm target is then given the sixteen as a scheme file | Catppuccin ×4 |
 
 Both carry `colours` (any names) and `roles` (role → a colour name or a colour),
@@ -88,18 +88,18 @@ plus optional `bat` / `vivid` naming themes those tools ship and `dark`.
 
 ## The app icon
 
-`theme use` renders `themes/icon.svg` — Jason Long's ghostty-theme-icons drawing,
+`terminal theme use` renders `themes/icon.svg` — Jason Long's ghostty-theme-icons drawing,
 with `bg`, `fg` and the four bar colours (`err`, `accent`, `ok`, `warn`) as
 placeholders — to a PNG through AppKit (`modules/terminal/rasterize.js`, run
 by `osascript`, so the padding round the tile is transparent), and hands Ghostty
 `macos-icon = custom` + `macos-custom-icon = <it>`. No icon files are shipped:
 a hundred themes is a hundred 2.5 MB `.icns`, and six colours is all an icon
-is. `theme use --no-icon` leaves the icon alone, `theme icon --off` takes the
+is. `terminal theme use --no-icon` leaves the icon alone, `terminal theme icon --off` takes the
 keys back out. Off macOS nothing happens.
 
 ## What is rendered, and where
 
-`theme use` (and `theme sync`) writes `<your dir>/.state/theme/`:
+`terminal theme use` (and `terminal theme sync`) writes `<your dir>/.state/theme/`:
 
 | file | from | read by |
 |---|---|---|
@@ -112,13 +112,13 @@ keys back out. Off macOS nothing happens.
 
 Rendered rather than resolved at every start because a resolve may spawn
 Ghostty to find a theme file and a render runs vivid and the rasterizer: 40 ms
-to resolve, 320 ms for a whole `theme use`, against 0.4 ms to read the result.
-`theme use` is `def --env`, so the session it runs in gets the same three
+to resolve, 320 ms for a whole `terminal theme use`, against 0.4 ms to read the result.
+`terminal theme use` is `def --env`, so the session it runs in gets the same three
 things a startup gets, from the same files.
 
 | template in `themes/` | rendered for |
 |---|---|
-| `nushell.nu` | `$env.config.color_config` and `explore`. Reads `$c`, the roles; sourced by `conf/theme.nu` at startup and by `theme use` in the running session |
+| `nushell.nu` | `$env.config.color_config` and `explore`. Reads `$c`, the roles; sourced by `conf/theme.nu` at startup and by `terminal theme use` in the running session |
 | `starship.toml` | the prompt. Its own `[palettes.distro]` block is tier one, so it works unrendered |
 | `vivid.yml` | `LS_COLORS`. vivid's `ansi` rules with the `colors:` block rendered |
 | `icon.svg` | the app icon |
@@ -127,12 +127,13 @@ things a startup gets, from the same files.
 
 Your `themes/` directory comes first on `NU_LIB_DIRS` and is checked first by
 the renderer, so a copy of any of the four templates there is the one used —
-`theme sync` after editing it. Stick to roles and every theme keeps fitting it.
+`terminal theme sync` after editing it. Stick to roles and every theme keeps
+fitting it.
 
 A palette of your own is `<your dir>/themes/palettes/<slug>.nuon`, where the
 slug is the name lowercased with runs of anything but letters and digits turned
-into `-` (`theme slug "TokyoNight Storm"` → `tokyonight-storm`); yours shadows
-a shipped one of the same slug. Copy an NvChad one for a theme of your own
+into `-` (`terminal theme slug "TokyoNight Storm"` → `tokyonight-storm`);
+yours shadows a shipped one of the same slug. Copy an NvChad one for a theme of your own
 (with `terminal`), a Catppuccin one to extend a theme Ghostty ships (with
 `ghostty`).
 
@@ -142,8 +143,8 @@ one file per theme. Run it by hand when base46 moves; nothing fetches at
 runtime. `catppuccin-latte` is skipped because the hand-made one, which
 extends Ghostty's own Catppuccin Latte with all 26 colours, has that slug.
 
-Trying a theme without keeping it is `theme preview <name>` and `theme reset`
-— the terminal only; the shell's colours change with `theme use`.
+Trying a theme without keeping it is `terminal theme preview <name>` and `terminal theme reset`
+— the terminal only; the shell's colours change with `terminal theme use`.
 
 ## How the terminal side works
 
@@ -155,9 +156,16 @@ per platform, which keys it uses for the theme, the font and the size — and
 a verb per thing the theme and font commands need (`terminal set`, `terminal
 shell`, `terminal face`, `terminal preview`, `terminal write-theme`, …),
 each a `match` on the target's name calling that terminal's own backend
-(`ghostty.nu`, `wezterm.nu`). `theme use` and `font use` call the verbs and
-never name a terminal, so a third one is a row, a backend file and one arm
-in each verb.
+(`ghostty.nu`, `wezterm.nu`). `terminal theme use` and `terminal font use`
+call the verbs and never name a terminal, so a third one is a row, a backend
+file and one arm in each verb.
+
+The backends' commands — `ghostty set`, `ghostty reload`, `wezterm live`
+and the rest named below — are internal to the module: not exported, not
+typed at the prompt, reached in a script or a test by file (`use
+terminal/ghostty.nu *`). What a person types is the verb that dispatches to
+them: `terminal set`, `terminal reload`, `terminal live`, `terminal shell`.
+The sections below name the backend where the fact is one terminal's.
 
 Which terminal is `terminal target`, in this order: `NUSTRO_TERMINAL` in the
 environment when it names an installed one (the installer sets it for its
@@ -166,15 +174,16 @@ it is installed; the one pinned by `terminal use` (which the installer does
 for the choice made on its terminal screen); the first installed one in
 registry order. A session inside Ghostty configures Ghostty even when
 WezTerm is pinned, because painting the window you look at is only a
-preview of the terminal you are in. Without any, `theme use` still renders
-the shell's colours and says there was nothing to write to; `font use` and
-`terminal shell` error with what to install and what follows.
+preview of the terminal you are in. Without any, `terminal theme use` still
+renders the shell's colours and says there was nothing to write to;
+`terminal font use` and `terminal shell` error with what to install and what
+follows.
 
 The first registry was a table of closures — `set: {|s| ghostty set $s }`
 and thirty-three more — and it cost 130 ms of startup with the module eager
 (2026-09-20, against 20 ms for the module the day before): Nushell analyses
 every closure for captures against everything in scope when it parses the
-file, and the file is parsed with `nu-config` and the rest of the distro in
+file, and the file is parsed with `nustro` and the rest of the distro in
 scope. A `match` arm is a block, and thirty of them cost nothing measurable
 in the same test. So the registry is data and the dispatch is verbs.
 
@@ -209,7 +218,7 @@ OSC 19;#hex   selection foreground   OSC 119  reset selection foreground
 So applying a theme to the running session is a dozen escape sequences and no
 reload, and the preview is the whole terminal — prompt, tables, scrollback — not
 a pane with swatches in it. "Reset" means back to whatever Ghostty's own config
-says, which is why `theme reset` needs no memory of what was there before.
+says, which is why `terminal theme reset` needs no memory of what was there before.
 
 ### Ghostty can be reloaded from the CLI after all — through AppleScript
 
@@ -222,7 +231,7 @@ osascript -e 'tell application "Ghostty" to perform action "reload_config" on (f
 ```
 
 reloads the configuration in every open window and returns `true`. `ghostty
-reload` wraps it, and `theme use`, `theme icon` and `font use` call it, which
+reload` wraps it, and `terminal theme use`, `terminal theme icon` and `terminal font use` call it, which
 is how a written theme, icon or font reaches the windows already open rather
 than only new ones. macOS only (`macos-applescript`, default on); the OSC
 repaint stays for the preview and for everything else. Verified with Ghostty
@@ -248,7 +257,7 @@ did not start. Found while a screen recording was driving a demo, macOS
 Nushell to save one keystroke. So nothing is painted while you are choosing,
 which also means a cancelled list leaves the terminal exactly as it was. The one
 moment a palette is applied but not yet kept is a single yes/no you answer while
-looking at it, and `theme reset` is the way out of one left behind.
+looking at it, and `terminal theme reset` is the way out of one left behind.
 
 The list itself is not colourless, though: each row carries the theme's own
 sixteen colours as truecolor blocks, so all 463 are previewed at once.
@@ -262,7 +271,7 @@ you *have* installed in the window you are sitting in would mean writing it to
 the config and reloading — a preview that is already a change. That asymmetry
 is why the theme picker repaints in place and the font picker cannot.
 
-What Ghostty does have is `--font-family` on its own command line, so `font
+What Ghostty does have is `--font-family` on its own command line, so `terminal font
 preview` opens a new window in the candidate font running a specimen: Ghostty's
 own rasterizer and shaper, the real ligatures, the real Nerd Font glyphs, at the
 size you will use. It costs one window you close again, and it touches no
@@ -297,8 +306,9 @@ found wins, and Ghostty builds the list in a fixed order — its default config
 files, then the command line, then the files those include with
 `config-file`. So `--font-family=X` lands behind the user's own entry and in
 front of the distro's, and with a family configured on either side the answer
-was that family for every X: every font read as not installed, and `font use`
-tried to install what was already there. `font face` therefore asks with
+was that family for every X: every font read as not installed, and `terminal
+font use` tried to install what was already there. `terminal font face` (internal,
+behind `terminal font list`) therefore asks with
 `--config-default-files=false`, which loads no configuration at all, so the
 answer is about X alone: the family itself when installed, Ghostty's built-in
 "JetBrains Mono" when not. (Verified 2026-09-19, Ghostty 1.3.1.)
@@ -309,7 +319,7 @@ behind the user's own `font-family` and lose; `ghostty set` writes an empty
 `font-family =` line first, which clears the list, then the value. Scalar keys
 (`theme`, `command`) need nothing of the kind: last assignment wins.
 `ghostty live font-family` reports the first entry of the resolved list, which
-is what `font list` marks as current.
+is what `terminal font list` marks as current.
 
 ### The registry never trusts its own family names
 
@@ -338,7 +348,7 @@ session it is a lie. `TERM_PROGRAM` answers the second in one environment-variab
 read, no processes.
 
 Detection is the registry, the same shape as the tool registry in
-`modules/nu-config/tools.nu` where "installed" is likewise the switch. Two
+`modules/nustro/tools.nu` where "installed" is likewise the switch. Two
 entries, Ghostty and WezTerm; the installer's terminal screen offers to
 install the platform's default (WezTerm on Windows, where Ghostty has no
 build) when neither is there, and asks which to configure when both are.
@@ -352,7 +362,7 @@ everywhere else — from Terminal.app, over SSH, in CI, and in the installer tha
 is trying to decide whether to offer to install it. Every call here goes through
 `ghostty-bin`, which falls back to `$env.GHOSTTY_BIN_DIR` and the two app-bundle
 locations; `meta.nuon` carries the same paths in `requires.paths`, which is what
-makes `nu-config doctor` agree.
+makes `nustro doctor` agree.
 
 ### One included file, never their config
 
@@ -428,7 +438,7 @@ written, with the line in it. Verified against WezTerm 20240203 on macOS,
   or warns "Unable to load a font" and names the built-in JetBrains Mono —
   the `+show-face` question, answered in 50 ms. Without the override,
   `ls-fonts` on the loaded config names the family in use, the user's own
-  `font` included (116 ms), which is what `font list` marks as current.
+  `font` included (116 ms), which is what `terminal font list` marks as current.
 - `default_prog = { <nu>, "-l" }` starts nu; a bare path gave no login
   shell (`$nu.is-login` was false), unlike Ghostty's `command`, which goes
   through `login -flp`.
@@ -463,7 +473,8 @@ every shell does, so the window gets a login nu (`$nu.is-login == true`) with
 ### Why it is lazy
 
 Loading these files costs 31 ms (2026-09-20, with the WezTerm backend; 18 ms
-the day before), for commands a shell uses once in a while, so `theme`,
-`ghostty`, `wezterm` and `font` are trigger words (`MODULES_TRIGGERS` in
-`defaults.nu`). Typing `ghostty +list-themes` or `wezterm ls-fonts` loads the
-module too, which is harmless.
+the day before), for commands a shell uses once in a while. `terminal` is
+the one word that loads it: every exported command starts with it, so the
+module has no trigger words (`MODULES_TRIGGERS` in `defaults.nu`), and
+typing `ghostty +list-themes` or `wezterm ls-fonts` — the terminals' own
+binaries — loads nothing.

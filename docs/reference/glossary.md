@@ -3,6 +3,11 @@
 The words these pages use in a fixed sense, one or two sentences each, with
 the page that defines the thing. Alphabetical.
 
+**bootstrap** — `nustro bootstrap …`: plumbing the installer, the startup
+hooks and `repair` run — the scaffold, the tool init files, the update
+check, where the two directories are. Not for every day; `nustro repair`
+runs the steps in order ([nustro](modules/nustro.md#bootstrap)).
+
 **drop-in** — a `*.nu` file in your `autoload/`, loaded by Nushell at the
 end of startup, after the distro and the generated tool files, so it has
 the last word. Behaviour goes there; a value the distro ships goes in
@@ -29,8 +34,8 @@ in your `settings.nu`; one you never mention keeps tracking the distro,
 including a knob a later pull adds ([Knobs](knobs.md),
 [Your first setting](../getting-started/first-setting.md)).
 
-**layout: split, in-place, other** — what `nu-config doctor`'s `Layout`
-line reports. `split` is the target: the distro is a checkout and your
+**layout: split, in-place, other** — what `nustro status` reports as
+`layout` and `nustro doctor` on its `Layout` line. `split` is the target: the distro is a checkout and your
 config directory is elsewhere. `in-place` means the checkout is still
 doubling as the config directory (run `nu install.nu`); `other` means
 something else is live ([Layout](../concepts/layout.md#where-a-thing-goes)).
@@ -40,24 +45,24 @@ Not the worktree layout, below.
 `mod.nu`, `load.nu` and `meta.nuon`, adding commands to the shell. An eager
 module is sourced at parse time by `conf/modules.nu`; a lazy one
 (`MODULES_LAZY`) is sourced by a `pre_execution` hook on the first line
-that says its name or one of its trigger words (`MODULES_TRIGGERS`:
-`theme`, `font`, `ghostty`, `wezterm` for `terminal`; `expand` for
-`odata`), so it costs a startup nothing and is interactive-only
+that starts with its name or one of its trigger words (`MODULES_TRIGGERS`:
+`expand` for `odata`, the only one — every `terminal` command starts with
+`terminal`), so it costs a startup nothing and is interactive-only
 ([Modules](../concepts/modules.md#lazy-loading)).
 
 **palette, role, tier** — a palette is a file in `themes/palettes/`
 (thirty colours, NvChad's 96 and Catppuccin's four). A role is a name a
 template asks for instead of a colour — `fg_muted`, `border`, `accent`,
 `text_yellow`. The tier is which source decided a role: 1 *ansi* (every
-role an ANSI name, what a shell has before its first `theme use`), 2
+role an ANSI name, what a shell has before its first `terminal theme use`), 2
 *derived* (the sixteen as hex, shaded roles blended from them — every one
-of Ghostty's 463), 3 *palette* (the shaded roles named exactly). `theme
-roles` shows which ([Theming](../concepts/theming.md#roles-and-the-three-tiers)).
+of Ghostty's 463), 3 *palette* (the shaded roles named exactly). `terminal
+theme roles` shows which ([Theming](../concepts/theming.md#roles-and-the-three-tiers)).
 
-**pin: `last_good`, `previous`, rollback** — what `nu-config upgrade
-status` records beside the fetch result: `last_good`, the HEAD `nu-config
+**pin: `last_good`, `previous`, rollback** — what `nustro upgrade
+status` records beside the fetch result: `last_good`, the HEAD `nustro
 doctor` last saw parse; `previous`, the HEAD the last `upgrade` moved off;
-`branch`, the branch a rollback detached from. `nu-config upgrade rollback`
+`branch`, the branch a rollback detached from. `nustro upgrade rollback`
 checks out `last_good`, else `previous`, else the commit you name, and
 `upgrade` returns to the branch ([Updating](../getting-started/updating.md)).
 The other pin is the Nushell version: 0.116, raised deliberately.
@@ -83,10 +88,18 @@ into `$filter`, `$select`, `$top` and the rest of one request, planned by a
 stage still runs locally, so it can only shrink what is transferred
 ([OData](../concepts/odata.md)).
 
+**repair** — `nustro repair` re-runs every wiring step in order (settings,
+state, scaffold, tools, plugins, theme, completion, harness, parse) and
+returns a row per step; it installs nothing and replaces nothing of yours.
+`--hard` runs the installer again with every default, `--reset` runs it
+from an empty directory after moving yours to `.backup/<stamp>/`
+([nustro](modules/nustro.md#repair)).
+
 **scaffold** — the files the installer writes into your directory once and
-`nu-config user init` writes again when missing: a README per directory,
+`nustro repair` (its `scaffold` step, `nustro bootstrap scaffold init`)
+writes again when missing: a README per directory,
 three `.off` examples and a `settings.nu` with every knob commented out.
-The source is `templates/user/`, rendered by `modules/nu-config/scaffold.nu`
+The source is `templates/user/`, rendered by `modules/nustro/scaffold.nu`
 ([Your directory](../cookbook/user-directory.md), [Files](files.md)).
 
 **smart menu, smart Tab** — the third completion layer: a Reedline menu

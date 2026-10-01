@@ -1,0 +1,12 @@
+{
+  description: "The distro's own command: `nustro status`, `doctor`, `repair`, `upgrade`, and the settings, modules, tools and plugins under it"
+  docs: "docs/reference/modules/nustro.md"
+  # nustro, with nu-complete which it imports: 14 ms as nu-config, and 3 ms
+  # more for status, repair and the bootstrap namespace (31.0 → 33.8 ms,
+  # `nu -n -c 'use <module>'`, interleaved medians of 60, 2026-10-02).
+  cost: 17ms
+  # Eager and not optional: it is how you inspect and repair everything else.
+  lazy: false
+  requires: []
+  knobs: {}
+}

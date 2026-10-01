@@ -5,6 +5,13 @@
 use lib.nu *
 use std/assert
 use terminal *
+# What the module keeps to itself, by file: the two backends and the plumbing.
+use terminal/ghostty.nu *
+use terminal/wezterm.nu *
+use terminal/registry.nu *
+use terminal/theme.nu *
+use terminal/palette.nu *
+use terminal/font.nu *
 
 # Both fakes on PATH, no pin, nothing running: the registry alone decides.
 def --env both []: nothing -> record {
@@ -79,9 +86,9 @@ def "test without a terminal the writing commands say what to install and what f
   assert ($err.help | str contains "ghostty") $err.help
   assert ($err.help | str contains "wezterm") $err.help
   # The theme still renders for the shell, and says there was nothing to write to.
-  theme use onedark
-  assert equal (theme current | get name) onedark
-  assert equal (theme status | select terminal terminal_theme) { terminal: null, terminal_theme: null }
+  terminal theme use onedark
+  assert equal (terminal theme current | get name) onedark
+  assert equal (terminal theme status | select terminal terminal_theme) { terminal: null, terminal_theme: null }
 }
 
 def "test default is Ghostty, WezTerm on Windows" [] {

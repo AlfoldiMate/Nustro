@@ -1,12 +1,12 @@
 # user — your configuration directory as a scaffold: generated once, never overwritten
 #
-#   nu-config user init                      write every scaffold file that is missing;
-#                                            append the knobs settings.nu has never heard of, commented
-#   nu-config user init --dry-run            the list only, nothing written
-#   nu-config user init --force settings.nu  replace one file, keeping <file>.backup-<stamp>
-#   nu-config user status                    every scaffold file: present / edited / missing
-#   nu-config user render settings.nu        what init would write for one file, to stdout
-#   nu-config user set 'const MODULES = [nu-config]'   one assignment into settings.nu, in place
+#   nustro bootstrap scaffold init                       write every scaffold file that is missing;
+#                                                        append the knobs settings.nu has never heard of, commented
+#   nustro bootstrap scaffold init --dry-run             the list only, nothing written
+#   nustro bootstrap scaffold init --force settings.nu   replace one file, keeping <file>.backup-<stamp>
+#   nustro bootstrap scaffold status                     every scaffold file: present / edited / missing
+#   nustro bootstrap scaffold render settings.nu         what init would write for one file, to stdout
+#   nustro set 'const MODULES = [nustro]'                one assignment into settings.nu, in place
 #
 # The work is scaffold.nu, next to this file, run as a script in a `nu -n`
 # of its own: parsing it costs 4.4 ms (2026-09-19), which a shell that never
@@ -33,7 +33,7 @@ def scaffold-run [args: list<string>]: nothing -> any {
   $r.stdout | from nuon
 }
 
-# The scaffold files, for Tab on `user render`: templates/user/ mirrored.
+# The scaffold files, for Tab on `scaffold render`: templates/user/ mirrored.
 # In-process because a completer runs on every keystroke.
 def scaffold []: nothing -> list<string> {
   walk $TEMPLATES | each {|f| $f | path relative-to $TEMPLATES } | sort
@@ -43,8 +43,8 @@ def walk [dir: path]: nothing -> list<string> {
   ls --all $dir | each {|e| if $e.type == "dir" { walk $e.name } else { [$e.name] } } | flatten
 }
 
-# What `user init` would write for one scaffold file, rendered for your directory.
-export def "user render" [
+# What `scaffold init` would write for one scaffold file, rendered for your directory.
+export def "scaffold render" [
   file: string@scaffold   # a path relative to your directory: settings.nu, autoload/README.md, …
   --dir: path             # render for another directory
 ]: nothing -> string {
@@ -52,7 +52,7 @@ export def "user render" [
 }
 
 # Every scaffold file, and whether your directory has it as written, edited, or not at all.
-export def "user status" [
+export def "scaffold status" [
   --dir: path   # another directory than yours
 ]: nothing -> table<file: string, state: string, note: string> {
   scaffold-run ["status" "--dir" ($dir | default (user-root))]
@@ -62,7 +62,7 @@ export def "user status" [
 # that settings.nu gets the knobs it has never mentioned appended, commented,
 # under a dated mark. Safe to run at any time: after an upgrade, after
 # deleting a README to see whether it comes back, on a directory made by hand.
-export def "user init" [
+export def "scaffold init" [
   --dir: path        # the directory to scaffold; install.nu passes the one it is creating
   --dry-run          # report what would be done, write nothing
   --force: string    # one scaffold file to replace even though it exists; the old one is kept as <file>.backup-<stamp>
@@ -80,7 +80,7 @@ export def "user init" [
 # `$env.config.table.mode = "rounded"` — replacing the knob's line whether it
 # is live or commented out, so the value lands in its section, and appending
 # under a dated mark when the file never mentioned it.
-export def "user set" [
+export def "set" [
   line: string   # the assignment, as it would be written in settings.nu
   --dir: path    # another directory than yours
 ]: nothing -> nothing {

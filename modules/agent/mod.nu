@@ -20,9 +20,9 @@
 
 # modules/agent/mod.nu → the repo, for files in it.
 const ROOT = (path self | path dirname | path dirname | path dirname)
-# The error for a missing claude, worded from meta.nuon (nu-config's file, by
+# The error for a missing claude, worded from meta.nuon (nustro's file, by
 # path: forty lines, not the whole module).
-use ../nu-config/missing.nu *
+use ../nustro/missing.nu *
 
 # Where claude runs. Claude Code keys its project (sessions, memory dir) by
 # the cwd string, so this must be the path you use yourself: the config path

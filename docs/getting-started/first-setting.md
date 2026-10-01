@@ -5,9 +5,9 @@ its `defaults.nu`, and the way to change one is to say so in **your**
 `settings.nu`:
 
 ```nu
-nu-config edit user          # your directory in $EDITOR; settings.nu holds every knob, commented out
-nu-config knobs              # every knob, its shipped value, and whether you set it
-nu-config knobs --overridden # just yours
+nustro edit          # your directory in $EDITOR; settings.nu holds every knob, commented out
+nustro knobs              # every knob, its shipped value, and whether you set it
+nustro knobs --overridden # just yours
 ```
 
 Say you want emacs keys and a plain table border. Both lines are already in
@@ -18,7 +18,7 @@ $env.config.edit_mode = "emacs"
 $env.config.table.mode = "rounded"
 ```
 
-Open a new shell — the file is read at startup — and `nu-config knobs
+Open a new shell — the file is read at startup — and `nustro knobs
 --overridden` lists exactly those two.
 
 ## Why that works
@@ -32,7 +32,7 @@ language feature rather than a build step
 ([Layout](../concepts/layout.md#how-the-layering-works)).
 
 `defaults.nu` is the catalogue, and its comments say what each knob does:
-read it (`nu-config edit` opens the checkout), copy the line you want, change
+read it (`nustro edit distro` opens the checkout), copy the line you want, change
 it in your file. [Knobs](../reference/knobs.md) is the same list as a table.
 For every `$env.config` key Nushell has, whether the distro mentions it or
 not:
@@ -63,6 +63,6 @@ them ([Write an autoload drop-in](../cookbook/autoload.md)).
 
 A module's knobs — `AGENT_MODEL`, `ODATA_SERVICE` — go in `settings.nu` too;
 they are not in `defaults.nu` because a module carries its own defaults, but
-`nu-config knobs` lists them with the rest.
+`nustro knobs` lists them with the rest.
 
 Next: [Your first theme](first-theme.md).

@@ -34,7 +34,7 @@ Where things land:
 | caches | `~/.cache/nushell` | `%LOCALAPPDATA%\nushell` |
 | fonts | `~/.local/share/fonts` | `%LOCALAPPDATA%\Microsoft\Windows\Fonts` |
 
-`nu-config doctor` prints every one of them.
+`nustro doctor` prints every one of them.
 
 ## What is the same
 
@@ -47,13 +47,14 @@ Nushell's own `du`, which takes `--max-depth` everywhere.
 
 ## What is different
 
-**The terminal.** The theme picker, `theme use`, `terminal shell` and the
-font installer configure Ghostty or WezTerm (`terminal list` says which is
+**The terminal.** The theme picker, `terminal theme use`, `terminal shell` and
+the font installer configure Ghostty or WezTerm (`terminal list` says which is
 installed, `terminal target` which one is being configured). On Linux both
 exist and the config paths are derived for them, but none of it has been
 run there; in particular whether Ghostty's bare `command = <nu>` starts a
-*login* shell on Linux has not been checked, only that it starts one. There
-is no `ghostty reload` off macOS (it is AppleScript), so a written Ghostty
+*login* shell on Linux has not been checked, only that it starts one. Open
+Ghostty windows are not reloaded off macOS (`terminal reload` is AppleScript
+there), so a written Ghostty
 theme, icon or font reaches new windows only, while the running window is
 repainted over OSC; WezTerm reloads itself everywhere. On Windows there is
 no official Ghostty build (the port is in progress upstream, discussion
@@ -67,7 +68,7 @@ fake in the tests; not run on Windows (2026-09-20). Until a terminal is
 there the shell's colours stay at the ANSI tier — whatever Windows Terminal
 paints.
 
-**Fonts.** `font install` on Linux downloads the Nerd Fonts `.tar.xz`, takes
+**Fonts.** `terminal font install` on Linux downloads the Nerd Fonts `.tar.xz`, takes
 four faces into `~/.local/share/fonts` and runs `fc-cache -f` when fontconfig
 is there; on Windows it takes them from the `.zip` into your user font
 directory and adds one `HKCU\…\Fonts` registry value per file. The Linux
@@ -89,7 +90,7 @@ and `def`, so a missing tool costs a "command not found" the moment you use
 one and nothing at startup. zoxide, atuin and carapace are wired only when
 found, on every platform.
 
-**Plugins.** `nu-config plugins add` registers the `nu_plugin_*` binaries next
+**Plugins.** `nustro plugins add` registers the `nu_plugin_*` binaries next
 to `nu`. A package-manager `nu` on Linux ships them; a release tarball does
 not, and the CI runner's `nu` has none, which is why CI passes
 `--skip-plugins`.

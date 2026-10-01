@@ -5,7 +5,7 @@
 #
 # Everything below is here rather than in settings.nu because it is BEHAVIOUR
 # the distro ships no default for. settings.nu holds values it does — the
-# knobs, which `nu-config knobs` lists — and nothing else.
+# knobs, which `nustro knobs` lists — and nothing else.
 
 # An alias: not a knob, and expanded where it is written. `alias` is parse-
 # time, so it cannot sit inside an `if`.

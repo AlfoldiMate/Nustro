@@ -28,7 +28,7 @@ nu $"($S)/help-tree.nu" cargo        # recursive --help → draft spec (clap, co
 nu $"($S)/verify.nu" git --oracle carapace   # every slot through `commandline complete`, timed, diffed against carapace
 ```
 
-(Paths are relative to the checkout, `nu-config distro-root`, and
+(Paths are relative to the checkout, `(nustro status).distro`, and
 `discover.nu` reads the config it reports on from `CLAUDE_PROJECT_DIR`,
 else the current directory.)
 
@@ -48,8 +48,7 @@ subcommand, flag and positional kind), one cheap subcommand (`git help -a`,
 `starship preset --list`), and only then `--help` scraping or carapace.
 Measure it with `timeit` before you accept it.
 
-**2. Write `completions/starship.nu` in your config directory** (`nu-config
-user-root`):
+**2. Write `completions/starship.nu` in your config directory** (`(nustro status).yours`):
 
 ```nu
 # starship — subcommands from `starship --help` (5 ms, cached for the session),
@@ -136,11 +135,11 @@ that errors is *silent*: Nushell shows files. So none of this is optional.
 nu -l -c '"starship " | commandline complete --detailed | select value description | first 4'
 nu -l -c '"starship preset " | commandline complete --detailed | get value'
 nu -l -c '"starship preset --" | commandline complete --detailed | get value'
-nu -l -c '"starship preset gru" | commandline complete --detailed | get value'      # gruvbox-rainbow
-nu -l -c 'nu-complete run (nu-complete starship spec) [starship preset ""]'         # the error the `try` hides, if any
-nu -l -c 'timeit { "starship preset " | commandline complete --detailed }'          # 1.6 ms
+nu -l -c '"starship preset gru" | commandline complete --detailed | get value'                                      # gruvbox-rainbow
+nu -l -c 'nu-complete run (nu-complete starship spec) [starship preset ""]'                                         # the error the `try` hides, if any
+nu -l -c 'timeit { "starship preset " | commandline complete --detailed }'                                          # 1.6 ms
 nu -l -c '"starship preset " | commandline complete --input | nu-complete smart $in.buffer $in.place | get value'   # the Tab menu path
-nu -l -c 'nu-config startup-time'                                                    # within noise of before
+nu -l -c 'nustro startup-time'                                                                                      # within noise of before
 ```
 
 Run on 2026-09-19: the four subcommand rows with their descriptions, the

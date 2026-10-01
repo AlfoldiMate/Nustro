@@ -82,7 +82,7 @@ function Install-NuZip {
     Expand-Archive "$tmp\nu.zip" -DestinationPath $tmp -Force
     New-Item -ItemType Directory -Path $BinDir -Force | Out-Null
     # nu and the plugins that ship with it have to land in ONE directory:
-    # `nu-config plugins add` registers whatever sits next to the nu binary.
+    # `nustro plugins add` registers whatever sits next to the nu binary.
     Get-ChildItem $tmp -Recurse -Filter 'nu*.exe' | Copy-Item -Destination $BinDir -Force
     Info "installed nu $v into $BinDir"
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')

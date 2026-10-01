@@ -129,7 +129,7 @@ install_nu_tarball() {
   tar xzf "$tmp/nu.tar.gz" -C "$tmp"
   mkdir -p "$BIN_DIR"
   # The tarball holds nu plus the plugins that ship with it, all in one
-  # directory. They have to stay together: `nu-config plugins add` registers
+  # directory. They have to stay together: `nustro plugins add` registers
   # whatever sits next to the nu binary.
   cp "$tmp"/nu-*/nu "$tmp"/nu-*/nu_plugin_* "$BIN_DIR/"
   info "installed nu $v into $BIN_DIR"

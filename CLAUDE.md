@@ -7,7 +7,7 @@ layout.md` of the two directories. Verify before reporting done:
 
 ```nu
 nu-check distro.nu                       # parse, follows every `source`
-nu -l -c 'nu-config doctor'              # loads the config for real
+nu -l -c 'nustro doctor'                 # loads the config for real
 nu -n -c '<snippet>'                     # isolated snippet, no config
 nu tests/run.nu [pattern]                # the suite, docs/reference/tests.md
 ```
@@ -33,9 +33,12 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   `docs:` in `meta.nuon`, shaped by `templates/module-doc.md`) and, for a
   design worth a page, `docs/concepts/<name>.md`. Wiring in `activate`
   (defaults via `default`, never assignment), knobs declared in `meta.nuon`
-  rather than `defaults.nu`. `nu-config module lint` enforces it. A lazy
+  rather than `defaults.nu`. `nustro module lint` enforces it. A lazy
   module is interactive-only — `pre_execution` does not fire for `nu -c` or
-  scripts.
+  scripts. In `modules/nustro`, what a person types is exported from
+  `mod.nu` by name; everything else is plumbing under `nustro bootstrap …`
+  (`bootstrap.nu`), and `nustro repair` (`repair.nu`) re-runs the wiring
+  steps in order.
 - Docs are one tree under `docs/`: `getting-started/`, `concepts/` (design
   records), `reference/` (commands, knobs, files), `cookbook/` (one task per
   page, run as written before it is committed). No README in `modules/`,
@@ -47,22 +50,25 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   inside an `if`, they are parse-time.
 - Generated files (`vendor/autoload/*.nu`), `plugin.msgpackz`, history and
   `autoload/*` live in the user's config dir, not here. Change the generator in
-  `modules/nu-config/tools.nu`, never the generated file.
+  `modules/nustro/tools.nu`, never the generated file.
 - The user directory's scaffold is `templates/user/` (a README per
   directory, three `.off` examples, the `settings.nu` header), rendered by
-  `modules/nu-config/scaffold.nu` — a script `user.nu` runs in a `nu -n`, so
+  `modules/nustro/scaffold.nu` — a script `user.nu` runs in a `nu -n`, so
   startup never parses it: `settings.nu`'s body is generated from
   `defaults.nu` and the module `meta.nuon`s, relative links are rewritten per
   destination. Edit the template or the generator, never a rendered file;
-  test with `nu -l --config <scratch>/config.nu -c 'nu-config user init'`.
+  test with `nu -l --config <scratch>/config.nu -c 'nustro bootstrap
+  scaffold init'`.
 - Install: `install.nu` is the front door and imports nothing (the Nushell
   version against `nustro.nuon`, the checkout, the parse — then it runs
   `bootstrap/installer.nu` in a `nu -n`); `uninstall.nu` imports nothing
   either. The installer moves a configuration that is not ours to
   `<config dir>/.backup/<stamp>/` with a manifest, proves a new `nu -l`
-  loads the distro before any step that needs `nu-config`, and runs each
-  later step in a shell of its own. Tools are installed by `nu-config deps
-  install` (`modules/nu-config/deps.nu`), never by the installer itself.
+  loads the distro before any step that needs `nustro`, and runs each
+  later step in a shell of its own — the steps are `nustro bootstrap …`
+  commands, the same ones `nustro repair` re-runs (`repair --hard` and
+  `--reset` run the installer again). Tools are installed by `nustro deps
+  install` (`modules/nustro/deps.nu`), never by the installer itself.
   Test both against scratch XDG dirs with `--skip-deps --skip-terminal
   --skip-harness`; never run either against the real config directory.
 - Tests: `tests/<concern>.test.nu`, one `def "test <name>"` per case on
@@ -73,7 +79,7 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   inside every module the file `use`s. Fixtures under `tests/fixtures/`. Run
   before every commit. `tests/pty/` drives Tab in a pseudo-terminal (Python).
 - Comments explain why, and state measured costs (`timeit`,
-  `nu-config startup-time`), not estimates.
+  `nustro startup-time`), not estimates.
 - Nushell makes breaking changes at minor versions. `help <cmd>` and
   `config nu --doc` on the installed binary beat memory and web snippets.
 - OData (`modules/odata`, `docs/concepts/odata.md`): `where` cannot be
@@ -81,19 +87,23 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   and `odata get` applies it. Test the module without touching real state:
   `nu -n` + `use modules/odata *` + `$env.ODATA_SERVICES = {…}` (the scratch
   registry); the hook only in a pty.
-- Theme: one palette in roles, rendered by `theme use` into the user's
+- Theme: one palette in roles, rendered by `terminal theme use` into the user's
   `.state/theme/` — a Ghostty theme file or a WezTerm scheme, app icon,
   Nushell, starship, vivid (`docs/concepts/theming.md`). Templates in `themes/`
   are written in roles, never hex; `themes/palettes/nvchad/` is generated by
-  its `import.nu`, never edited. `theme resolve <name>` / `theme roles <name>`
-  show a resolution without writing; `theme sync` re-renders after a template
-  edit. The terminal written is `terminal target` (Ghostty or WezTerm;
-  `NUSTRO_TERMINAL` overrides for a process); `ghostty reload` (AppleScript)
-  applies a written Ghostty config to open windows, WezTerm reloads itself.
+  its `import.nu`, never edited. `terminal theme resolve <name>` /
+  `terminal theme roles <name>` show a resolution without writing;
+  `terminal theme sync` re-renders after a template edit. The terminal
+  written is `terminal target` (Ghostty or WezTerm; `NUSTRO_TERMINAL`
+  overrides for a process); `terminal reload` applies a written Ghostty
+  config to open windows (AppleScript), WezTerm reloads itself. Every
+  exported command starts with `terminal`; `ghostty …` and `wezterm …` are
+  the module's internal backends, reached by file (`use
+  terminal/ghostty.nu *`).
   The registry in `modules/terminal/registry.nu` is data plus `match` verbs,
   never a table of closures (130 ms of eager startup, measured).
 - A module with a hard dependency is lazy and errors through
-  `missing-tool` (`modules/nu-config/missing.nu`) from its `meta.nuon`
+  `missing-tool` (`modules/nustro/missing.nu`) from its `meta.nuon`
   (`why`, `install`, `then`); `module lint` enforces both.
 - Completion lives in `modules/nu-complete` + `completions/<tool>.nu`
   (`docs/concepts/completion.md`). Test it without a terminal:
@@ -101,7 +111,9 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   `nu -l -c '"ls | where " | commandline complete --input'` (the `place` a
   completer is handed) and `nu -l -c '"ls | where " | commandline complete
   --input | nu-complete smart $in.buffer $in.place'`. `nu --ide-complete`
-  does not run `@complete` completers. `nu -l -c 'nu-complete explain "<line>"'`
-  names the rule that answered and its cost. The Tab menu's source runs on
+  does not run `@complete` completers. `nu -l -c 'nustro completion explain
+  "<line>"'` names the rule that answered and its cost (`nustro completion
+  …` is what a person types; `nu-complete …` is the engine's API a spec
+  calls). The Tab menu's source runs on
   the editor's thread on every keystroke: nothing in it may fork per key —
   memoise per slot (`nu-complete cache`) and narrow locally.

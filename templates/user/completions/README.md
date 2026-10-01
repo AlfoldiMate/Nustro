@@ -12,7 +12,7 @@ checkout's `completions/` — shadows it.
 
 ```nu
 agent completion gh                          # let the agent build it from the tool's own sources
-nu-config fetch completion docker            # vendor one from nu_scripts, plain `extern`s
+nustro completion fetch docker               # vendor one from nu_scripts, plain `extern`s
 ```
 
 or write the spec by hand. `hello.nu.off` is a complete module for a

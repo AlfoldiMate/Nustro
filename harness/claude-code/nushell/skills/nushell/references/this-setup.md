@@ -1,15 +1,16 @@
 # Nustro: the distro and the user layer
 
 This file applies when the shell's configuration is Nustro, the Nushell
-distro (`nu -l -c 'nu-config doctor'` succeeds and names both roots). It
+distro (`nu -l -c 'nustro doctor'` succeeds and names both roots). It
 describes what the distro is, not one machine: the concrete paths, the
-terminal, the edit mode and the theme are what `nu-config doctor`,
-`nu-config knobs` and `theme status` print on the machine at hand.
+terminal, the edit mode and the theme are what `nustro status`, `nustro
+doctor`, `nustro knobs` and `terminal theme status` print on the machine at
+hand (`terminal` is a lazy module: in `nu -l -c` say `use terminal *` first).
 
 Nushell is **0.116** (the bootstrap installs it: Homebrew on macOS, winget
 on Windows, a release on Linux). The terminal is Ghostty or WezTerm —
 `terminal target` says which — with one theme rendered for everything by
-`theme use` (`docs/concepts/theming.md`); the prompt is Starship.
+`terminal theme use` (`docs/concepts/theming.md`); the prompt is Starship.
 
 ## Two directories, and which one to edit
 
@@ -34,7 +35,8 @@ directory and derives history, the plugin registry, the autoload dirs and
   breaks every new terminal, so `nu-check distro.nu` before reporting
   anything done.
 - **Changing one machine only** — a knob goes in the user's `settings.nu`
-  (`nu-config edit user`), behaviour goes in a file in the user's `autoload/`.
+  (`nustro edit` opens the directory; `nustro set '<assignment>'` writes one
+  line in its place), behaviour goes in a file in the user's `autoload/`.
 - **Never write user state into the checkout.** History, the plugin registry,
   generated tool files and module state all live in the user directory; the
   `.gitignore` is four lines because of it.
@@ -60,26 +62,53 @@ what Nushell loads when.
   runtime. The two JSON caches that remain are measured and commented.
 - Modules follow `docs/concepts/modules.md`: `mod.nu` + `load.nu` + `meta.nuon`,
   code only — the page is `docs/reference/modules/<name>.md` — wiring in
-  `activate`, knobs in `meta.nuon`. `nu-config module lint` enforces it.
+  `activate`, knobs in `meta.nuon`. `nustro module lint` enforces it.
 
 ## Commands this config adds
 
 | | |
 |---|---|
-| `nu-config` | `doctor`, `knobs`, `module list\|lint\|enable\|disable`, `tools setup\|status`, `plugins list\|add`, `harness status\|register\|update`, `upgrade`, `startup-time`, `loaded-files`, `fetch completion`, `edit`, `edit user` |
-| `nu-complete` | the Tab engine: `status`, `cache clear`, `run`, `smart` |
-| `theme` / `font` / `terminal` / `ghostty` / `wezterm` | the terminal itself: Ghostty or WezTerm, `terminal target` says which (lazy module) |
+| `nustro` / `nustro status` | one record: `version`, `head`, `upstream`, `layout`, `distro`, `yours`, `modules`, `lazy`, `theme`, and `attention` — rows of `{what, fix}` |
+| `nustro doctor` | the full health check, printed |
+| `nustro repair [--dry-run]` | re-runs every wiring step (settings, state, scaffold, tools, plugins, theme, completion, harness, parse); a table of `step`, `result`, `note`. `--hard` runs the installer again with every default; `--reset` runs it from an empty directory, asks first and needs a terminal — never run `--reset` for a user |
+| `nustro upgrade`, `upgrade status`, `upgrade rollback` | pull the checkout (checked before it lands); the last check; back to the last version that parsed |
+| `nustro edit`, `edit distro` | the user's config directory in `$EDITOR`; the checkout |
+| `nustro set '<assignment>'` | one assignment into the user's `settings.nu`, on the knob's own line |
+| `nustro knobs [--overridden]` | every knob, its owner, whether the user set it |
+| `nustro module list\|info\|check\|help\|enable\|disable\|lint` | the module system |
+| `nustro deps status\|manager\|install` | starship, zoxide, atuin, carapace, vivid |
+| `nustro plugins status\|add` | the plugins beside `nu`, and registering them |
+| `nustro completion explain "<line>"\|status\|clear\|fetch <tool>` | Tab, as a person asks about it |
+| `nustro harness status\|register\|update` | the checkout as a Claude Code marketplace |
+| `nustro startup-time`, `loaded-files` | cold-start timing; what this session parsed |
+| `nustro bootstrap …` | plumbing the installer, the startup hooks and `repair` run: `scaffold init\|status\|render`, `tools setup\|status\|remove\|dir`, `upgrade check\|stale\|notice\|good\|head\|branch`, `plugins notice`, `root`, `user-root`, `layout`, `config-dir`, `in-place?`, `manifest`, `nu-older-than`, `missing-tool`, `missing-tools` |
+| `nu-complete` | the Tab engine, the API a spec in `completions/` calls: `run`, `smart`, `external`, `quote`, `cache`, `status`, `explain` |
+| `terminal` (lazy) | the terminal itself — Ghostty or WezTerm, `terminal target` says which: `status` (also bare `terminal`), `list`, `current`, `target`, `default`, `use`, `install`, `shell`, `option`, `settings`, `set`, `reset`, `reload`, `live` |
+| `terminal theme` (lazy) | the picker (interactive); `use <name>`, `list`, `preview`, `reset`, `sync`, `icon`, `current`, `roles`, `resolve`, `status`, `slug` |
+| `terminal font` (lazy) | the picker (interactive); `use <name>`, `list`, `install`, `preview`, `size`, `specimen`, `dir` |
 | `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |
 | `odata` | OData V2/V4 services as tables (lazy) |
 | `worktree` | bare repo + a directory per branch, gitignored files from profiles: `init`, `add`, `remove`, `apply`, `discard`, `which` (lazy) |
 
-`nu-config doctor` is the first thing to run when something looks wrong: both
-roots, the layout state (`split` is the target), every derived path, a parse
-check, tools, plugins, modules and startup time.
+`nustro status | get attention` is the first thing to read when something
+looks wrong — each row names what is off and the command that fixes it —
+and `nustro doctor` the long form: both roots, the layout state (`split` is
+the target), every derived path, a parse check, tools, plugins, modules and
+startup time. `nustro repair` puts the wiring back and replaces nothing of
+the user's; reach for a `nustro bootstrap …` command only for one targeted
+step.
+
+`nu-config`, `theme`, `font`, `ghostty` and `wezterm` are not command words
+any more (0.2.0, 2026-10-02): they are `nustro …` and `terminal …`. `ghostty
+set`, `wezterm live` and the like still exist inside the module as its
+backends, reachable in a script or a test with `use terminal/ghostty.nu *`;
+at the prompt the equivalent is `terminal set`, `terminal live`, `terminal
+theme list --ghostty`. The binaries `ghostty` and `wezterm` are the
+terminals' own.
 
 ## What the defaults set
 
-`defaults.nu` is every knob with its default and the reason; `nu-config
+`defaults.nu` is every knob with its default and the reason; `nustro
 knobs` prints them with the user's overrides; `docs/reference/knobs.md` is
 the table. The shape, as shipped:
 
@@ -89,22 +118,25 @@ the table. The shape, as shipped:
 - **Banner** off · **History** sqlite, 1M entries
 - **Tab** the smart menu (`SMART_TAB`), pipeline-aware, fuzzy matching
   ranked in tiers and searching descriptions, `NU_COMPLETE_EVAL = "safe"`
-- **Theme** whatever `theme use` rendered last into `.state/theme/` (no knob);
-  tables, `ls`, bat and the starship prompt all come from it. `theme status`,
-  `theme roles`
-- **Modules** `nu-config` and `nu-complete` eager; `terminal`, `agent`, `odata`,
-  `worktree` lazy — loaded by a `pre_execution` hook on the first line that mentions them,
-  which means they do **not** load for `nu -c` or a script
+- **Theme** whatever `terminal theme use` rendered last into `.state/theme/`
+  (no knob); tables, `ls`, bat and the starship prompt all come from it.
+  `terminal theme status`, `terminal theme roles`
+- **Modules** `nustro` and `nu-complete` eager; `terminal`, `agent`, `odata`,
+  `worktree` lazy — loaded by a `pre_execution` hook on the first line that
+  starts with the module's word (`expand` also loads `odata`; `terminal` has
+  no other trigger word), which means they do **not** load for `nu -c` or a
+  script: `use terminal *` first
 - **`open`** left alone: it is Nushell's parser. Use `start <path>` to launch a
   file in its app, and `%open` inside completion modules in case a user aliased it
 
 ## Tools
 
-Generated into the user's `vendor/autoload/` by `nu-config tools setup`, from
-the registry in `modules/nu-config/tools.nu`: **zoxide**, **atuin**,
-**carapace**. Installed → generated, absent → pruned, so presence on PATH is
-the switch. vivid and starship are the theme's: `theme use` renders LS_COLORS
-and a starship.toml into `.state/theme/`, and starship is wired by hand in
+Generated into the user's `vendor/autoload/` by `nustro repair` (its `tools`
+step, `nustro bootstrap tools setup`), from the registry in
+`modules/nustro/tools.nu`: **zoxide**, **atuin**, **carapace**. Installed →
+generated, absent → pruned, so presence on PATH is the switch. vivid and
+starship are the theme's: `terminal theme use` renders LS_COLORS and a
+starship.toml into `.state/theme/`, and starship is wired by hand in
 `conf/prompt.nu`. Homebrew's `command_not_found` and direnv are in
 `conf/tools.nu`, each guarded with `which`.
 
@@ -115,10 +147,10 @@ zoxide are absent there — source the generated file if a test needs one.
 
 ```nu
 nu-check distro.nu                 # parse, follows every `source`
-nu -l -c 'nu-config doctor'        # loads the config for real
-nu -l -c 'nu-config module lint'   # the only check that reaches a lazy module
+nu -l -c 'nustro doctor'           # loads the config for real
+nu -l -c 'nustro module lint'      # the only check that reaches a lazy module
 nu -n -c '<snippet>'               # isolated snippet, no config
-nu -l -c 'nu-config startup-time'  # ~84 ms; regression-check after adding anything
+nu -l -c 'nustro startup-time'     # ~84 ms; regression-check after adding anything
 ```
 
 `nu -c '...'` and `nu script.nu` load no user config at all and prove nothing
@@ -127,17 +159,19 @@ that imports a module reports `false` there for reasons unrelated to the file.
 
 ## Updating
 
-`nu-config upgrade` pulls the checkout (fast-forward only), renders any
+`nustro upgrade` pulls the checkout (fast-forward only), renders any
 scaffold file a release added to the user directory, and — when `claude` is
 on PATH and the checkout is the registered marketplace — refreshes the
-marketplace and every plugin installed from it (`nu-config harness update`
-does that part alone). The shell says at start when the checkout is behind.
+marketplace and every plugin installed from it (`nustro harness update`
+does that part alone). The shell says at start when the checkout is behind,
+and `nustro status` says it as `upstream`. After an upgrade, or whenever
+`attention` lists something, `nustro repair` re-runs the wiring.
 
 ## After `brew upgrade nushell`
 
 ```nu
-nu-config plugins add    # the registry is protocol-versioned against the binary
-nu-config doctor
+nustro plugins add    # the registry is protocol-versioned against the binary
+nustro status         # `attention` is empty when nothing else needs doing
 ```
 
 Nushell makes breaking changes at minor versions: when the pin moves, the config

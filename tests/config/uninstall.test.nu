@@ -62,7 +62,7 @@ def "test uninstall of a first configuration leaves yours in place" [] {
   assert ($user | path join settings.nu | path exists)
   assert ($user | path join autoload README.md | path exists)
   # A plain Nushell now: nothing of the distro in a new shell.
-  let shell = ^$nu.current-exe -l -c 'scope commands | where name == "nu-config doctor" | length' | complete
+  let shell = ^$nu.current-exe -l -c 'scope commands | where name == "nustro doctor" | length' | complete
   assert equal ($shell.stdout | str trim) "0" $shell.stderr
   # --purge takes the scaffold too; a second run has nothing left to do.
   let purge = uninstall --yes --purge

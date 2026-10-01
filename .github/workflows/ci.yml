@@ -61,7 +61,7 @@ jobs:
 
       - name: the split happened
         run: |
-          nu -l -c 'let s = (nu-config install-status); print $s; if $s.state != "split" { error make { msg: $"layout is ($s.state), not split" } }'
+          nu -l -c 'let s = (nustro bootstrap layout); print $s; if $s.state != "split" { error make { msg: $"layout is ($s.state), not split" } }'
 
       - name: parse
         run: |
@@ -71,10 +71,10 @@ jobs:
       # because they are sourced by a runtime hook rather than by `source`.
       - name: module contract
         run: |
-          nu -l -c 'let p = (nu-config module lint); print $p; if ($p | is-not-empty) { error make { msg: "module lint failed" } }'
+          nu -l -c 'let p = (nustro module lint); print $p; if ($p | is-not-empty) { error make { msg: "module lint failed" } }'
 
       - name: doctor
-        run: nu -l -c 'nu-config doctor'
+        run: nu -l -c 'nustro doctor'
 
       # The suite. Every shell it starts has a config directory of its own
       # under the run's scratch directory, so it neither needs nor touches the
@@ -86,7 +86,7 @@ jobs:
       # the defaults/settings layering works, and it is cheap to keep honest.
       - name: no overrides after a default install
         run: |
-          nu -l -c 'let k = (nu-config knobs --overridden); print $k; if ($k | is-not-empty) { error make { msg: "a default install wrote overrides" } }'
+          nu -l -c 'let k = (nustro knobs --overridden); print $k; if ($k | is-not-empty) { error make { msg: "a default install wrote overrides" } }'
 
       # The scaffold the installer wrote, and its three examples: complete and
       # working, inert only by name. Renamed, the drop-in has to parse and
@@ -95,9 +95,9 @@ jobs:
       # copies are made in one shell and checked in the next.
       - name: the scaffold is complete and the examples work once renamed
         run: |
-          nu -l -c 'let s = (nu-config user status); print $s; if ($s | where state != present | is-not-empty) { error make { msg: "the scaffold is not as written" } }'
+          nu -l -c 'let s = (nustro bootstrap scaffold status); print $s; if ($s | where state != present | is-not-empty) { error make { msg: "the scaffold is not as written" } }'
           nu -l -c '
-            cd (nu-config user-root)
+            cd (nustro bootstrap user-root)
             cp autoload/example.nu.off autoload/example.nu
             cp completions/hello.nu.off completions/hello.nu
             cp themes/palettes/example.nuon.off themes/palettes/example.nuon
@@ -117,7 +117,7 @@ jobs:
             # single-quoted string.)
             if not ([greet wave] | all {|x| $x in $subs }) or $lang != [en fr de] { error make { msg: "hello.nu does not complete its slots" } }
             use terminal *
-            let t = (theme resolve Example | select name by tier)
+            let t = (terminal theme resolve Example | select name by tier)
             print $t
             if $t.tier != "palette" { error make { msg: "example.nuon did not resolve as a palette" } }
           '
@@ -146,4 +146,4 @@ jobs:
         run: |
           nu uninstall.nu --dry-run
           nu uninstall.nu --yes --skip-harness
-          nu -l -c 'if (scope commands | where name == "nu-config doctor" | is-not-empty) { error make { msg: "the distro is still loaded after uninstall.nu" } }'
+          nu -l -c 'if (scope commands | where name == "nustro doctor" | is-not-empty) { error make { msg: "the distro is still loaded after uninstall.nu" } }'

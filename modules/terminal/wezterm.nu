@@ -322,7 +322,7 @@ export def "wezterm preview" [family: string, size: number, argv: list<string>]:
   ^$w --config $"font=wezterm.font\(($family | to json)\)" --config $"font_size=($size)" --config "initial_cols=78" --config "initial_rows=16" start --always-new-process -- ...$argv
 }
 
-# The keys `font use` and `font size` write, in this terminal's vocabulary.
+# The keys `terminal font use` and `terminal font size` write, in this terminal's vocabulary.
 export def "wezterm font-keys" [family?: string, size?: number]: nothing -> record {
   { font_family: $family, font_size: $size }
 }
@@ -342,7 +342,7 @@ def link []: nothing -> nothing {
     mkdir ($cfg | path dirname)
     [
       "-- WezTerm configuration. https://wezterm.org/config/files.html"
-      $"-- The two lines before `return` pull in ($OURS), which `nu-config` writes."
+      $"-- The two lines before `return` pull in ($OURS), which `nustro` writes."
       "local wezterm = require 'wezterm'"
       "local config = wezterm.config_builder()"
       ""

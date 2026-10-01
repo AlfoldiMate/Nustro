@@ -14,9 +14,9 @@ modules/<name>/
   README.md    what it is, every command, configuration, dependencies, costs, limits — named by `docs: README.md` in meta.nuon
 ```
 
-`nu-config module lint` checks every module here against the shipped ones'
-contract, `nu-config module info <name>` shows what its `meta.nuon` says,
-and `nu-config module list` whether this shell loaded it. A module of yours
+`nustro module lint` checks every module here against the shipped ones'
+contract, `nustro module info <name>` shows what its `meta.nuon` says,
+and `nustro module list` whether this shell loaded it. A module of yours
 is wired in by a `use` in `settings.nu` — `use` is parse-time, so it cannot
 sit in `autoload/` or inside an `if`.
 

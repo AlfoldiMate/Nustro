@@ -1,16 +1,16 @@
 # theme — Ghostty's own themes: listing them, reading them, and painting a
 # palette onto the running terminal
 #
-#   ghostty themes        every theme Ghostty can find (--swatches: in colour)
-#   theme palette <name>  one Ghostty theme file as data: the sixteen and the named colours
-#   theme paint <record>  paint this session with a palette record, nothing on disk
-#   theme reset           back to what the terminal's config says
-#   theme ghostty-file    a palette record as a Ghostty theme file
-#   theme wezterm-file    the same as a WezTerm colour scheme file (TOML)
-#   theme state-dir       where `theme use` renders to
-#   theme slug <name>     the file name a theme has
+#   ghostty themes                  every theme Ghostty can find (--swatches: in colour)
+#   terminal theme palette <name>   one Ghostty theme file as data: the sixteen and the named colours
+#   terminal theme paint <record>   paint this session with a palette record, nothing on disk
+#   terminal theme reset            back to what the terminal's config says
+#   terminal theme ghostty-file     a palette record as a Ghostty theme file
+#   terminal theme wezterm-file     the same as a WezTerm colour scheme file (TOML)
+#   terminal theme state-dir        where `terminal theme use` renders to
+#   terminal theme slug <name>      the file name a theme has
 #
-# Choosing a theme — `theme`, `theme list`, `theme use`, `theme preview` — and
+# Choosing a theme — `terminal theme`, `terminal theme list`, `terminal theme use`, `terminal theme preview` — and
 # what the choice means for the shell is palette.nu, which builds on the two
 # things here: a Ghostty theme file as data, and a palette painted onto the
 # window you are in.
@@ -26,12 +26,12 @@ use ghostty.nu *
 
 # ── Where things live ─────────────────────────────────────────────────────────
 
-export def "theme state-dir" []: nothing -> path {
+export def "terminal theme state-dir" []: nothing -> path {
   $nu.data-dir | path join .state theme
 }
 
 # "Catppuccin Macchiato" → catppuccin-macchiato: the file name a palette has.
-export def "theme slug" [name: string]: nothing -> string {
+export def "terminal theme slug" [name: string]: nothing -> string {
   $name | str lowercase | str replace -ra '[^a-z0-9]+' '-' | str trim -c '-'
 }
 
@@ -60,7 +60,7 @@ export def "ghostty themes" [
     | insert path {|r| $dirs | get -o $r.source | default "" | path join $r.theme }
   )
   if not $swatches { return $themes }
-  $themes | insert colours {|t| theme swatch (theme-hexes $t.path) }
+  $themes | insert colours {|t| terminal theme swatch (theme-hexes $t.path) }
 }
 
 # Ghostty's two theme directories, keyed by the label `+list-themes` prints.
@@ -81,16 +81,16 @@ def theme-dirs []: nothing -> record {
 # One theme file: `palette = N=#hex` for 0-15 plus a few named colours, which are
 # the same things OSC can set. Anything else Ghostty allows in a theme is ignored
 # rather than rejected — a theme is data, and a new key is Ghostty's business.
-export def "theme palette" [name: string@"ghostty names"]: nothing -> record {
+export def "terminal theme palette" [name: string@"ghostty names"]: nothing -> record {
   let f = (ghostty themes | where theme == $name | get -o 0.path)
   if $f == null { error make { msg: $"Ghostty has no theme called '($name)'" } }
-  theme read $f $name
+  terminal theme read $f $name
 }
 
 # Reads a theme FILE. Everything that works over all 463 goes through here with
-# a path from a single `theme list`, never through `theme palette`, which spawns
+# a path from a single `terminal theme list`, never through `terminal theme palette`, which spawns
 # Ghostty to resolve the name — 463 spawns is eight seconds.
-export def "theme read" [file: path, name: string]: nothing -> record {
+export def "terminal theme read" [file: path, name: string]: nothing -> record {
   let text = (open $file)
   {
     theme: $name
@@ -120,7 +120,7 @@ export def "ghostty names" []: nothing -> list<string> {
 # OSC 19;#hex    selection foreground     OSC 119   reset selection foreground
 #
 # "Reset" means back to whatever Ghostty's own configuration says, which is why
-# `theme reset` needs no memory of what was there before.
+# `terminal theme reset` needs no memory of what was there before.
 
 # `char esc` does not exist in 0.115 — `char --list` has no name for ESC at all,
 # and `char -u 1b` reads "1b" as a filesize. A \u escape is the way to write it.
@@ -140,20 +140,20 @@ def paint [t: record]: nothing -> string {
   $pal ++ $named | str join
 }
 
-# Paint this session with a palette record (`theme palette`'s shape: `palette`
+# Paint this session with a palette record (`terminal theme palette`'s shape: `palette`
 # 0-15 and `named`) and change nothing on disk. The test is `is-terminal
 # --stdout`, not `$nu.is-interactive`: these bytes are instructions to a
 # terminal and in a pipeline they would be data, so what matters is where
 # stdout goes. It is also why install.nu can preview — a script is never
 # "interactive", but its stdout is the terminal you are looking at.
-export def "theme paint" [t: record]: nothing -> nothing {
-  if not (is-terminal --stdout) { error make { msg: "theme paint paints a terminal; stdout is not one" } }
+export def "terminal theme paint" [t: record]: nothing -> nothing {
+  if not (is-terminal --stdout) { error make { msg: "terminal theme paint paints a terminal; stdout is not one" } }
   print -n (paint $t)
 }
 
 # A Ghostty theme file's palette record as the `theme = ` lines Ghostty reads,
 # so a palette that is not one of Ghostty's can be handed to it as a file.
-export def "theme ghostty-file" [t: record]: nothing -> string {
+export def "terminal theme ghostty-file" [t: record]: nothing -> string {
   let pal = ($t.palette | transpose i hex | sort-by {|r| $r.i | into int } | each {|p| $"palette = ($p.i)=($p.hex)" })
   let named = ($t.named | transpose k v | each {|n| $"($n.k) = ($n.v)" })
   $pal ++ $named ++ [""] | str join (char nl)
@@ -163,14 +163,14 @@ export def "theme ghostty-file" [t: record]: nothing -> string {
 # as `ansi` and `brights`, the named colours under WezTerm's names, and the
 # `[metadata]` block that names the scheme for `color_scheme =`. Verified
 # 2026-09-20: a file of this shape under `color_scheme_dirs` loads by name.
-export def "theme wezterm-file" [t: record, name: string]: nothing -> string {
+export def "terminal theme wezterm-file" [t: record, name: string]: nothing -> string {
   let hexes = ($t.palette | transpose i hex | sort-by {|r| $r.i | into int } | get hex)
   let named = {
     foreground: foreground, background: background, cursor-color: cursor_bg
     selection-background: selection_bg, selection-foreground: selection_fg
   }
   ([
-    "# Written by Nustro (`theme use`) from a palette; rewritten at every render."
+    "# Written by Nustro (`terminal theme use`) from a palette; rewritten at every render."
     "[colors]"
   ]
   ++ ($named | transpose k v | each {|n| let v = ($t.named | get -o $n.k); if $v == null { [] } else { [$"($n.v) = ($v | to json)"] } } | flatten)
@@ -186,7 +186,7 @@ export def "theme wezterm-file" [t: record, name: string]: nothing -> string {
 
 # Hand the palette back to the terminal's configuration — the way out of a preview
 # you did not keep, and of a session someone left half-painted.
-export def "theme reset" []: nothing -> nothing {
+export def "terminal theme reset" []: nothing -> nothing {
   if not (is-terminal --stdout) { return }
   print -n ([104 110 111 112 117 119] | each {|c| osc ($c | into string) } | str join)
 }
@@ -194,7 +194,7 @@ export def "theme reset" []: nothing -> nothing {
 # Sixteen blocks in the theme's own colours, as truecolor, so a swatch shows what
 # the theme IS rather than what the current palette happens to be. Bit shifts
 # rather than splitting the hex into pairs: 95 ms over all 463 instead of 380 ms.
-export def "theme swatch" [hexes: list<string>]: nothing -> string {
+export def "terminal theme swatch" [hexes: list<string>]: nothing -> string {
   $hexes
   | each {|hex|
       let n = ($"0x($hex | str substring 1..)" | into int)

@@ -13,7 +13,7 @@ map of the two directories it walks.
 | 4 | internal `default_env.nu` (the two default prompt closures), then **`<your>/env.nu`** | nothing — the distro ships none, see below |
 | 5 | internal `default_config.nu` (`$env.config = {}`), then **`<your>/config.nu`** | three lines: `source` the distro's `distro.nu`, which then does everything in [Layout](layout.md) |
 | 6 | **`<your>/login.nu`**, only for `nu -l` | nothing — see below |
-| 7 | every `*.nu` in `$nu.vendor-autoload-dirs`, last directory wins | the generated tool init files (`nu-config tools setup`) |
+| 7 | every `*.nu` in `$nu.vendor-autoload-dirs`, last directory wins | the generated tool init files (`nustro bootstrap tools setup`) |
 | 8 | every `*.nu` in `$nu.user-autoload-dirs` = `<your>/autoload` | your drop-ins, the last word |
 
 Three consequences:
@@ -66,7 +66,7 @@ Step 5 is the interesting one, because not all of it happens at step 5.
 parsed at startup:
 
 ```nu
-const MODULES = [nu-config nu-complete terminal agent odata worktree]
+const MODULES = [nustro nu-complete terminal agent odata worktree]
 const MODULES_LAZY = [terminal agent odata worktree]
 ```
 
@@ -99,8 +99,8 @@ M-series Mac, `$nu.startup-time`, 2026-09-19:
 **The limit, and it is inherent:** `pre_execution` never fires for `nu -c` or a
 script, so a lazy module is interactive-only. A script must say `use odata *`
 itself. Move a name out of `MODULES_LAZY` in your `settings.nu` to have it
-always loaded; `nu-config module list` shows the current state, and
-`nu-config loaded-files` shows what was actually parsed this session, which is
+always loaded; `nustro module list` shows the current state, and
+`nustro loaded-files` shows what was actually parsed this session, which is
 how you find a slow import ([Enable a module, make it lazy, see what it costs](../cookbook/modules.md)).
 
 `agent` is the one module with a `stub.nu`: it is sourced unconditionally
@@ -118,5 +118,5 @@ $nu.plugin-path             # plugin.msgpackz, per machine
 $nu.cache-dir               # completion and schema caches
 ```
 
-`nu-config doctor` prints them all, with both roots and the layout state, and
+`nustro doctor` prints them all, with both roots and the layout state, and
 checks that they line up.

@@ -1,6 +1,6 @@
-# theme.nu — colours: the theme `theme use` rendered, or the ANSI tier.
+# theme.nu — colours: the theme `terminal theme use` rendered, or the ANSI tier.
 #
-# There is no THEME knob. A theme is chosen with `theme use <name>` (the
+# There is no THEME knob. A theme is chosen with `terminal theme use <name>` (the
 # terminal module), which paints the window, writes Ghostty's config, and
 # renders the shell's own colours into <your dir>/.state/theme/ — the roles
 # for themes/nushell.nu, a starship.toml, vivid's LS_COLORS. This file loads
@@ -8,7 +8,7 @@
 # find the theme file and a render runs vivid — 40 ms — while a start is one
 # `open` of a 1 kB NUON, 0.36 ms (median of 21), plus 0.09 ms for LS_COLORS.
 #
-# Before the first `theme use` there is no state, and tier one applies:
+# Before the first `terminal theme use` there is no state, and tier one applies:
 # themes/palettes/ansi.nuon, every role an ANSI name, so the shell follows
 # whatever sixteen colours the terminal paints. Which is also what a machine
 # without Ghostty gets. modules/terminal/palette.nu explains the tiers.
@@ -25,7 +25,7 @@ let palette = (
 # The text_ and tint_ families and on_tint (docs/concepts/theming.md) are the
 # hues' own names in tier one, and a theme.nuon rendered before they existed
 # (2026-09-19) has none: whatever is missing is filled from the hues here, so
-# an older render still paints and `theme sync` brings the real ones. Measured
+# an older render still paints and `terminal theme sync` brings the real ones. Measured
 # 0.21 ms when nothing is missing, 0.50 ms filling all 31, medians of 21.
 const HUES = [red green yellow blue magenta cyan bright_red bright_green bright_yellow bright_blue bright_magenta bright_cyan orange purple pink teal accent accent_alt]
 let c = (

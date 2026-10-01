@@ -1,10 +1,10 @@
-# update — is the distro checkout behind its remote, and pulling it
+# upstream — is the distro checkout behind its remote, and pulling it
 #
-#   nu-config upgrade            git pull --ff-only in the checkout, say what changed, update the Claude Code plugins
-#   nu-config upgrade check      fetch now and report where the checkout stands
-#   nu-config upgrade status     the last check's result; touches no network
-#   nu-config upgrade notice     the one-line "there is an update" the shell prints at start
-#   nu-config upgrade rollback   check out the last version that parsed; `upgrade` returns
+#   nustro upgrade                    git pull --ff-only in the checkout, say what changed, update the Claude Code plugins
+#   nustro bootstrap upgrade check    fetch now and report where the checkout stands
+#   nustro upgrade status             the last check's result; touches no network
+#   nustro bootstrap upgrade notice   the one-line "there is an update" the shell prints at start
+#   nustro upgrade rollback           check out the last version that parsed; `upgrade` returns
 #
 # A pull is checked before it is live. The fetched upstream is checked out into
 # a throwaway worktree under the state dir; its nustro.nuon is read against
@@ -25,19 +25,19 @@
 # within a second or two of opening loses that check — and the next window
 # simply runs it again, because the result is still stale.
 #
-# The state file lives in your directory, `.state/nu-config/upgrade.nuon`,
+# The state file lives in your directory, `.state/nustro/upgrade.nuon`,
 # never in the checkout: `git pull` has to stay clean. It records the HEAD the
-# check was made against, so a pull done by hand — or by `nu-config upgrade` —
+# check was made against, so a pull done by hand — or by `nustro upgrade` —
 # retires the notice at once rather than a day later.
 #
 # A checkout without a `.git`, without a remote-tracking branch, or without git
 # on PATH records why and stays quiet: the notice is for the one case where
 # there is something to do.
 
-# This file is modules/nu-config/upstream.nu: a module cannot export a command
+# This file is modules/nustro/upstream.nu: a module cannot export a command
 # named after itself. And the command is `upgrade`, not `update`, because
 # `update` is a built-in and a module that defines one shadows it for
-# everything parsed after — `use nu-complete *` in mod.nu stopped parsing.; `distro-root` lives in mod.nu,
+# everything parsed after — `use nu-complete *` in mod.nu stopped parsing. `root` lives in roots.nu,
 # which imports this file and so is not visible from it.
 const ROOT = path self | path dirname | path dirname | path dirname
 
@@ -48,23 +48,23 @@ def distro-root []: nothing -> path { $ROOT | path expand }
 use harness.nu *
 use tools.nu ["tools setup"]
 
-# `nu-config user init`, without importing user.nu a second time: scaffold.nu
+# `nustro bootstrap scaffold init`, without importing user.nu a second time: scaffold.nu
 # is a script (docs/concepts/layout.md), run in a `nu -n` the way user.nu's
 # scaffold-run does it, and the failure is reported, not raised — an upgrade
 # that pulled is done, whatever the scaffold says.
 def scaffold-init []: nothing -> table<file: string, action: string, note: string> {
-  let script = ($ROOT | path join modules nu-config scaffold.nu)
+  let script = ($ROOT | path join modules nustro scaffold.nu)
   let dir = ($nu.config-path | path dirname | path expand --no-symlink)
   let r = (^$nu.current-exe -n $script init --dir $dir | complete)
   if $r.exit_code != 0 {
-    print $"(ansi yellow)scaffold not rendered: ($r.stderr | str trim)(ansi reset) — `nu-config user init`"
+    print $"(ansi yellow)scaffold not rendered: ($r.stderr | str trim)(ansi reset) — `nustro bootstrap scaffold init`"
     return []
   }
   $r.stdout | from nuon
 }
 
 def state-path []: nothing -> path {
-  $nu.data-dir | path join .state nu-config upgrade.nuon
+  $nu.data-dir | path join .state nustro upgrade.nuon
 }
 
 # git, run in the checkout, output captured. The arguments come as a list,
@@ -150,7 +150,7 @@ export def "nu-older-than" [req: string]: nothing -> bool {
 # the child's stderr is the parse error, worth the fork (0.24 s in all,
 # worktree add to remove, 2026-09-28). The worktree is removed either way.
 def preflight [target: string]: nothing -> any {
-  let dir = ($nu.data-dir | path join .state nu-config preflight)
+  let dir = ($nu.data-dir | path join .state nustro preflight)
   git-in [worktree remove --force $dir] | ignore
   if ($dir | path exists) { rm -rf $dir }
   # core.longpaths: under a deep data dir on Windows the checkout's longest
@@ -229,6 +229,11 @@ def head-ref []: nothing -> any {
   if ($h | str starts-with "ref: refs/heads/") { $h | str replace "ref: refs/heads/" "" } else { null }
 }
 
+# HEAD as the two small files say it, and the branch it is on (null when
+# detached): what `status` and the notice compare the last check against.
+export def "upgrade head" []: nothing -> any { head-now }
+export def "upgrade branch" []: nothing -> any { head-ref }
+
 # Record HEAD as known to parse — `doctor` calls it when distro.nu checked
 # out. Quiet outside a git checkout.
 export def "upgrade good" []: nothing -> nothing {
@@ -242,14 +247,14 @@ export def "upgrade good" []: nothing -> nothing {
 export def "upgrade notice" []: nothing -> nothing {
   let s = (upgrade status)
   if $s.branch? != null and (head-ref) == null {
-    print $"(ansi dark_gray)distro: rolled back to ((head-now) | default '' | str substring 0..7) — (ansi reset)(ansi cyan)nu-config upgrade(ansi reset)(ansi dark_gray) returns to ($s.branch)(ansi reset)"
+    print $"(ansi dark_gray)distro: rolled back to ((head-now) | default '' | str substring 0..7) — (ansi reset)(ansi cyan)nustro upgrade(ansi reset)(ansi dark_gray) returns to ($s.branch)(ansi reset)"
     return
   }
   if $s.error != null or $s.behind == 0 or $s.head != (head-now) { return }
   let n = (if $s.behind == 1 { "1 commit" } else { $"($s.behind) commits" })
   let latest = ($s.log | get -o 0 | default "")
   let tail = (if ($latest | is-empty) { "" } else { $" · ($latest)" })
-  print $"(ansi dark_gray)distro: ($n) behind ($s.upstream)($tail) — (ansi reset)(ansi cyan)nu-config upgrade(ansi reset)"
+  print $"(ansi dark_gray)distro: ($n) behind ($s.upstream)($tail) — (ansi reset)(ansi cyan)nustro upgrade(ansi reset)"
 }
 
 # Pull. Fast-forward only: a checkout with commits of its own is a development
@@ -294,7 +299,7 @@ export def upgrade []: nothing -> nothing {
   # on disk, so the templates are the new ones.
   let written = (scaffold-init | where action != "kept")
   if ($written | is-not-empty) {
-    print $"scaffold in ((user-root)):"
+    print $"scaffold in (($nu.config-path | path dirname)):"
     for r in $written { print $"  ($r.action) ($r.file)  ($r.note)" }
   }
   # The generated init files (vendor/autoload) come from generators in the
@@ -311,22 +316,22 @@ export def upgrade []: nothing -> nothing {
     print "Claude Code:"
     harness update
   }
-  print $"(ansi dark_gray)a new shell loads it; `nu-config doctor` checks it parsed, `nu-config upgrade rollback` goes back(ansi reset)"
+  print $"(ansi dark_gray)a new shell loads it; `nustro doctor` checks it parsed, `nustro upgrade rollback` goes back(ansi reset)"
 }
 
 # Check out an earlier version: the one `doctor` last saw parse, else the one
 # the last `upgrade` moved off, else the commit named. HEAD is left detached,
-# which silences the update notice; `nu-config upgrade` returns to the branch
+# which silences the update notice; `nustro upgrade` returns to the branch
 # and pulls.
 export def "upgrade rollback" [
-  commit?: string   # a commit to go to instead; `git -C (nu-config distro-root) log --oneline`
+  commit?: string   # a commit to go to instead; `git -C (nustro bootstrap root) log --oneline`
 ]: nothing -> nothing {
   let why = (unable)
   if $why != null and $why != "the checked-out branch tracks no remote branch" { error make { msg: $"cannot roll back: ($why)" } }
   let s = (upgrade status)
   let target = ($commit | default ($s.last_good? | default $s.previous?))
   if $target == null {
-    error make { msg: "nothing recorded to roll back to — no upgrade has run and doctor has not seen this checkout parse; name a commit: nu-config upgrade rollback <commit>" }
+    error make { msg: "nothing recorded to roll back to — no upgrade has run and doctor has not seen this checkout parse; name a commit: nustro upgrade rollback <commit>" }
   }
   let sha = (git-ok [rev-parse --verify $"($target)^{commit}"])
   if $sha == null { error make { msg: $"($target) is not a commit in ((distro-root))" } }
@@ -340,5 +345,5 @@ export def "upgrade rollback" [
   let subject = (git-ok [log --format=%s -1 $sha] | default "")
   let which = (if $commit != null { "" } else if $s.last_good? == $sha { " — the last that doctor saw parse" } else { " — where the last upgrade started" })
   print $"rolled ((distro-root)) back to ($sha | str substring 0..7) ($subject)($which)"
-  print $"(ansi dark_gray)a new shell loads it; `nu-config upgrade` returns to ($branch | default 'the branch') and pulls(ansi reset)"
+  print $"(ansi dark_gray)a new shell loads it; `nustro upgrade` returns to ($branch | default 'the branch') and pulls(ansi reset)"
 }

@@ -679,7 +679,7 @@ Nustro requires 0.116 (2026-09-27) and dropped its 0.115 bridges. A spec's
 completer is `def complete-<tool> [place: record]` calling `nu-complete run
 (spec) $place.command`; the Tab menu is `source: {|buffer, place| ... }`, and
 the smart menu reads the slot (shape, flag value, target) from `place`; the
-wrapper `nu-config tools setup` appends to the generated
+wrapper `nustro bootstrap tools setup` appends to the generated
 `vendor/autoload/carapace.nu` is `{|place| do $carapace_legacy
 $place.command }`, because carapace 1.8.0 still emits `{|spans| ... }`.
 `nu-complete spans` survives only for completions generated before that date,

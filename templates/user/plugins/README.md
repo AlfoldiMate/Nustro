@@ -14,9 +14,9 @@ plugin add nu_plugin_foo             # resolves through NU_PLUGIN_DIRS, writes t
 plugin use foo                       # now, or just restart the shell
 ```
 
-`nu-config plugins add` is the same mechanism run over whatever your package
+`nustro plugins add` is the same mechanism run over whatever your package
 manager installed beside `nu` — Homebrew ships `formats`, `gstat`, `inc`,
-`polars` and `query` — and `nu-config plugins list` says which are
+`polars` and `query` — and `nustro plugins status` says which are
 registered. Run it again after every Nushell upgrade: the registry stores
 signatures against the protocol version of the `nu` that wrote them.
 

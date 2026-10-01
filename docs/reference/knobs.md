@@ -2,15 +2,18 @@
 
 Every value the distro ships, and where to change it. `defaults.nu` is the
 file, and your `settings.nu` is the same list commented out — generated from
-`defaults.nu` and the module `meta.nuon`s by `nu-config user init`, so the two
-cannot disagree: uncomment a line, change it. A knob you never mention keeps
-its shipped value, including one added by a later `git pull`, which the next
-`user init` appends commented ([Layout](../concepts/layout.md#how-the-layering-works)).
+`defaults.nu` and the module `meta.nuon`s (the scaffold, `nustro bootstrap
+scaffold init`), so the two cannot disagree: uncomment a line, change it —
+or `nustro set '<assignment>'`, which rewrites the knob's line in place. A
+knob you never mention keeps its shipped value, including one added by a
+later `git pull`, which `nustro upgrade` and `nustro repair` append
+commented ([Layout](../concepts/layout.md#how-the-layering-works)).
 
 ```nu
-nu-config knobs              # every knob, its kind, its owner, and whether you set it
-nu-config knobs --overridden # just yours
-nu-config edit user          # your directory; settings.nu has every knob, commented
+nustro knobs                               # every knob, its kind, its owner, and whether you set it
+nustro knobs --overridden                  # just yours
+nustro edit                                # your directory; settings.nu has every knob, commented
+nustro set 'const SMART_TAB = false'       # one assignment, written on the knob's own line
 config nu --doc | nu-highlight | less -R   # every $env.config key Nushell has, whether the distro mentions it or not
 ```
 
@@ -99,7 +102,7 @@ A `const` is shadowed by a `const` of the same name in `settings.nu`; an
 
 | knob | default | meaning |
 |---|---|---|
-| `const MODULES` | `[nu-config nu-complete terminal agent odata worktree]` | which modules this shell has; `nu-config module enable\|disable` edits it for you |
+| `const MODULES` | `[nustro nu-complete terminal agent odata worktree]` | which modules this shell has; `nustro module enable\|disable` edits it for you |
 | `const MODULES_LAZY` | `[terminal agent odata worktree]` | of those, the ones not parsed at startup — loaded by a `pre_execution` hook on the first line that mentions them (828 ns per Enter to check, against 18 ms for `agent` and 97 ms for `odata` to load). Interactive-only: a script has to `use odata *` itself |
 | `const MODULES_TRIGGERS` | `{ odata: [expand], terminal: [theme ghostty wezterm font] }` | extra words that load a lazy module, for commands that do not repeat its name |
 
@@ -113,7 +116,7 @@ A `const` is shadowed by a `const` of the same name in `settings.nu`; an
 
 A module's knobs are not in `defaults.nu`: the module declares them in its
 `meta.nuon` and applies them in `activate`. Set them in `settings.nu` the same
-way; `nu-config knobs | where owner == <module>` lists them.
+way; `nustro knobs | where owner == <module>` lists them.
 
 | module | knobs |
 |---|---|
@@ -121,9 +124,9 @@ way; `nu-config knobs | where owner == <module>` lists them.
 | [odata](modules/odata.md#configuration) | `ODATA_SERVICES`, `ODATA_SERVICE`, `ODATA_PUSHDOWN`, `ODATA_PUSHDOWN_SEARCH`, `ODATA_COMPLETE_KEYS`, `ODATA_COMPLETE_KEYS_TOP`, `ODATA_METADATA_TTL`, `ODATA_DEBUG` |
 | [nu-complete](modules/nu-complete.md#configuration) | `NU_COMPLETE_EVAL` |
 | [terminal](modules/terminal.md#configuration) | `NERD_FONTS_RELEASE` |
-| [nu-config](modules/nu-config.md#configuration) | none, on purpose |
+| [nustro](modules/nustro.md#configuration) | none, on purpose |
 
 ## Not a knob
 
-The theme. `theme use <name>` renders it for everything at once and what was
+The theme. `terminal theme use <name>` renders it for everything at once and what was
 rendered last is the theme ([Theming](../concepts/theming.md)).

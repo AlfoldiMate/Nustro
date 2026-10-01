@@ -194,7 +194,7 @@ pass pdm pnpm podman poetry pre-commit pytest reflector rg rustup rye scoop
 ssh swift-bundler tar tcpdump television tldr toipe ttyper typst uv virsh
 vscode windows winget xgettext yarn zef zellij zig zmx zoxide.
 `auto-generate/completions/` holds ~700 more, fish-converted, static.
-`nu-config fetch completion <tool>` vendors one into `completions/`.
+`nustro completion fetch <tool>` vendors one into `completions/`.
 
 ## Installed here (V, 2026-09-11)
 

@@ -1,5 +1,5 @@
 # Theme resolution and rendering (modules/terminal/palette.nu, theme.nu):
-# the three tiers, a Ghostty theme file as data and back, and `theme use`
+# the three tiers, a Ghostty theme file as data and back, and `terminal theme use`
 # end to end against the fake ghostty, whose shipped themes are the three in
 # tests/fixtures/ghostty/themes. Zenburned has no palette (tier two);
 # Catppuccin Macchiato has one that extends it (tier three); onedark is an
@@ -8,15 +8,22 @@
 use lib.nu *
 use std/assert
 use terminal *
+# What the module keeps to itself, by file: the two backends and the plumbing.
+use terminal/ghostty.nu *
+use terminal/wezterm.nu *
+use terminal/registry.nu *
+use terminal/theme.nu *
+use terminal/palette.nu *
+use terminal/font.nu *
 
 def "test slug is the palette file name" [] {
-  assert equal (theme slug "Catppuccin Macchiato") catppuccin-macchiato
-  assert equal (theme slug "0x96f") "0x96f"
-  assert equal (theme slug "  TokyoNight Storm! ") tokyonight-storm
+  assert equal (terminal theme slug "Catppuccin Macchiato") catppuccin-macchiato
+  assert equal (terminal theme slug "0x96f") "0x96f"
+  assert equal (terminal theme slug "  TokyoNight Storm! ") tokyonight-storm
 }
 
 def "test no theme resolves at tier one with every role an ANSI name" [] {
-  let t = theme resolve
+  let t = terminal theme resolve
   assert equal ($t | select name by tier palette terminal ghostty bat) { name: null, by: ghostty, tier: ansi, palette: null, terminal: null, ghostty: null, bat: ansi }
   assert ($t.roles | values | all {|v| $v !~ '^#' }) "tier one holds no hex"
   assert ($t.source | values | all {|s| $s == ansi })
@@ -26,7 +33,7 @@ def "test no theme resolves at tier one with every role an ANSI name" [] {
 
 def "test a Ghostty theme with no palette resolves at tier two, shades blended" [] {
   let fake = fake-ghostty
-  let t = theme resolve Zenburned
+  let t = terminal theme resolve Zenburned
   assert equal ($t | select name by tier ghostty palette) { name: Zenburned, by: ghostty, tier: derived, ghostty: Zenburned, palette: null }
   # The sixteen keep their names; the shaded roles are blended from the hexes.
   assert equal $t.roles.red red
@@ -42,8 +49,8 @@ def "test a Ghostty theme with no palette resolves at tier two, shades blended" 
 
 def "test a light theme is told from a dark one" [] {
   let fake = fake-ghostty
-  assert equal (theme resolve "Catppuccin Latte" | get dark) false
-  assert equal (theme resolve "Catppuccin Macchiato" | get dark) true
+  assert equal (terminal theme resolve "Catppuccin Latte" | get dark) false
+  assert equal (terminal theme resolve "Catppuccin Macchiato" | get dark) true
 }
 
 # WCAG contrast, for the roles that promise to read.
@@ -60,8 +67,8 @@ def contrast [a: string, b: string]: nothing -> float {
 
 def "test text_ and tint_ roles read on a light theme and are the hue itself on a dark one" [] {
   let fake = fake-ghostty
-  let light = theme resolve "Catppuccin Latte"
-  let dark = theme resolve "Catppuccin Macchiato"
+  let light = terminal theme resolve "Catppuccin Latte"
+  let dark = terminal theme resolve "Catppuccin Macchiato"
   # Dark: the hues already read, so the roles keep the names the sixteen have.
   assert equal ($dark.roles | select text_yellow text_bright_yellow text_cyan tint_red tint_yellow) { text_yellow: yellow, text_bright_yellow: light_yellow, text_cyan: cyan, tint_red: red, tint_yellow: yellow }
   assert equal $dark.roles.on_tint $dark.roles.on_accent "dark text on a saturated segment"
@@ -81,14 +88,14 @@ def "test text_ and tint_ roles read on a light theme and are the hue itself on 
   # A hue that already reads is left alone: Latte's blue is 4.5:1 on base... its accent stays.
   assert equal $light.source.text_yellow derived
   # Rendered for starship: every role has a spelling, on_tint included.
-  let sp = theme starship-palette $light.roles
+  let sp = terminal theme starship-palette $light.roles
   assert equal ($sp | get on_tint) $light.roles.fg
   assert equal ($sp | get tint_red) $light.roles.tint_red
 }
 
 def "test a palette extending a Ghostty theme resolves at tier three" [] {
   let fake = fake-ghostty
-  let t = theme resolve "Catppuccin Macchiato"
+  let t = terminal theme resolve "Catppuccin Macchiato"
   assert equal ($t | select name by tier ghostty bat vivid) { name: "Catppuccin Macchiato", by: palette, tier: palette, ghostty: "Catppuccin Macchiato", bat: "Catppuccin Macchiato", vivid: catppuccin-macchiato }
   assert ($t.palette | path basename | $in == "catppuccin-macchiato.nuon")
   assert equal $t.source.fg_muted palette
@@ -99,7 +106,7 @@ def "test a palette extending a Ghostty theme resolves at tier three" [] {
 }
 
 def "test a palette with its own sixteen needs no Ghostty and is handed to it as a file" [] {
-  let t = theme resolve onedark
+  let t = terminal theme resolve onedark
   assert equal ($t | select by tier ghostty) { by: palette, tier: palette, ghostty: file }
   assert equal ($t.terminal.palette | get "1") "#e06c75"
   assert equal $t.terminal.named.background "#1e222a"
@@ -110,26 +117,26 @@ def "test --ghostty ignores a palette that does not extend that theme" [] {
   let fake = fake-ghostty
   # zenburn.nuon exists (NvChad's), but names no Ghostty theme, so with
   # --ghostty it is the Ghostty theme alone — which the fake does not ship.
-  let err = try { theme resolve Zenburn --ghostty; null } catch {|e| $e.msg }
+  let err = try { terminal theme resolve Zenburn --ghostty; null } catch {|e| $e.msg }
   assert ($err | str contains "no theme called 'Zenburn'") $err
-  let t = theme resolve "Catppuccin Macchiato" --ghostty
+  let t = terminal theme resolve "Catppuccin Macchiato" --ghostty
   assert equal $t.tier palette "a palette that does extend the theme still applies"
 }
 
 def "test an unknown name is an error before anything is written" [] {
   let fake = fake-ghostty
-  let err = try { theme resolve "No Such Theme"; null } catch {|e| $e.msg }
+  let err = try { terminal theme resolve "No Such Theme"; null } catch {|e| $e.msg }
   assert ($err | str contains "no theme called 'No Such Theme'") $err
-  let used = try { theme use "No Such Theme" --no-icon; null } catch {|e| $e.msg }
+  let used = try { terminal theme use "No Such Theme" --no-icon; null } catch {|e| $e.msg }
   assert ($used | str contains "no theme called") $used
   assert equal (ghostty settings) {} "nothing reached Ghostty"
   assert equal (ghostty-calls $fake | where {|c| $c.0 == "+validate-config" }) []
-  assert (((theme current | default {}) | get -o name) != "No Such Theme")
+  assert (((terminal theme current | default {}) | get -o name) != "No Such Theme")
 }
 
 def "test roles is a table of role, value and the tier that decided it" [] {
   let fake = fake-ghostty
-  let rows = theme roles Zenburned
+  let rows = terminal theme roles Zenburned
   assert equal ($rows | columns) [role value from swatch]
   assert equal ($rows | where role == red | get 0 | select value from) { value: red, from: ansi }
   assert equal ($rows | where role == border | get 0.from) derived
@@ -147,9 +154,9 @@ def "test ghostty themes lists what Ghostty ships and what the user added" [] {
   assert equal ($rows | where theme == Zenburned | get 0.path) ($fake.themes | path join Zenburned)
 }
 
-def "test theme palette reads a Ghostty file as the sixteen and the named colours" [] {
+def "test terminal theme palette reads a Ghostty file as the sixteen and the named colours" [] {
   let fake = fake-ghostty
-  let p = theme palette Zenburned
+  let p = terminal theme palette Zenburned
   assert equal $p.theme Zenburned
   assert equal ($p.palette | columns | length) 16
   assert equal ($p.palette | get "15") "#c0ab86"
@@ -159,55 +166,55 @@ def "test theme palette reads a Ghostty file as the sixteen and the named colour
 def "test ghostty-file writes the lines Ghostty reads, line for line" [] {
   let fake = fake-ghostty
   let file = $fake.themes | path join Zenburned
-  let back = theme read $file Zenburned | theme ghostty-file $in
+  let back = terminal theme read $file Zenburned | terminal theme ghostty-file $in
   # Everything in the fixture but `cursor-text`, which is not a colour OSC sets.
   let expected = open --raw $file | lines | where $it !~ '^cursor-text' | append "" | str join "\n"
   assert equal $back $expected
-  let t = theme resolve onedark
-  let lines = theme ghostty-file $t.terminal | lines
+  let t = terminal theme resolve onedark
+  let lines = terminal theme ghostty-file $t.terminal | lines
   assert equal ($lines | first) "palette = 0=#1e222a"
   assert ("background = #1e222a" in $lines)
   assert ("selection-background = #373b43" in $lines)
 }
 
-# ── theme use ─────────────────────────────────────────────────────────────────
+# ── terminal theme use ─────────────────────────────────────────────────────────────────
 
-def "test theme use renders the files, writes Ghostty and reports the theme" [] {
+def "test terminal theme use renders the files, writes Ghostty and reports the theme" [] {
   let fake = fake-ghostty
-  theme use onedark --no-icon
-  let dir = theme state-dir
+  terminal theme use onedark --no-icon
+  let dir = terminal theme state-dir
   assert (($dir | path join theme.nuon) | path exists)
   assert (($dir | path join ghostty onedark) | path exists) "a palette with its own sixteen is written as a Ghostty theme file"
-  assert equal (theme current | select name by tier) { name: onedark, by: palette, tier: palette }
+  assert equal (terminal theme current | select name by tier) { name: onedark, by: palette, tier: palette }
   assert equal (ghostty settings | get theme) ($dir | path join ghostty onedark)
   assert equal (ghostty live theme) ($dir | path join ghostty onedark)
-  assert equal (theme status | select name terminal terminal_theme icon) { name: onedark, terminal: ghostty, terminal_theme: ($dir | path join ghostty onedark), icon: null }
+  assert equal (terminal theme status | select name terminal terminal_theme icon) { name: onedark, terminal: ghostty, terminal_theme: ($dir | path join ghostty onedark), icon: null }
   if (which starship | is-not-empty) {
     let toml = open --raw ($dir | path join starship.toml) | from toml
     assert equal $toml.palette distro
     assert equal $toml.palettes.distro.red red
-    assert equal $toml.palettes.distro.orange ((theme current).roles.orange)
+    assert equal $toml.palettes.distro.orange ((terminal theme current).roles.orange)
   }
 }
 
-def "test theme use with a Ghostty theme writes its name and reloads" [] {
+def "test terminal theme use with a Ghostty theme writes its name and reloads" [] {
   let fake = fake-ghostty
-  theme use "Catppuccin Macchiato" --no-icon
+  terminal theme use "Catppuccin Macchiato" --no-icon
   assert equal (ghostty settings | get theme) "Catppuccin Macchiato"
-  assert equal (theme current | select name tier bat) { name: "Catppuccin Macchiato", tier: palette, bat: "Catppuccin Macchiato" }
+  assert equal (terminal theme current | select name tier bat) { name: "Catppuccin Macchiato", tier: palette, bat: "Catppuccin Macchiato" }
   let calls = ghostty-calls $fake | each {|c| $c.0 }
   assert ("+validate-config" in $calls) ($calls | to nuon)
   if $nu.os-info.name == "macos" { assert ("osascript" in $calls) "every open window is reloaded on macOS" }
 }
 
-def "test theme sync re-renders the current theme and --none forgets it" [] {
+def "test terminal theme sync re-renders the current theme and --none forgets it" [] {
   let fake = fake-ghostty
-  theme use Zenburned --no-icon
-  let s = theme sync --quiet
+  terminal theme use Zenburned --no-icon
+  let s = terminal theme sync --quiet
   assert equal ($s | select name tier) { name: Zenburned, tier: derived }
-  let none = theme sync --none --quiet
+  let none = terminal theme sync --none --quiet
   assert equal ($none | select name tier) { name: null, tier: ansi }
-  assert equal (theme current | get name) null
+  assert equal (terminal theme current | get name) null
 }
 
 # ── the icon ──────────────────────────────────────────────────────────────────
@@ -246,7 +253,7 @@ print(w, px(2, 2), px(w//2, h//2))
 def "test the icon is a PNG with a transparent corner and the background at its centre" [] {
   let fake = fake-ghostty
   if $nu.os-info.name != "macos" { skip-test "the rasterizer is AppKit, macOS only" }
-  theme use onedark
+  terminal theme use onedark
   let icon = ghostty settings | get macos-custom-icon
   assert ($icon | path exists) $icon
   assert equal (ghostty settings | get macos-icon) custom

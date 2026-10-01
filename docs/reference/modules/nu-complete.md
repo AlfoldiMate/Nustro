@@ -19,8 +19,9 @@ git checkout <Tab>        # branches by recency, then remotes and tags
 | `nu-complete smart <buffer> <place>` | the Tab menu source: the one place that sees both the line and Nushell's answer for it (`smart.nu`) |
 | `nu-complete quote` | quote a candidate the line would otherwise split (`Catppuccin Macchiato` → `"Catppuccin Macchiato"`); `run` and `smart` apply it to spec and `string@completer` values, never to commands, flags or paths (`engine.nu`) |
 | `nu-complete cache <key> <ttl> {}` | memoise a slow source for the session (`cache.nu`) |
-| `nu-complete status` | what is cached, and where |
-| `nu-complete explain <line>` | which rule answered a line (`columns`, `operators`, `values`, `no-files`, `directories`, `field`, `lazy`, or `nushell` for its own answer), the first candidates, whether the pipeline before the command was allowed to run, and what Nushell's answer, the first call and the next call cost |
+| `nu-complete status` | what is cached, and where — typed as `nustro completion status` |
+| `nu-complete cache clear` | forget the session's memoised answers — typed as `nustro completion clear` |
+| `nu-complete explain <line>` | typed as `nustro completion explain`: which rule answered a line (`columns`, `operators`, `values`, `no-files`, `directories`, `field`, `lazy`, or `nushell` for its own answer), the first candidates, whether the pipeline before the command was allowed to run, and what Nushell's answer, the first call and the next call cost |
 | `nu-complete activate` | seed defaults |
 
 ## Configuration

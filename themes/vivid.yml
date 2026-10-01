@@ -1,4 +1,4 @@
-# vivid.yml — `ls` colours (LS_COLORS), written in roles. `theme use` renders it.
+# vivid.yml — `ls` colours (LS_COLORS), written in roles. `terminal theme use` renders it.
 #
 # The `colors:` block below is replaced with the theme's resolved roles — as
 # `ansi:` names in tier one and hex in the others — and vivid is run on the

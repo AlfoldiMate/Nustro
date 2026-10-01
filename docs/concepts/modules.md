@@ -2,7 +2,7 @@
 
 A module is a directory under `modules/` that adds commands to the shell. This
 file is the contract: what a module must contain, what it may assume, and how
-it gets loaded. `nu-config module lint` checks it.
+it gets loaded. `nustro module lint` checks it.
 
 ## The shape
 
@@ -18,8 +18,8 @@ docs/reference/modules/<name>.md
 
 A module directory holds code only. Its documentation is a page in this tree,
 named by `docs:` in `meta.nuon` as a path from the distro root
-(`docs/reference/modules/odata.md`), which `nu-config module info` resolves and
-`nu-config module lint` requires to exist. The page's shape is
+(`docs/reference/modules/odata.md`), which `nustro module info` resolves and
+`nustro module lint` requires to exist. The page's shape is
 `templates/module-doc.md`; its design story, where there is one, is a page
 under `concepts/` that the reference page links to. The header comment of
 `mod.nu` stays: it is the summary a reader gets from `help <name>`.
@@ -80,12 +80,16 @@ script, so a lazy module is interactive-only. A script must `use odata *`
 itself. If a module has to work in scripts, it cannot be lazy.
 
 Tab is not Enter, so a line that has not been run yet has not loaded anything:
-`font <Tab>` in a fresh shell would find no `font`. The smart menu covers
-this — when the head of the line is a trigger word of a module that is not in
+`terminal <Tab>` in a fresh shell would find no `terminal`. The smart menu covers
+this — when the head of the line is the name or a trigger word of a module that is not in
 `$env.NU_MODULES_LOADED`, it asks a child `nu -n` that sources the module's
 `load.nu` (30 ms, `terminal`), so the commands, flags and custom completers
 are all there before the first Enter ([Completion](completion.md#three-layers)).
-`help font` and `which font` still say nothing until that Enter.
+`help terminal` and `which terminal` still say nothing until that Enter.
+
+A trigger word (`MODULES_TRIGGERS` in `defaults.nu`) is a word other than the
+module's name that loads it. There is one: `expand`, for `odata`. `terminal`
+has none — every command it exports starts with `terminal`.
 
 If something must happen in every shell regardless — `agent` mints a session id
 and binds Alt+E — put it in `stub.nu`, which `conf/modules.nu` sources
@@ -103,8 +107,8 @@ requires: [
 ]
 ```
 
-`hard: false` means the module works without it, worse. `nu-config module check
-<name>` reports; `nu-config doctor` flags a missing hard dependency; the
+`hard: false` means the module works without it, worse. `nustro module check
+<name>` reports; `nustro doctor` flags a missing hard dependency; the
 installer's Tools screen lists every enabled module whose tool is missing.
 Nothing here ever runs an installer.
 
@@ -118,12 +122,12 @@ always stated:
 - A module with a hard dependency must be `lazy: true` — `lint` refuses
   otherwise. A missing tool must never cost a startup: the module loads on
   first use, where its command says what is missing.
-- The command says it in one voice. `modules/nu-config/missing.nu` exports
+- The command says it in one voice. `modules/nustro/missing.nu` exports
   `missing-tool <module> [bin] [--command <what was typed>]`, which raises
   the error from the module's own `meta.nuon` — the `why`, the install line
   for this platform, the `then`. A shipped module imports it by path (`use
-  ../nu-config/missing.nu *`; forty lines, where `use nu-config` is 34 ms of
-  parse — measured 2026-09-20), one of yours as `use nu-config/missing.nu *`
+  ../nustro/missing.nu *`; forty lines, where `use nustro` is 34 ms of
+  parse — measured 2026-09-20), one of yours as `use nustro/missing.nu *`
   through `NU_LIB_DIRS`. `agent` calls it for `claude`, `worktree` for
   `git`; the `terminal` module has its own `terminal require` because its
   need is a group.
@@ -152,7 +156,7 @@ cost: 18ms
 
 One method for all of them, so the numbers can be compared: the median of 25
 cold `nu -l` startups with the module loaded, against the same 25 with it lazy
-or absent, from the shipped default set. `nu-config startup-time` is the same
+or absent, from the shipped default set. `nustro startup-time` is the same
 measurement on your own machine, and the number is a property of the machine as
 much as of the module — what it is for is deciding whether to make something
 lazy, and telling the installer what a checkbox costs.
@@ -167,7 +171,7 @@ window, so `which` alone calls it missing on a machine where it plainly is not.
 ## Knobs
 
 A module carries its own defaults, so its knobs do **not** go in `defaults.nu`.
-Declare them in `meta.nuon` so `nu-config knobs` can find them:
+Declare them in `meta.nuon` so `nustro knobs` can find them:
 
 ```nu
 knobs: {
@@ -180,7 +184,7 @@ Every field `meta.nuon` takes is in [meta.nuon](../reference/meta-nuon.md).
 ## Enabling
 
 `const MODULES` and `const MODULES_LAZY` in `defaults.nu`, overridable in your
-`settings.nu`, edited for you by `nu-config module enable|disable`.
+`settings.nu`, edited for you by `nustro module enable|disable`.
 
 `use` is parse-time and cannot sit inside an `if` or a loop, so a module cannot
 be enabled by iterating a list. What works is a `source` of a const path chosen
@@ -190,7 +194,7 @@ all at parse time, and it costs nothing at runtime.
 
 Adding a module of your own does not need `conf/modules.nu` at all: drop it in
 `<your>/modules/` and `use` it from your `settings.nu`, which is parse-time too.
-Or make it lazy: `nu-config module enable <name>` puts it in `MODULES` and
+Or make it lazy: `nustro module enable <name>` puts it in `MODULES` and
 `MODULES_LAZY`, and the hook above looks for `<your>/modules/<name>/load.nu`
 before the distro's — the same trigger words, the same Tab completion of its
 commands before it loads. Only the eager path is the distro's alone: a
@@ -198,14 +202,14 @@ directory cannot be listed at parse time, so there is no `source` line for a
 module of yours, and `module enable --eager` says so. A module of yours keeps
 its page next to its code — `docs: README.md` in its `meta.nuon` resolves
 against the module directory when the path is relative to it, and `module
-lint` accepts either; `nu-config module help <name>` shows it.
+lint` accepts either; `nustro module help <name>` shows it.
 
 ## Checking
 
 ```nu
-nu-config module list        every module, enabled, lazy, loaded, deps
-nu-config module info <n>    meta.nuon plus the dependency report
-nu-config module check <n>   dependencies only
-nu-config module help <n>    its documentation page, loaded or not
-nu-config module lint        the contract above, enforced
+nustro module list         every module, enabled, lazy, loaded, deps
+nustro module info <n>     meta.nuon plus the dependency report
+nustro module check <n>    dependencies only
+nustro module help <n>     its documentation page, loaded or not
+nustro module lint         the contract above, enforced
 ```

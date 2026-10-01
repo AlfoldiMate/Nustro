@@ -67,10 +67,10 @@ silently yields `[]`, so a slot that offers nothing is often a typo there.
 
 ```nu
 nu -l -c 'timeit { "brew install rip" | commandline complete --detailed }'   # 3-5 ms after the cache is built
-nu -l -c 'nu-complete explain "ls | where size > "'                          # which rule answered, what it offered, what it cost
-nu -l -c 'nu-complete status'                                                # what is cached, where, how old
-nu -l -c 'nu-complete cache clear'
-nu-config doctor                                                             # the Completion section: knobs and cache ages
+nu -l -c 'nustro completion explain "ls | where size > "'                    # which rule answered, what it offered, what it cost
+nu -l -c 'nustro completion status'                                          # what is cached, where, how old
+nu -l -c 'nustro completion clear'
+nustro doctor                                                                # the Completion section: knobs and cache ages
 ```
 
 The menu source runs again on every keystroke while the menu is open, so a
@@ -86,7 +86,7 @@ is slow every time is a source that runs an external, and belongs in
 - The first Tab on a pipeline pays its subprocess (38 ms for `ls`); the first
   `ps | …` pays `ps` (150 ms).
 - A key that is slow to appear while the menu is open is the source: it runs
-  on the editor's thread. `nu-complete explain` gives `cost.next_call`.
+  on the editor's thread. `nustro completion explain` gives `cost.next_call`.
 - `SMART_TAB = false` in `settings.nu` returns to Nushell's stock menu, which
   is the quickest way to tell whether a problem is the engine's or Nushell's.
 - Before 0.116, `bits r` Tab Tab landing as `bits ror o` was Nushell's

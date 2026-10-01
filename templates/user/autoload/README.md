@@ -24,7 +24,7 @@ is the page, with the keybinding and hook forms and how to check one.
 
 - **A value** the distro ships a default for → [`../settings.nu`](../settings.nu).
   It is sourced early, so the rest of the config reads your value.
-  `nu-config knobs` lists them.
+  `nustro knobs` lists them.
 - **Behaviour** — a hook, a keybinding, an alias, a `def`, an environment
   variable the distro knows nothing about → here.
 

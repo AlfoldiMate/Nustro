@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugins shipped with Nustro, the Nushell distro: the nushell skills, and one plugin per module that wants a presence in a session — a client of the shell command the distro provides, so a session gets the same command, care points and guard rails a user has at the prompt.",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {

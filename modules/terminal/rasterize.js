@@ -2,7 +2,7 @@
 //
 //   osascript -l JavaScript rasterize.js <in.svg> <out.png> [pixels]
 //
-// `theme use` renders themes/icon.svg through this. It used to go through
+// `terminal theme use` renders themes/icon.svg through this. It used to go through
 // `qlmanage -t`, the QuickLook thumbnailer, which composites every SVG onto an
 // opaque white square: the padding around the rounded tile came out white, and
 // so did the corners, in the Dock and the app switcher (found on 2026-09-19,

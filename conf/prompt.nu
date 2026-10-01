@@ -2,7 +2,7 @@
 #
 # Starship owns the prompt when it is installed, and the distro owns starship's
 # configuration: themes/starship.toml, written in the theme's roles, rendered by
-# `theme use` into <your dir>/.state/theme/starship.toml. STARSHIP_CONFIG points
+# `terminal theme use` into <your dir>/.state/theme/starship.toml. STARSHIP_CONFIG points
 # at the rendered file, or at the template itself before the first render — its
 # own palette block is the ANSI tier, so the prompt follows the terminal's
 # colours from the first start. A ~/.config/starship.toml of your own is not

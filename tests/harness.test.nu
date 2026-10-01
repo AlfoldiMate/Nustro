@@ -36,7 +36,7 @@ def "test scratch directories are fresh and under the run root" [] {
 
 def "test a user directory keeps the shell state to itself" [] {
   let dir = user-dir
-  let ran = nu-l $dir 'print ({ config: $nu.config-path, data: $nu.data-dir, history: $nu.history-path, plugins: $nu.plugin-path, autoload: $nu.user-autoload-dirs, distro: (which "nu-config doctor" | is-not-empty) } | to nuon)'
+  let ran = nu-l $dir 'print ({ config: $nu.config-path, data: $nu.data-dir, history: $nu.history-path, plugins: $nu.plugin-path, autoload: $nu.user-autoload-dirs, distro: (which "nustro doctor" | is-not-empty) } | to nuon)'
   assert equal $ran.exit_code 0 $ran.stderr
   let seen = $ran.stdout | from nuon
   for p in [config data history plugins] {

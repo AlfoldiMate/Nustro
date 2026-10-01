@@ -10,17 +10,17 @@ to one machine.
 
 | it is | goes in |
 |---|---|
-| a **value** the distro ships a default for — anything `nu-config knobs` lists | `settings.nu`. It is sourced second, so the rest of the config reads your value |
+| a **value** the distro ships a default for — anything `nustro knobs` lists | `settings.nu`. It is sourced second, so the rest of the config reads your value |
 | **behaviour** — an alias, a `def`, a hook, a keybinding, a menu, an environment variable the distro knows nothing about, a secret | `autoload/<anything>.nu` |
 
 The tell: if you find yourself writing `$env.config.table.mode` in
-`autoload/`, it works, but `nu-config knobs` will not know you did it. If you
+`autoload/`, it works, but `nustro knobs` will not know you did it. If you
 find yourself writing an `alias` in `settings.nu`, it works too, but it is
 not a knob and belongs with the rest of your behaviour.
 
 ## Write one
 
-`nu-config edit user` opens your directory; `autoload/README.md` is already
+`nustro edit` opens your directory; `autoload/README.md` is already
 there, and so is `autoload/example.nu.off` — an alias, a `path add`, a
 keybinding and one `$env.config` leaf, with a comment per line saying why
 each is here. Rename it and it loads. Or say `autoload/local.nu`:

@@ -1,103 +1,97 @@
-# nu-config — maintenance commands for this configuration
+# nustro — the distro's own command: where it stands, and how to fix it
 #
-#   nu-config doctor              health check: roots, tools, plugins, parse
-#   nu-config knobs               every knob, its shipped default, and your value
-#   nu-config deps install        install the missing tools (starship, zoxide, atuin, carapace, vivid)
-#   nu-config tools setup         generate init files for installed tools (zoxide, atuin, ...)
-#   nu-config plugins add         register the plugins shipped next to `nu`
-#   nu-config plugins notice      the startup line when a registered plugin's file is gone
-#   nu-config fetch completion X  vendor a completion module into YOUR directory
-#   nu-config startup-time        time cold starts
-#   nu-config upgrade             pull the distro, then the Claude Code plugins; `upgrade check | status` around it
-#   nu-config harness register    register the checkout as a Claude Code plugin marketplace
-#   nu-config harness update      refresh the marketplace and the plugins installed from it
-#   nu-config edit                open the distro in $EDITOR
-#   nu-config edit user           open your own config directory
-#   nu-config user init           (re)generate your directory's READMEs, examples and settings.nu
+#   nustro                     = nustro status
+#   nustro status              one screen: version, behind or not, what needs attention
+#   nustro doctor              the full health check: roots, tools, plugins, parse
+#   nustro repair              re-run every wiring step; `--hard` re-runs the installer
+#   nustro upgrade             pull the distro, then the Claude Code plugins; `upgrade status | rollback` around it
+#   nustro edit                open your own config directory in $EDITOR; `edit distro` the checkout
+#   nustro set <assignment>    one knob into your settings.nu, in its place
+#   nustro knobs               every knob, its shipped default, and your value
+#   nustro module …            list | info | check | help | enable | disable | lint
+#   nustro deps …              the tools (starship, zoxide, atuin, carapace, vivid): status | install
+#   nustro plugins …           the plugins shipped next to `nu`: status | add
+#   nustro completion …        Tab: explain | status | clear | fetch
+#   nustro harness …           the Claude Code marketplace this checkout is: status | register | update
+#   nustro startup-time        time cold starts; `loaded-files` finds a slow import
+#   nustro bootstrap …         what the installer, the startup hooks and `repair` run — not for every day
 #
-# `help nu-config` lists everything.
+# `help nustro` lists everything.
 
-# Tool init files: `nu-config tools setup | status | remove | dir`
-export use tools.nu *
-# The tools themselves: `nu-config deps status | manager | install`
+# Where the two directories are: `root`, `user-root`, `layout`, `config-dir`.
+use roots.nu *
+# Tool init files, for `doctor` and `status`; the commands are `nustro bootstrap tools …`.
+use tools.nu *
+# The scaffold, for `edit` and `doctor`; `nustro set` is the one a person types.
+use user.nu *
+export use user.nu ["set"]
+# The tools themselves: `nustro deps status | manager | install`
 export use deps.nu *
-# Your directory as a scaffold: `nu-config user init | status | render | set`
-export use user.nu *
-# Is the checkout behind its remote: `nu-config upgrade | check | status`
-export use upstream.nu *
-# The Claude Code marketplace this checkout is: `nu-config harness status | register | update`
+# Is the checkout behind its remote: `nustro upgrade`, `upgrade status`, `upgrade rollback`
+use upstream.nu *
+export use upstream.nu [upgrade "upgrade status" "upgrade rollback"]
+# The plugins beside nu: `nustro plugins status | add`
+use plugins.nu *
+export use plugins.nu ["plugins status" "plugins add"]
+# The Claude Code marketplace this checkout is: `nustro harness status | register | update`
 export use harness.nu *
-# The error a command gives when its module's tool is missing; a module
-# imports the file by path (see its header for why not `use nu-config`).
-export use missing.nu *
+# Tab, as a person asks about it: `nustro completion explain | status | clear | fetch`
+export use completion.nu *
+# Everything else the files export: `nustro bootstrap …`
+export use bootstrap.nu
 # Completion caches, for `doctor`.
 use nu-complete *
 
-# Developer examples that ship with nu; never worth registering.
-const DEV_PLUGINS = [example custom_values stress_internals]
+# `nustro` alone is `nustro status`.
+export def main []: nothing -> record { status }
 
-# `path self` only runs at parse time, so the root is computed here rather
-# than inside a command. This file is modules/nu-config/mod.nu, two levels down.
-const MODULE_DIR = path self | path dirname
-
-# Where the distro checkout lives — the directory holding distro.nu.
-export def "distro-root" []: nothing -> path {
-  $MODULE_DIR | path dirname | path dirname | path expand
-}
-
-# Where YOUR configuration lives: the directory holding the config.nu Nushell
-# loaded. History, the plugin registry and the autoload dirs all hang off it.
-export def "user-root" []: nothing -> path {
-  $nu.config-path | path dirname | path expand
-}
-
-# True while the distro checkout is also serving as the config directory,
-# which `nu install.nu` exists to undo.
-export def "in-place?" []: nothing -> bool {
-  (distro-root) == (user-root)
-}
-
-# The directory Nushell reads its configuration from on this platform.
-# Nushell honours XDG_CONFIG_HOME on every OS, then falls back to the OS default.
-export def platform-config-dir []: nothing -> path {
-  if ($env.XDG_CONFIG_HOME? | default "" | is-not-empty) {
-    return ($env.XDG_CONFIG_HOME | path join nushell)
+# One screen: where the distro stands and what needs attention, each line of
+# `attention` with the command that settles it. State files, PATH and one
+# `nu -n` for the scaffold (20 ms) — no network, no git, no `claude`; `doctor`
+# is the long form.
+export def status []: nothing -> record {
+  let inst = (layout)
+  let up = (upgrade status)
+  let req = ((manifest).requires_nu? | default "0.0")
+  let mods = (mod-list | where enabled)
+  let theme_file = ($nu.data-dir | path join .state theme theme.nuon)
+  let theme = (if ($theme_file | path exists) { open $theme_file } else { null })
+  let settings = ($inst.user | path join settings.nu)
+  let detached = ($up.branch? != null and (upgrade branch) == null)
+  let attention = ([
+    (if (nu-older-than $req) { { what: $"Nushell ((version).version) is older than the ($req) the distro needs", fix: "upgrade nu" } })
+    (if $inst.state != "split" { { what: $"layout is ($inst.state), not a user directory of its own", fix: $"nu ($inst.distro | path join install.nu)" } })
+    (if $detached { { what: $"rolled back, off ($up.branch)", fix: "nustro upgrade" } })
+    (if (not $detached) and $up.error == null and $up.behind > 0 and $up.head == (upgrade head) { { what: $"($up.behind) commit\(s\) behind ($up.upstream)", fix: "nustro upgrade" } })
+    (if ($settings | path exists) and not (do -i { nu-check $settings } | default false) { { what: "settings.nu does not parse — a new shell starts without the distro", fix: "nustro edit" } })
+    (do { let n = (try { scaffold status | where state == "missing" | length } catch { 0 }); if $n > 0 { { what: $"($n) scaffold file\(s\) missing", fix: "nustro repair" } } })
+    (do { let t = (tools status | where state !~ '^(ok|not installed)$' | get tool); if ($t | is-not-empty) { { what: $"init file out of step: ($t | str join ', ')", fix: "nustro repair" } } })
+    (do { let t = (deps status | where not installed | get tool); if ($t | is-not-empty) { { what: $"not installed: ($t | str join ', ')", fix: "nustro deps install" } } })
+    (do { let p = (plugins status | where not registered and name not-in $DEV_PLUGINS | get name); if ($p | is-not-empty) { { what: $"plugins not registered: ($p | str join ', ')", fix: "nustro plugins add" } } })
+    ...($mods | where deps =~ 'missing' | each {|m| { what: $"($m.module): a tool it needs is missing", fix: $"nustro module check ($m.module)" } })
+    (if $theme != null and (($theme.rendered? | default (date now)) < (ls ($inst.distro | path join themes) | get modified | math max)) { { what: "a theme template is newer than the render", fix: "nustro repair" } })
+  ] | compact)
+  {
+    version: ((manifest).version? | default "?")
+    head: ((upgrade head) | default "" | str substring 0..<7)
+    upstream: (if $up.error != null { $up.error } else if $up.behind == 0 { $"up to date with ($up.upstream)" } else { $"($up.behind) behind ($up.upstream)" })
+    checked: $up.checked
+    nushell: (version).version
+    layout: $inst.state
+    distro: $inst.distro
+    yours: $inst.user
+    modules: ($mods | where not lazy | get module | str join " ")
+    lazy: ($mods | where lazy | get module | str join " ")
+    theme: ($theme | get -o name)
+    attention: $attention
   }
-  match $nu.os-info.name {
-    "macos" => ($nu.home-dir | path join "Library" "Application Support" "nushell")
-    "windows" => ($env.APPDATA | path join "nushell")
-    _ => ($nu.home-dir | path join ".config" "nushell")
-  }
-}
-
-# How this distro is installed.
-#   "split"     a user directory of its own sources this distro — the target
-#   "in-place"  the checkout is still the config directory — run `nu install.nu`
-#   "other"     the live config is some other distro or a hand-written one
-export def install-status []: nothing -> record<state: string, user: string, distro: string> {
-  let u = (user-root)
-  let d = (distro-root)
-  let cfg = ($u | path join config.nu)
-  # Two spellings of the same path: as written, and as the backslash-escaped
-  # Nushell string literal that a Windows checkout produces. `str contains $d`
-  # alone reported "other" for a perfectly good split install on Windows.
-  let text = (if ($cfg | path exists) { open --raw $cfg } else { "" })
-  let points_here = ($text | str contains $d) or ($text | str contains ($d | to nuon))
-  let state = if $u == $d {
-    "in-place"
-  } else if $points_here {
-    "split"
-  } else {
-    "other"
-  }
-  { state: $state, user: $u, distro: $d }
 }
 
 # Health check for the whole setup.
 export def doctor []: nothing -> nothing {
   let ok = $"(ansi green)ok(ansi reset)"
   let bad = $"(ansi red)!!(ansi reset)"
-  let inst = (install-status)
+  let inst = (layout)
 
   # The oldest Nushell the distro runs on is nustro.nuon's: every completer
   # takes the inputs 0.116 binds by name (`place.command`), and on 0.115 a
@@ -107,7 +101,7 @@ export def doctor []: nothing -> nothing {
   let need = (if (nu-older-than $req) { $"  (ansi red)the distro needs ($req) or later — Tab for brew, git and cargo offers only files here(ansi reset)" } else { "" })
   print $"(ansi cyan_bold)Nushell(ansi reset) ($v.version)  ($nu.current-exe)($need)"
   let up = (upgrade status)
-  let behind = (if $up.error == null and $up.behind > 0 { $"  (ansi yellow)($up.behind) behind ($up.upstream) — nu-config upgrade(ansi reset)" } else { "" })
+  let behind = (if $up.error == null and $up.behind > 0 { $"  (ansi yellow)($up.behind) behind ($up.upstream) — nustro upgrade(ansi reset)" } else { "" })
   print $"(ansi cyan_bold)Distro(ansi reset)  ($inst.distro)($behind)"
   print $"(ansi cyan_bold)Yours(ansi reset)   ($inst.user)"
   let mark = (match $inst.state { "split" => $ok, _ => $"(ansi yellow)??(ansi reset)" })
@@ -128,13 +122,13 @@ export def doctor []: nothing -> nothing {
   let vdir = (tools dir)
   let vmark = if ($nu.vendor-autoload-dirs | any {|d| ($d | path expand) == ($vdir | path expand) }) { $ok } else { $bad }
   print $"  vendor    ($vmark) ($vdir)"
-  # The scaffold: the READMEs, the examples and settings.nu that `user init`
+  # The scaffold: the READMEs, the examples and settings.nu that `scaffold init`
   # writes, judged by content against the templates, never by mtime.
-  let missing = (user status | where state == "missing" | length)
+  let missing = (scaffold status | where state == "missing" | length)
   if $missing == 0 {
     print $"  scaffold  ($ok) complete"
   } else {
-    print $"  scaffold  (ansi yellow)??(ansi reset) ($missing) file(if $missing == 1 { '' } else { 's' }) missing — nu-config user init"
+    print $"  scaffold  (ansi yellow)??(ansi reset) ($missing) file(if $missing == 1 { '' } else { 's' }) missing — nustro repair"
   }
   print ""
 
@@ -148,7 +142,7 @@ export def doctor []: nothing -> nothing {
   print ""
 
   print $"(ansi cyan_bold)Parse(ansi reset)"
-  let parsed = (do -i { nu-check ((distro-root) | path join distro.nu) } | default false)
+  let parsed = (do -i { nu-check ((root) | path join distro.nu) } | default false)
   print $"  (if $parsed { $ok } else { $bad }) distro.nu and everything it sources"
   # what `upgrade rollback` returns to
   if $parsed { upgrade good }
@@ -174,7 +168,7 @@ export def doctor []: nothing -> nothing {
       print $"  (ansi dark_gray)--(ansi reset) ($t.tool | fill --width 9) not installed"
     }
   }
-  if ($absent | is-not-empty) { print $"  (ansi dark_gray)install the missing ones with: nu-config deps install(ansi reset)" }
+  if ($absent | is-not-empty) { print $"  (ansi dark_gray)install the missing ones with: nustro deps install(ansi reset)" }
   print ""
 
   # The theme is read from its state file rather than through the terminal
@@ -183,16 +177,16 @@ export def doctor []: nothing -> nothing {
   let theme_file = ($nu.data-dir | path join .state theme theme.nuon)
   if ($theme_file | path exists) {
     let t = (open $theme_file)
-    let stale = (($t.rendered? | default (date now)) < (ls ((distro-root) | path join themes) | get modified | math max))
+    let stale = (($t.rendered? | default (date now)) < (ls ((root) | path join themes) | get modified | math max))
     print $"  ($ok) ($t.name | default 'no theme') — tier ($t.tier), bat ($t.bat), rendered ($t.rendered? | default '?' | format date '%Y-%m-%d %H:%M')"
-    if $stale { print $"  (ansi yellow)a template is newer than the render — `theme sync`(ansi reset)" }
+    if $stale { print $"  (ansi yellow)a template is newer than the render — `terminal theme sync`(ansi reset)" }
   } else {
-    print $"  (ansi dark_gray)--(ansi reset) nothing rendered: the terminal's sixteen colours by name — `theme use <name>`"
+    print $"  (ansi dark_gray)--(ansi reset) nothing rendered: the terminal's sixteen colours by name — `terminal theme use <name>`"
   }
   print ""
 
   print $"(ansi cyan_bold)Plugins(ansi reset)"
-  let pl = (plugins list)
+  let pl = (plugins status)
   if ($pl | is-empty) {
     print "  none found next to nu"
   } else {
@@ -201,7 +195,7 @@ export def doctor []: nothing -> nothing {
       print $"  ($m) ($p.name)"
     }
     if ($pl | where not registered and name not-in $DEV_PLUGINS | is-not-empty) {
-      print $"  (ansi dark_gray)not registered, or registered from a file that is gone: nu-config plugins add(ansi reset)"
+      print $"  (ansi dark_gray)not registered, or registered from a file that is gone: nustro plugins add(ansi reset)"
     }
   }
   print ""
@@ -217,12 +211,12 @@ export def doctor []: nothing -> nothing {
     let h = (harness status)
     match $h.registered {
       true => { print $"  ($ok) marketplace ($h.marketplace) is this checkout" }
-      false => { print $"  (ansi dark_gray)--(ansi reset) marketplace ($h.marketplace) not registered — nu-config harness register" }
-      $other => { print $"  (ansi yellow)??(ansi reset) marketplace ($h.marketplace) is another checkout: ($other) — nu-config harness register" }
+      false => { print $"  (ansi dark_gray)--(ansi reset) marketplace ($h.marketplace) not registered — nustro harness register" }
+      $other => { print $"  (ansi yellow)??(ansi reset) marketplace ($h.marketplace) is another checkout: ($other) — nustro harness register" }
     }
     for p in $h.plugins {
       let m = (if $p.installed and ($p.enabled != false) { $ok } else if $p.installed { $"(ansi yellow)??(ansi reset)" } else { $"(ansi dark_gray)--(ansi reset)" })
-      let behind = (if $p.installed and $p.available != null and $p.version != $p.available { $", ($p.available) here — nu-config harness update" } else { "" })
+      let behind = (if $p.installed and $p.available != null and $p.version != $p.available { $", ($p.available) here — nustro harness update" } else { "" })
       let how = (if $p.installed and ($p.enabled == false) { $"installed ($p.version)($behind), module disabled" } else if $p.installed { $"installed ($p.version)($behind)" } else if $p.enabled == false { "module disabled; not installed" } else { $p.install })
       print $"  ($m) ($p.plugin | fill --width 12) ($how)"
     }
@@ -246,7 +240,7 @@ export def doctor []: nothing -> nothing {
   }
   let broken = (mod-list | where enabled and deps =~ 'missing')
   if ($broken | is-not-empty) {
-    print $"  (ansi yellow)($broken | get module | str join ', '): a required tool is missing — `nu-config module check <name>`(ansi reset)"
+    print $"  (ansi yellow)($broken | get module | str join ', '): a required tool is missing — `nustro module check <name>`(ansi reset)"
   }
   print ""
 
@@ -268,7 +262,7 @@ export def knobs [
   let mine_live = ($mine_src | lines | where {|l| not ($l | str trim | str starts-with "#") } | str join (char nl))
 
   let from_defaults = (
-    open --raw ((distro-root) | path join defaults.nu)
+    open --raw ((root) | path join defaults.nu)
     | lines
     | each {|l|
         let c = ($l | parse --regex '^const (?<name>[A-Z_][A-Z0-9_]*)\s*=' | get -o 0.name)
@@ -309,142 +303,172 @@ export def loaded-files []: nothing -> table {
   | select filename size
 }
 
-# Plugins shipped next to the nu binary, and whether each is registered.
-#
-# `--registry --plugin-config` reads the registry FILE rather than the engine:
-# a plain `plugin list` reports what this process loaded, which is nothing
-# under `nu -n` — the installer's dry run runs there and used to report every
-# plugin as unregistered. The flag needs the path spelled out, because a
-# config-less nu knows $nu.plugin-path but refuses to default to it.
-export def "plugins list" []: nothing -> table<name: string, registered: bool, path: string> {
-  # A registry entry whose file is gone is not registered: Homebrew's Cellar
-  # path carries the version, so the entries of 0.115.1 named files that an
-  # upgrade to 0.116.0 deleted, and `gstat` was "Unable to spawn plugin"
-  # while this listed it as fine (2026-10-02).
-  let registered = (
-    do -i { plugin list --registry --plugin-config $nu.plugin-path | where {|p| $p.filename | path exists } | get name } | default []
-  )
-  let dir = (plugin-dir)
-  if $dir == null { return [] }
-  ls $dir
-  | where name =~ 'nu_plugin_'
-  | get name
-  | each {|p|
-      let short = ($p | path basename | str replace 'nu_plugin_' '' | str replace --regex '\.exe$' '')
-      { name: $short, registered: ($short in $registered), path: $p }
-    }
-}
-
-# The directory the plugins are in: beside `nu`, following the symlinks `nu`
-# is reached through one hop at a time and stopping at the first directory
-# that holds any. ~/.local/bin/nu → /opt/homebrew/bin/nu → the Cellar: the
-# first has none, and the list was empty there ("no plugins found next to
-# nu", 2026-10-02). Null when no hop has any. `plugin add` records the file
-# behind the link whichever directory it is given, so a Homebrew upgrade
-# still leaves the entries naming a Cellar that is gone: `plugins list` then
-# shows them unregistered, and `plugins add` is the fix.
-def plugin-dir []: nothing -> any {
-  mut exe = $nu.current-exe
-  for _ in 1..8 {
-    let dir = ($exe | path dirname)
-    if (ls $dir | where name =~ 'nu_plugin_' | is-not-empty) { return $dir }
-    let target = (ls -l $exe | get -o 0.target)
-    if ($target | default "" | is-empty) { return null }
-    $exe = ($dir | path join $target | path expand --no-symlink)
-  }
-  null
-}
-
-# Register every plugin next to the nu binary, except the developer examples.
-#
-# Nushell has no plugin MANAGER: `plugin add/list/rm/use/stop` only maintain a
-# registry file and never fetch, build or version anything, and `plugin add`
-# needs a binary already on disk. This is that same built-in mechanism, run
-# over whatever your package manager installed alongside `nu`.
-#
-# Re-run after every Nushell upgrade: the registry is protocol-versioned.
-export def "plugins add" []: nothing -> nothing {
-  let todo = (plugins list | where name not-in $DEV_PLUGINS)
-  if ($todo | is-empty) { print "no plugins found next to nu"; return }
-  # Every one, registered or not: `plugin add` replaces an entry of the same
-  # name, which is what refreshes one left by the previous Nushell.
-  mut failed = []
-  for p in $todo {
-    let r = (try { plugin add $p.path; null } catch {|e| $e.msg })
-    print (if $r == null { $"  plugin add ($p.name)" } else { $"  (ansi red)failed(ansi reset)     ($p.name): ($r)" })
-    if $r != null { $failed = ($failed ++ [$p.name]) }
-  }
-  print (if ($failed | is-empty) { "done — restart Nushell, or `plugin use <name>` now" } else { $"($failed | length) of ($todo | length) could not be registered" })
-}
-
-# One line at an interactive start when a registered plugin's file is gone —
-# what a Nushell upgrade leaves behind, since the registry names the versioned
-# file (`gstat`: "Unable to spawn plugin", with nothing saying why, 2026-10-02).
-# The check is `plugin list` and a `path exists` each, 1.7 ms, so it runs
-# until it passes once for this Nushell version and leaves a marker; after
-# that a start pays one `path exists` (µs) until the version changes.
-export def "plugins notice" []: nothing -> nothing {
-  let marker = ($nu.data-dir | path join .state nu-config $"plugins-ok-((version).version)")
-  if ($marker | path exists) { return }
-  let gone = (plugin list | where {|p| not ($p.filename | path exists) } | get name)
-  if ($gone | is-empty) {
-    mkdir ($marker | path dirname)
-    touch $marker
-    return
-  }
-  print $"(ansi dark_gray)plugins: ($gone | str join ', ') registered from files that are gone \(a Nushell upgrade\) — (ansi reset)(ansi cyan)nu-config plugins add(ansi reset)"
-}
-
-const NU_SCRIPTS = "https://raw.githubusercontent.com/nushell/nu_scripts/main"
-
-# Anything fetched belongs to you, not to the distro, so it lands in your
-# directory — which is also first on NU_LIB_DIRS, so it shadows a shipped
-# file of the same name.
-def user-dir [sub: string]: nothing -> path {
-  let d = ((user-root) | path join $sub)
-  mkdir $d
-  $d
-}
-
-# Vendor a completion module from nu_scripts into YOUR completions/.
-#   nu-config fetch completion docker
-export def "fetch completion" [tool: string]: nothing -> nothing {
-  let url = $"($NU_SCRIPTS)/custom-completions/($tool)/($tool)-completions.nu"
-  let dest = (user-dir completions | path join $"($tool)-completions.nu")
-  let body = (try { http get $url } catch { error make { msg: $"nothing at ($url)" } })
-  $body | save -f $dest
-  print $"saved ($dest)"
-  print $"add to your settings.nu:   use ($tool)-completions.nu *"
-}
-
 def editor-argv []: nothing -> list<string> {
   $env.EDITOR? | default "vi" | split row " "
 }
 
-# Open the distro checkout in $EDITOR.
-export def edit []: nothing -> nothing {
-  let ed = (editor-argv)
-  ^($ed | first) ...($ed | skip 1) (distro-root)
-}
-
 # Open your own config directory in $EDITOR — settings.nu, autoload/,
-# completions/, themes/ are all yours and belong in one view — after `user
-# init`, so that settings.nu and the README in every directory are there when
-# the editor opens. Nothing you have is touched; what init did is printed.
-export def "edit user" []: nothing -> nothing {
+# completions/, themes/ are all yours and belong in one view — after the
+# scaffold is written, so that settings.nu and the README in every directory
+# are there when the editor opens. Nothing you have is touched; what was
+# written is printed.
+export def edit []: nothing -> nothing {
   let root = (user-root)
-  for r in (user init | where action != "kept") { print $"  ($r.action) ($r.file)  ($r.note)" }
+  for r in (scaffold init | where action != "kept") { print $"  ($r.action) ($r.file)  ($r.note)" }
   let ed = (editor-argv)
   ^($ed | first) ...($ed | skip 1) $root
   # What the editor left has to parse: a settings.nu or a drop-in that does
   # not takes the whole distro down at the next start — Nushell then runs its
-  # stock shell, without `nu-config doctor` in it to say so.
+  # stock shell, without `nustro doctor` in it to say so.
   let drop_ins = (try { ls ($root | path join autoload) | where name ends-with ".nu" | get name } catch { [] })
   for f in ([($root | path join settings.nu)] ++ $drop_ins | where ($it | path exists)) {
     if not (do -i { nu-check $f } | default false) {
       print $"(ansi red)($f) does not parse — a new shell would start without the distro; `nu-check --debug` on it says where(ansi reset)"
     }
   }
+}
+
+# Open the distro checkout in $EDITOR — to read defaults.nu, or to work on it.
+export def "edit distro" []: nothing -> nothing {
+  let ed = (editor-argv)
+  ^($ed | first) ...($ed | skip 1) (root)
+}
+
+# ── Repair ────────────────────────────────────────────────────────────────────
+# Put the wiring back the way an install leaves it.
+#
+#   nustro repair              every step below, in order; nothing installed, nothing of yours replaced
+#   nustro repair --hard       the installer again, taking every default: config.nu, the scaffold,
+#                              the missing tools, the terminal, theme, init files, plugins, Claude Code
+#   nustro repair --reset      the installer from an empty directory: everything of yours moves to
+#                              <config dir>/.backup/<stamp>/ first, and it asks before it does
+#   nustro repair --dry-run    what would be done
+#
+# The soft one is what `doctor` and `status` point at: each step is a
+# `nustro bootstrap …` command that writes what is missing or stale and leaves
+# the rest alone, so running it on a healthy setup changes nothing. A step
+# that fails is one row, and the ones after it still run.
+#
+#   settings   a MODULES line that still says nu-config (the module's name before 2026-10-02)
+#   state      .state/nu-config/ from that time, moved to .state/nustro/
+#   scaffold   the READMEs, the examples, settings.nu: what is missing is written
+#   tools      init files for the installed tools regenerated, stale ones removed
+#   plugins    registered again when one is missing or names a file that is gone
+#   theme      the last theme rendered again from the templates as they are now
+#   completion the session's memoised answers dropped
+#   harness    the Claude Code plugins brought to the version the checkout ships
+#   parse      distro.nu and everything it sources; a pass is what `upgrade rollback` returns to
+
+# One step: its row, whatever happens in it.
+def step [name: string, work: closure]: nothing -> record<step: string, result: string, note: string> {
+  try {
+    let r = (do $work)
+    { step: $name, result: $r.0, note: $r.1 }
+  } catch {|e|
+    { step: $name, result: "failed", note: $e.msg }
+  }
+}
+
+# The installer, on this terminal: its screens and its questions are its own.
+def reinstall [flags: list<string>]: nothing -> nothing {
+  ^$nu.current-exe (root | path join install.nu) ...$flags
+}
+
+# Put the wiring back the way an install leaves it. Soft by default: nothing
+# is installed and nothing of yours is replaced. `--hard` is the installer
+# again over what is there; `--reset` is the installer from an empty directory.
+export def repair [
+  --hard      # run the installer again with every default: what is there stays, what is missing is written and installed
+  --reset     # run the installer from an empty directory: everything of yours moves to .backup/<stamp>/ first
+  --dry-run   # say what would be done, change nothing
+]: nothing -> table<step: string, result: string, note: string> {
+  if $hard and $reset { error make --unspanned { msg: "--hard keeps what is there, --reset moves it all aside: one of them" } }
+  if $reset {
+    # The installer asks before it applies only on a terminal; without one it
+    # would take every default, and this is not a default to take unasked.
+    if not ((is-terminal --stdin) and (is-terminal --stdout)) {
+      error make --unspanned { msg: "repair --reset moves your whole configuration to .backup/ and asks first; it needs a terminal on both ends" }
+    }
+    reinstall (["--clean"] ++ (if $dry_run { ["--dry-run"] } else { [] }))
+    return []
+  }
+  if $hard {
+    reinstall (["--defaults"] ++ (if $dry_run { ["--dry-run"] } else { [] }))
+    return []
+  }
+
+  let user = (user-root)
+  let settings = ($user | path join settings.nu)
+  let state = ($nu.data-dir | path join .state)
+  let did = {|what: string| if $dry_run { ["would" $what] } else { ["done" $what] } }
+  [
+    (step settings {||
+      let line = (if ($settings | path exists) { open --raw $settings | lines | where $it =~ '^const MODULES\s*=.*\bnu-config\b' | get -o 0 } else { null })
+      if $line == null { return ["ok" ""] }
+      let new = ($line | str replace --regex '\bnu-config\b' 'nustro')
+      if not $dry_run { set $new }
+      do $did "MODULES names nustro, not nu-config"
+    })
+    (step state {||
+      let old = ($state | path join nu-config)
+      if not ($old | path exists) { return ["ok" ""] }
+      let new = ($state | path join nustro)
+      if not $dry_run {
+        if ($new | path exists) { rm -rf $old } else { mv $old $new }
+      }
+      do $did $".state/nu-config → .state/nustro"
+    })
+    (step scaffold {||
+      let rows = (scaffold init --dry-run=$dry_run | where action != "kept")
+      if ($rows | is-empty) { ["ok" ""] } else { do $did ($rows | each {|r| $"($r.action) ($r.file)" } | str join ", ") }
+    })
+    (step tools {||
+      let off = (tools status | where state !~ '^(ok|not installed)$' | get tool)
+      # Regenerated whether or not one is out of step: a generator the last
+      # pull changed shows only in the file's content.
+      if not $dry_run { tools setup --quiet }
+      if ($off | is-empty) { ["ok" ""] } else { do $did ($off | str join ", ") }
+    })
+    (step plugins {||
+      let off = (plugins status | where not registered and name not-in $DEV_PLUGINS | get name)
+      if ($off | is-empty) { return ["ok" ""] }
+      if not $dry_run { plugins add }
+      do $did ($off | str join ", ")
+    })
+    (step theme {||
+      let f = ($state | path join theme theme.nuon)
+      if not ($f | path exists) { return ["ok" "nothing rendered — `terminal theme use <name>`"] }
+      let name = (open $f | get -o name | default "the ANSI tier")
+      if $dry_run { return ["would" $"render ($name) again"] }
+      # The terminal module is lazy and this one must not be what loads it
+      # into every shell: a shell of its own, which also reads the theme the
+      # way a new window will.
+      let r = ("" | ^$nu.current-exe -l -c 'use terminal *; terminal theme sync --quiet | ignore' | complete)
+      if $r.exit_code != 0 { error make { msg: ($r.stderr | str trim | lines | last 1 | get -o 0 | default "terminal theme sync failed") } }
+      ["done" $"($name) rendered again"]
+    })
+    (step completion {||
+      if not $dry_run { nu-complete cache clear }
+      ["ok" ""]
+    })
+    (step harness {||
+      if (which claude | is-empty) { return ["ok" "claude is not on PATH"] }
+      let h = (harness status)
+      if $h.registered != true { return ["ok" "not registered — `nustro harness register`"] }
+      let behind = ($h.plugins | where installed and available != null and version != available | get plugin)
+      if ($behind | is-empty) { return ["ok" ""] }
+      if not $dry_run { harness update }
+      do $did ($behind | str join ", ")
+    })
+    (step parse {||
+      if (do -i { nu-check (root | path join distro.nu) } | default false) {
+        if not $dry_run { upgrade good }
+        ["ok" ""]
+      } else {
+        ["failed" "distro.nu does not parse — `nu-check --debug` on it says where; `nustro upgrade rollback` goes back"]
+      }
+    })
+  ]
 }
 
 # ── Modules ───────────────────────────────────────────────────────────────────
@@ -454,7 +478,7 @@ export def "edit user" []: nothing -> nothing {
 
 # Every module directory, yours shadowing the distro's on a name clash.
 def module-dirs []: nothing -> table<name: string, path: string, source: string> {
-  [[dir source]; [((user-root) | path join modules) "yours"] [((distro-root) | path join modules) "distro"]]
+  [[dir source]; [((user-root) | path join modules) "yours"] [((root) | path join modules) "distro"]]
   | each {|d|
       if not ($d.dir | path exists) { return [] }
       ls $d.dir | where type == dir | get name | each {|p| { name: ($p | path basename), path: $p, source: $d.source } }
@@ -510,7 +534,7 @@ def dep-states [requires: list]: nothing -> table {
 # conf/modules.nu publishes the enabled list as $env.NU_MODULES. This fallback
 # only matters in a shell that imported this module without the config, such as
 # install.nu running as a script.
-const MODULES_FALLBACK = [nu-config nu-complete agent odata]
+const MODULES_FALLBACK = [nustro nu-complete agent odata]
 
 # Private, like mod-info and mod-check: `module` is a Nushell keyword, so an
 # exported `module list` cannot be called from inside this file.
@@ -566,7 +590,7 @@ def module-docs [dir: record, meta: record]: nothing -> string {
   if ($rel | is-empty) { return "" }
   let local = ($dir.path | path join $rel | path expand)
   if ($local | path exists) { return $local }
-  let root = (if $dir.source == "distro" { distro-root } else { user-root })
+  let root = (if $dir.source == "distro" { root } else { user-root })
   $root | path join $rel | path expand
 }
 
@@ -608,8 +632,8 @@ export def "module info" [name: string@module-names]: nothing -> record { mod-in
 # Dependency report for one module. Installs nothing, loads nothing.
 export def "module check" [name: string@module-names]: nothing -> nothing { mod-check $name }
 
-# A module's documentation page, before the module has loaded: `help theme`
-# says nothing until the first line that mentions `theme` sources terminal,
+# A module's documentation page, before the module has loaded: `help terminal`
+# says nothing until the first line that mentions `terminal` sources it,
 # but the page `docs:` names in meta.nuon is there from the start. Rendered
 # by `glow` when installed, else paged through $PAGER; `--path` prints where
 # it is instead.
@@ -636,10 +660,10 @@ def module-sets []: nothing -> record<enabled: list<string>, lazy: list<string>>
   }
 }
 
-# `const NAME = [a b c]` into your settings.nu, in place: `user set` replaces
+# `const NAME = [a b c]` into your settings.nu, in place: `nustro set` replaces
 # the knob's line, commented or live, so the value lands in its own section.
 def set-const-list [name: string, values: list<string>]: nothing -> nothing {
-  user set $"const ($name) = [($values | str join ' ')]"
+  set $"const ($name) = [($values | str join ' ')]"
 }
 
 # Turn a module on. `--lazy` loads it on first mention instead of at startup.
@@ -670,8 +694,8 @@ export def "module enable" [
 # Turn a module off. Its files stay where they are.
 export def "module disable" [name: string@module-names]: nothing -> nothing {
   let sets = (module-sets)
-  if $name in ["nu-config"] {
-    error make { msg: "nu-config is how you repair everything else; disabling it would leave no way back" }
+  if $name in ["nustro"] {
+    error make { msg: "nustro is how you repair everything else; disabling it would leave no way back" }
   }
   print $"(ansi cyan_bold)disabling ($name)(ansi reset)"
   set-const-list "MODULES" ($sets.enabled | where $it != $name)
