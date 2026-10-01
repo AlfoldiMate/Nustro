@@ -302,7 +302,14 @@ export def "nu-complete run" [spec: record, spans: list<string>]: nothing -> any
   if not $answer.answered and $fallback == "external" {
     return (nu-complete external $spans)
   }
-  let items = ($answer.items | nu-complete normalize | nu-complete filter $partial)
+  # What a built-in source returned is Nushell's own match for the token —
+  # a path with the separators and the case its completer settled on, which
+  # a text comparison with what was typed would throw out (`C:\x/` against
+  # `C:\x\alpha\`, the Windows runner, 2026-10-01). Those carry a `kind`; a
+  # spec's candidates do not, and are the ones filtered here.
+  let all = ($answer.items | nu-complete normalize)
+  let theirs = ($all | where {|r| ($r.kind? | default "value") != "value" })
+  let items = (($all | where {|r| ($r.kind? | default "value") == "value" } | nu-complete filter $partial) ++ $theirs)
   # A flag the spec does not know (git -h lists only the common ones): ask outside.
   if ($items | is-empty) and $is_flag and $fallback == "external" {
     return (nu-complete external $spans)
