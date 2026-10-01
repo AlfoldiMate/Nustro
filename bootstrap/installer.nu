@@ -707,9 +707,12 @@ def apply [plan: record, --dry-run, --skip-tools, --skip-plugins, --skip-harness
       if $dry_run {
         # -n: report against this checkout without loading anything. NU_LIB_DIRS
         # has to be handed over, because a config-less nu has no search path.
-        with-env { NU_LIB_DIRS: ($ROOT | path join modules) } { ^$nu.current-exe -n -c $"use nu-config; ($s.code)" }
+        with-env { NU_LIB_DIRS: ($ROOT | path join modules) } { "" | ^$nu.current-exe -n -c $"use nu-config; ($s.code)" }
       } else {
-        ^$nu.current-exe -l -c $s.code
+        # An empty stdin of its own: no step asks anything, and the one this
+        # process has may be `/dev/tty` (bootstrap/install.sh), which a tool
+        # a step starts may not survive — the claude CLI does not.
+        "" | ^$nu.current-exe -l -c $s.code
       }
       true
     } catch { false })

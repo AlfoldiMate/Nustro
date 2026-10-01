@@ -46,10 +46,20 @@ def marketplace []: nothing -> record<name: string, plugins: table> {
   }
 }
 
+# Every `claude` call goes through here, with an empty stdin of its own.
+# Inherited, stdin is whatever the shell has — and bootstrap/install.sh
+# hands install.nu `/dev/tty`, which the claude CLI (Bun) cannot watch on
+# macOS: `EINVAL: invalid argument, kqueue`, and the marketplace step of a
+# `curl … | sh` install failed on it (2026-10-01, reproduced in a pty with
+# `claude plugin marketplace list < /dev/tty`). None of these calls reads it.
+def claude-run [args: list<string>]: nothing -> record<stdout: string, stderr: string, exit_code: int> {
+  "" | ^claude ...$args | complete
+}
+
 # `claude plugin marketplace list --json`, or [] without claude.
 def registered-marketplaces []: nothing -> list {
   if (which claude | is-empty) { return [] }
-  let r = ^claude plugin marketplace list --json | complete
+  let r = claude-run [plugin marketplace list --json]
   if $r.exit_code != 0 { return [] }
   try { $r.stdout | from json } catch { [] }
 }
@@ -57,7 +67,7 @@ def registered-marketplaces []: nothing -> list {
 # `claude plugin list --json`, or [] without claude.
 def installed-plugins []: nothing -> list {
   if (which claude | is-empty) { return [] }
-  let r = ^claude plugin list --json | complete
+  let r = claude-run [plugin list --json]
   if $r.exit_code != 0 { return [] }
   try { $r.stdout | from json } catch { [] }
 }
@@ -111,7 +121,7 @@ export def "harness register" []: nothing -> nothing {
     if ($st.registered | describe) == "string" {
       print $"  (ansi yellow)re-pointing marketplace ($st.marketplace) from ($st.registered)(ansi reset)"
     }
-    let r = ^claude plugin marketplace add $ROOT | complete
+    let r = claude-run [plugin marketplace add $ROOT]
     if $r.exit_code != 0 {
       error make --unspanned { msg: $"claude plugin marketplace add ($ROOT): ($r.stderr | str trim)" }
     }
@@ -145,14 +155,14 @@ export def "harness update" [
     if $verbose { print $"(ansi dark_gray)marketplace ($st.marketplace) is not this checkout — nu-config harness register(ansi reset)" }
     return
   }
-  let r = ^claude plugin marketplace update $st.marketplace | complete
+  let r = claude-run [plugin marketplace update $st.marketplace]
   if $r.exit_code != 0 {
     print $"  (ansi yellow)!!(ansi reset) marketplace ($st.marketplace): ($r.stderr | str trim | lines | get -o 0 | default 'update failed')"
     return
   }
   print $"  (ansi green)ok(ansi reset) marketplace ($st.marketplace) refreshed"
   for p in ($st.plugins | where installed) {
-    let r = ^claude plugin update $"($p.plugin)@($st.marketplace)" | complete
+    let r = claude-run [plugin update $"($p.plugin)@($st.marketplace)"]
     if $r.exit_code != 0 {
       print $"  (ansi yellow)!!(ansi reset) ($p.plugin | fill --width 12) ($r.stderr | str trim | lines | get -o 0 | default 'update failed')"
       continue

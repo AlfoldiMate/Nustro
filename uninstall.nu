@@ -138,7 +138,7 @@ def main [
   }
   if (not $skip_harness) and (which claude | is-not-empty) {
     print $"(ansi cyan_bold)Claude Code(ansi reset)"
-    let code = 'use nu-config; let h = (nu-config harness status); if $h.registered == true { for p in ($h.plugins | where installed) { print $"  claude plugin uninstall ($p.plugin)@($h.marketplace)"; ^claude plugin uninstall $"($p.plugin)@($h.marketplace)" | complete | ignore }; print $"  claude plugin marketplace remove ($h.marketplace)"; ^claude plugin marketplace remove $h.marketplace | complete | ignore } else { print "  the marketplace is not this checkout — left alone" }'
+    let code = 'use nu-config; let h = (nu-config harness status); if $h.registered == true { for p in ($h.plugins | where installed) { print $"  claude plugin uninstall ($p.plugin)@($h.marketplace)"; "" | ^claude plugin uninstall $"($p.plugin)@($h.marketplace)" | complete | ignore }; print $"  claude plugin marketplace remove ($h.marketplace)"; "" | ^claude plugin marketplace remove $h.marketplace | complete | ignore } else { print "  the marketplace is not this checkout — left alone" }'
     try { with-env $lib { ^$nu.current-exe -n -c $code } } catch {
       print $"  (ansi yellow)could not be undone from here(ansi reset) — `claude plugin marketplace list` shows what is registered"
     }
