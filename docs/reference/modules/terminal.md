@@ -14,7 +14,7 @@ font                           # pick a Nerd Font, install it, see it in a real 
 theme use tokyonight           # or name one; Tab completes them
 theme roles                    # what the shell made of it: every role, its colour, which tier
 terminal shell                 # a new window of the terminal starts Nushell
-terminal option right          # which Option key is Alt: left (the base), right, both, none
+terminal option left           # which Option key is Alt: none (the base), left, right, both
 font use JetBrainsMono --size 15   # or `font size 15` on its own
 terminal status                # what this distro has written into the terminal's config
 ```
@@ -62,7 +62,7 @@ are in.
 | `theme resolve [name]` | the resolved theme as data, nothing written |
 | `theme names [--ghostty]` | the names alone — palettes, or Ghostty's. Tab on a `<name>` offers the palettes, or Ghostty's once `--ghostty` is on the line |
 | `ghostty status` | the config Ghostty reads, what we own in it, and the theme and shell Ghostty resolves |
-| `ghostty shell [--reset]` | make Nushell what a new Ghostty window starts, and on macOS the left Option key Alt unless your config already says (`macos-option-as-alt`); `--reset` hands both back |
+| `ghostty shell [--reset]` | make Nushell what a new Ghostty window starts, and on macOS both Option keys the layout's (neither is Alt) unless your config already says (`macos-option-as-alt`); `--reset` hands both back |
 | `ghostty option [side]` | which Option key is Alt — `left`, `right`, `both`, `none`, or `default` to drop ours; written to our file, so it wins over yours, and reloaded into the open windows. Nothing given: what it is now |
 | `ghostty nu-path` | the nu that `shell` writes: the one on PATH, not the running binary (`terminal nu-path` is the same) |
 | `ghostty set <record>` | write keys into our own included file (a null value removes one) |
@@ -84,7 +84,7 @@ are in.
 | `terminal install-plan [name]` | what this platform would have to run, and whether it can |
 | `terminal install [name]` | run it, after asking; the platform's default when unnamed |
 | `terminal shell [--reset]` | make Nushell what a new window of the target starts, or hand it back |
-| `terminal option [side]` | which Option (Alt) key the shell gets as Alt, the other typing the layout's characters: `left` (the base), `right`, `both`, `none`, `default`. Alt+E, Alt+B/F/D and the other Alt+letter bindings need the key that is Alt; Alt+Enter, Alt+arrows and Alt+Backspace work with either |
+| `terminal option [side]` | which Option (Alt) key the shell gets as Alt, the other typing the layout's characters: `none` (the base: both type characters, as in iTerm2), `left`, `right`, `both`, `default`. Alt+E, Alt+B/F/D and the other Alt+letter bindings need a key that is Alt, so with `none` they do not work; Alt+Enter, Alt+arrows and Alt+Backspace work whatever is set |
 | `terminal status` / `settings` / `set` / `reset` / `reload` / `live` / `face` / `preview` / `font-keys` / `write-theme` | the target's own, dispatched on its name — what `theme use` and `font use` call, so they never name a terminal |
 | `terminal nu-path` | the nu a terminal should start: the one on PATH |
 | `font` | the picker: fifteen Nerd Fonts, install what you choose, keep it |

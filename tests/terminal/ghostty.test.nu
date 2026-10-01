@@ -157,8 +157,8 @@ def "test shell makes nu the command and --reset drops it" [] {
   ghostty shell
   assert equal (ghostty settings | get command) (ghostty nu-path)
   assert equal (ghostty status | get shell) (ghostty nu-path)
-  # On macOS the left Option key becomes Alt with it, unless they said otherwise.
-  assert equal (ghostty settings | get -o macos-option-as-alt) (if $nu.os-info.name == "macos" { "left" } else { null })
+  # On macOS both Option keys are the layout's with it, unless they said otherwise.
+  assert equal (ghostty settings | get -o macos-option-as-alt) (if $nu.os-info.name == "macos" { "false" } else { null })
   ghostty shell --reset
   assert equal (ghostty settings | get -o command) null
   assert equal (ghostty settings | get -o macos-option-as-alt) null

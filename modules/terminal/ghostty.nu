@@ -244,15 +244,15 @@ export def "ghostty nu-path" []: nothing -> path {
 
 # Make Nushell what a new Ghostty window starts, or hand that back to Ghostty.
 #
-# On macOS the same write makes the left Option key Alt, unless their config
-# already says something about it (`ghostty option`, below).
+# On macOS the same write gives both Option keys to the layout, unless their
+# config already says something about it (`ghostty option`, below).
 export def "ghostty shell" [
   --reset  # drop our `command` (and the Option key), so Ghostty falls back to SHELL / passwd again
 ]: nothing -> nothing {
   if $reset {
     ghostty set { command: null, macos-option-as-alt: null }
   } else {
-    let alt = (if $nu.os-info.name == "macos" and (ghostty live "macos-option-as-alt" | default "" | is-empty) { { macos-option-as-alt: "left" } } else { {} })
+    let alt = (if $nu.os-info.name == "macos" and (ghostty live "macos-option-as-alt" | default "" | is-empty) { { macos-option-as-alt: "false" } } else { {} })
     ghostty set ({ command: (ghostty nu-path) } | merge $alt)
   }
   let now = (ghostty live "command")
@@ -272,11 +272,14 @@ export def "ghostty shell" [
 # chord that produces no character — Alt+Enter, Alt+arrows, Alt+Backspace —
 # is Alt whatever this says (Ghostty's own documentation of the key).
 #
-# The base is `left`, written by `ghostty shell` when their config says
-# nothing: the right key is the one a layout's third level is typed with — it
-# is AltGr on every ISO keyboard, and on a Hungarian layout `| \ [ ] { } @ ;
-# < > #` are all Option+key — so the shell gets the other one. It was `right`
-# until 2026-10-01, which took exactly that key away.
+# The base is `none`, written by `ghostty shell` when their config says
+# nothing: both keys type the layout's third level, which is what iTerm2 and
+# Terminal.app do out of the box and what a layout that needs Option to type
+# at all expects — on a Hungarian one `| \ [ ] { } @ ; < > #` are all
+# Option+key, with whichever hand is free. The price is the Alt+letter
+# bindings (Alt+E, Alt+B/F/D/U/L/C/M); `left` or `right` buys them back with
+# one key. It was `right` until 2026-10-01, then `left` for an hour: either
+# takes a key away from someone who types symbols with it.
 const OPTION_SIDES = { left: "left", right: "right", both: "true", none: "false" }
 
 # Which Option key is Alt in Ghostty: `left`, `right`, `both`, `none`, or

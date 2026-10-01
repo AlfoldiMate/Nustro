@@ -78,8 +78,9 @@ returns the line: `agent exec ... | save cmd.nu`.
 On macOS the Option key composes the layout's characters unless the terminal
 is told otherwise: Terminal.app needs "Use Option as Meta key", Ghostty
 `macos-option-as-alt` (unset by default in 1.3.1 — `ghostty shell`, which the
-installer runs, writes `left` when your config says nothing, so the right key
-keeps your layout's accents and symbols; `terminal option right` swaps them);
+installer runs, writes `false` when your config says nothing, so both keys
+type your layout's accents and symbols and Alt+E does not reach the shell
+until `terminal option left` or `right` makes one of them Alt);
 iTerm2, WezTerm, Kitty and Alacritty send
 Alt by default. To rebind, change the `agent_line` entry in
 `modules/agent/stub.nu`.

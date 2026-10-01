@@ -6,7 +6,7 @@
 #   terminal use <name>    make one the target, whatever this session runs in
 #   terminal install       install the platform's default, or a named one, after asking
 #   terminal shell         a new window of the target starts Nushell
-#   terminal option        which Option key is Alt: left (the base), right, both, none
+#   terminal option        which Option key is Alt: none (the base), left, right, both
 #   terminal status        what the target's configuration holds
 #   terminal set / reset   the target's own `set` / `reset`
 #
@@ -268,10 +268,10 @@ export def "terminal shell" [
 
 def option-sides []: nothing -> list<record> {
   [
-    { value: "left", description: "the left Option key is Alt, the right one types the layout's characters — the base" }
+    { value: "none", description: "neither is Alt, both type the layout's characters; Alt+letter bindings do not work — the base" }
+    { value: "left", description: "the left Option key is Alt, the right one types the layout's characters" }
     { value: "right", description: "the right Option key is Alt, the left one types the layout's characters" }
     { value: "both", description: "both are Alt: no layout characters from Option" }
-    { value: "none", description: "neither is Alt: Alt+letter bindings stop working" }
     { value: "default", description: "drop ours: your terminal config, or the terminal, decides" }
   ]
 }
