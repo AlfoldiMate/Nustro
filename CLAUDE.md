@@ -55,6 +55,16 @@ reports `false` there for reasons unrelated to the file. Use `nu -l -c
   `defaults.nu` and the module `meta.nuon`s, relative links are rewritten per
   destination. Edit the template or the generator, never a rendered file;
   test with `nu -l --config <scratch>/config.nu -c 'nu-config user init'`.
+- Install: `install.nu` is the front door and imports nothing (the Nushell
+  version against `nustro.nuon`, the checkout, the parse — then it runs
+  `bootstrap/installer.nu` in a `nu -n`); `uninstall.nu` imports nothing
+  either. The installer moves a configuration that is not ours to
+  `<config dir>/.backup/<stamp>/` with a manifest, proves a new `nu -l`
+  loads the distro before any step that needs `nu-config`, and runs each
+  later step in a shell of its own. Tools are installed by `nu-config deps
+  install` (`modules/nu-config/deps.nu`), never by the installer itself.
+  Test both against scratch XDG dirs with `--skip-deps --skip-terminal
+  --skip-harness`; never run either against the real config directory.
 - Tests: `tests/<concern>.test.nu`, one `def "test <name>"` per case on
   `std assert`, `use lib.nu *` for `scratch`, `user-dir`, `nu-l`, `skip-test`. A
   shell under test runs against `user-dir` (its own XDG dirs), never against

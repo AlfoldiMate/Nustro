@@ -20,7 +20,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 
 ## Getting started
 
-1. [Install](getting-started/install.md) — the two bootstrap lines, the seven screens, what is written where
+1. [Install](getting-started/install.md) — the two bootstrap lines, the seven screens, an existing configuration, what is written where
 2. [Your first shell](getting-started/first-shell.md) — `nu-config doctor`, the keys, the two directories
 3. [Your first setting](getting-started/first-setting.md) — `settings.nu`, knobs, values against behaviour
 4. [Your first theme](getting-started/first-theme.md) — `theme`, `font`, `terminal shell`

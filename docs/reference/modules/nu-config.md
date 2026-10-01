@@ -20,6 +20,7 @@ nu-config upgrade            # pull the distro; the shell says when there is som
 | `module list \| info \| check \| enable \| disable \| lint` | the module system — [Modules](../../concepts/modules.md). `check` prints each dependency with its install line and, for a missing one, `then:` — what to do once it is installed; a `group` (Ghostty or WezTerm) is satisfied by any member. `enable` of a module of yours is lazy whatever the flag: the eager `source` lines are parse-time and the distro's, so an eager module of yours is a `use` in `settings.nu` |
 | `module help <name> [--path]` | the page `docs:` names in the module's `meta.nuon`, through `glow` when installed and `$PAGER` otherwise — before the module has loaded, when `help theme` still says nothing; `--path` prints where it is |
 | `missing-tool <module> [bin] [--command]` | the error a command raises when its module's tool is not installed, worded from `meta.nuon` — for modules to import from `missing.nu`, not to type |
+| `deps status \| manager \| install [tool …] [--dry-run]` | the five tools the distro is built around — starship, zoxide, atuin, carapace, vivid: which are on PATH, and the line that installs each with this machine's package manager (Homebrew; winget or Scoop on Windows; pacman on Arch, which has no carapace). `install` runs it for every missing one, or the ones named, one tool at a time so a failure is one row, then `tools setup`; with no manager it prints each tool's install page and runs nothing. Package names checked 2026-10-01; only the Homebrew lines have been run |
 | `tools setup \| status \| remove \| dir` | generated init files for installed third-party tools |
 | `upgrade` | fetch; check the upstream out into a throwaway worktree under `<your>/.state/nu-config/`, refuse it when its `nustro.nuon` needs a newer Nushell or its `distro.nu` fails `nu-check` with the running `nu` (the parse error is printed, the checkout untouched); then `git pull --ff-only`, the commits that came in, `user init` for any scaffold file the new version ships and your directory lacks (a README, an example — never a file you have), `tools setup`, and `harness update` when `claude` is on PATH and the checkout is the registered marketplace. After a `rollback`, returns to the branch first |
 | `upgrade rollback [commit]` | `git checkout --detach` of the commit `doctor` last saw parse (`last_good`), else the one the last `upgrade` moved off (`previous`), else the one named; the startup line then says so until `upgrade` returns |
@@ -59,7 +60,7 @@ files at the moment you ask, never at startup.
 
 Two facts shape this module.
 
-**It is imported by `install.nu`, which runs as a script.** A script loads no
+**It is imported by the installer (`bootstrap/installer.nu`, which `install.nu` runs), a script.** A script loads no
 config, so none of the config's parse-time constants exist. Anything this
 module reads from the config must come through `$env` — `$env.NU_LIB_DIRS`,
 `$env.NU_SMART_TAB`, `$env.NU_MODULES` — never the `const`. Referencing a const
@@ -152,6 +153,7 @@ mod.nu       the commands
 user.nu      your directory's scaffold: `user init | status | render | set` — the face
 scaffold.nu  the generator behind it, a script run in a `nu -n` so that startup never parses it
 tools.nu     the third-party tool registry and generator
+deps.nu      the tools themselves: `deps status | manager | install`
 upstream.nu  `upgrade`: is the checkout behind its remote, and pulling it
 load.nu      `use nu-config`
 meta.nuon    description
@@ -159,7 +161,7 @@ meta.nuon    description
 
 ## Tests
 
-`nu tests/run.nu config` — 45 tests in `tests/config/` (2026-09-19):
+`nu tests/run.nu config` — 62 tests in `tests/config/` (2026-10-01):
 `layering` (a `const` and an `$env.` leaf in `settings.nu` reaching the
 `conf/` file that reads them, `knobs` against `defaults.nu` and every
 `meta.nuon`, `--overridden` naming exactly the live lines, the rule that no
@@ -171,8 +173,16 @@ with a module that keeps the contract and one that breaks it every way
 against a bare clone of this repository as the remote, commits pushed from
 a third clone, a checkout with commits of its own, no remote, a fetch that
 fails), `install` (`--dry-run` writing nothing, `--defaults` writing exactly
-the scaffold with no override, a second run, a foreign `config.nu` backed
-up, a checkout refused) and `tools` (`setup | status | remove`, the files
+the scaffold with no override, a second run, a configuration that is not the
+distro's moved to `.backup/` whole or `config.nu` alone with
+`--keep-existing`, another setup's init files in the data dir, a broken
+`env.nu` or `settings.nu` stopping the install by name, an older Nushell and
+a partial checkout refused at the front door, a checkout refused as the
+target), `uninstall` (the previous configuration put back exactly, a first
+one left in place, `--purge`, `--dry-run`, no `--yes` without a terminal,
+another configuration left alone, a pre-manifest backup), `deps` (`status`,
+`install` against a fake `brew` alone on PATH: once per missing tool, named
+tools only, one failing and the rest going on, no manager) and `tools` (`setup | status | remove`, the files
 parsing, the carapace rewrap). [Tests](../tests.md) is the harness.
 
 ## Limits

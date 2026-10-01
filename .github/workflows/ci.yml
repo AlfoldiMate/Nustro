@@ -52,9 +52,12 @@ jobs:
       # stdin and stdout, so --defaults is belt and braces. Plugins are skipped:
       # the runner's nu has no plugin binaries beside it to register. The
       # terminal too: --defaults would brew-install Ghostty on the macOS runner
-      # and winget-install WezTerm on the Windows one.
+      # and winget-install WezTerm on the Windows one. The tools likewise:
+      # five packages from Homebrew or winget on every push prove their
+      # package managers, not the distro (tests/config/deps.test.nu drives
+      # `deps install` against a fake one).
       - name: install
-        run: nu install.nu --defaults --skip-plugins --skip-terminal
+        run: nu install.nu --defaults --skip-plugins --skip-terminal --skip-deps
 
       - name: the split happened
         run: |
@@ -119,6 +122,11 @@ jobs:
             if $t.tier != "palette" { error make { msg: "example.nuon did not resolve as a palette" } }
           '
 
+      # A second run over what the first one wrote: nothing to back up,
+      # nothing rewritten, the same verdict.
+      - name: install again
+        run: nu install.nu --defaults --skip-plugins --skip-terminal --skip-deps
+
       - name: bootstrap/install.sh parses
         run: sh -n bootstrap/install.sh
 
@@ -131,3 +139,11 @@ jobs:
             (Resolve-Path bootstrap/install.ps1), [ref]$null, [ref]$errors) | Out-Null
           if ($errors) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
           Write-Host "install.ps1 parses"
+
+      # Last, because it takes the configuration every step above ran in:
+      # the plan, then the uninstall, then a shell with no distro in it.
+      - name: uninstall
+        run: |
+          nu uninstall.nu --dry-run
+          nu uninstall.nu --yes --skip-harness
+          nu -l -c 'if (scope commands | where name == "nu-config doctor" | is-not-empty) { error make { msg: "the distro is still loaded after uninstall.nu" } }'

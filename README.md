@@ -39,17 +39,49 @@ irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.
 
 Each has two jobs — make sure `nu` exists, clone this repo — and hands over to
 `install.nu`, written in the shell it installs. Read either first; they are
-short on purpose. Already have Nushell and a checkout?
+short on purpose. Nushell **0.116 or later** is required and nothing older is
+supported: a `nu` that is older gets an offer to upgrade, not a broken
+install. `sh install.sh --yes` asks nothing, and any flag below is handed on
+(`sh install.sh --yes --skip-deps`). Already have Nushell and a checkout?
 
 ```nu
 git clone https://github.com/AlfoldiMate/Nustro ~/.local/share/nustro
-nu ~/.local/share/nustro/install.nu          # seven screens, every one skippable
-nu ~/.local/share/nustro/install.nu --defaults   # no questions
+nu ~/.local/share/nustro/install.nu              # seven screens, every one skippable
+nu ~/.local/share/nustro/install.nu --defaults   # no questions, the whole thing
 nu ~/.local/share/nustro/install.nu --dry-run    # print the plan, change nothing
+nu ~/.local/share/nustro/install.nu --minimal    # nu-config, nu-complete and terminal only
 ```
 
-Nothing is written before you say yes to the last screen. Undo at any time:
-delete the three-line `config.nu` it wrote and delete the checkout.
+Nothing is written before you say yes to the last screen. What the install
+does, in order ([Install](docs/getting-started/install.md)):
+
+- **Backs up what was there.** A Nushell configuration that is not Nustro's —
+  `config.nu`, `env.nu`, `login.nu`, drop-ins, scripts — moves whole to
+  `<config dir>/.backup/<stamp>/`; history and the plugin registry stay.
+  `--keep-existing` sets only the old `config.nu` aside.
+- **Writes yours.** The three-line `config.nu` and your directory's scaffold.
+- **Proves it.** A new shell is started and asked whether the distro loaded
+  in it; if not, the install stops there with that shell's own error and the
+  file it names.
+- **Installs the tools** it is built around — starship, zoxide, atuin,
+  carapace, vivid — with the package manager you have (Homebrew; winget or
+  Scoop; pacman). The guided run asks: all, choose, or none; `--defaults`
+  takes all; `--skip-deps` none; `nu-config deps install` does it later.
+- **Wires the rest**: the terminal, the theme, tool init files, plugins,
+  Claude Code. Each in a shell of its own, so one that fails is one line in
+  the summary with the command that repeats it.
+
+Safe to re-run at any time. To take it back out:
+
+```nu
+nu ~/.local/share/nustro/uninstall.nu --dry-run   # the plan
+nu ~/.local/share/nustro/uninstall.nu             # one question, then it
+```
+
+It removes the terminal include and the Claude Code marketplace, moves what
+the distro wrote to `.backup/nustro-<stamp>/` rather than deleting it, and
+puts the configuration you had before back where it was
+([Undo the whole thing](docs/cookbook/uninstall.md)).
 
 ## The first ten minutes
 

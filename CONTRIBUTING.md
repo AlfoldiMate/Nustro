@@ -25,7 +25,7 @@ and how to test a second clone without making it live, is
 
 CI (`.github/workflows/ci.yml`) runs on every push and pull request, on
 macOS, Linux and Windows, with Nushell pinned at 0.116.0: the real installer
-(`nu install.nu --defaults --skip-plugins --skip-terminal`), the layout is
+(`nu install.nu --defaults --skip-plugins --skip-terminal --skip-deps`), the layout is
 `split`, `nu-check distro.nu`, `module lint`, `doctor`, the suite, no
 override left behind by a default install, the scaffold's three examples
 once renamed, and both bootstrap scripts parse. Neither Ghostty nor WezTerm

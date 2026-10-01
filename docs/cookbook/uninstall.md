@@ -1,11 +1,41 @@
 # Undo the whole thing
 
+```nu
+nu ~/.local/share/nustro/uninstall.nu --dry-run   # the plan
+nu ~/.local/share/nustro/uninstall.nu             # the plan, one question, then it
+```
+
+`uninstall.nu` takes out what the distro wrote and puts back what was there
+before. Nothing is deleted except caches: the pointer `config.nu`, `.state/`
+and the generated init files are **moved** to
+`<config dir>/.backup/nustro-<stamp>/`, so a regretted uninstall is a `mv`
+back and a meant one is one `rm -rf` of that directory. Run on 2026-10-01
+against a scratch config directory holding someone else's `config.nu`,
+`env.nu`, `autoload/` and `scripts/`: after `install.nu --defaults` and
+`uninstall.nu --yes` the directory listed exactly as before.
+
+| | |
+|---|---|
+| the terminal | the distro's file and include line(s) are removed from Ghostty's and WezTerm's config, where they are there (`--skip-terminal` leaves them) |
+| Claude Code | with `claude` on PATH and the marketplace registered as this checkout: the plugins installed from it are uninstalled and the marketplace removed (`--skip-harness` leaves them) |
+| the previous configuration | the newest `.backup/<stamp>/` the installer made is moved back entry by entry, its `vendor/autoload` files included; the scaffold goes to the set-aside directory first so nothing collides (`--no-restore` leaves the backup where it is) |
+| your directory | with nothing to restore, `settings.nu`, `autoload/`, `completions/`, `themes/`, `modules/` and `plugins/` stay — they are yours and nothing reads them once `config.nu` is gone; `--purge` sets them aside too |
+| untouched | history and the plugin registry (Nushell's own), the checkout (the last line printed is its `rm -rf`), `nu`, and every tool and font installed along the way — those are your package manager's |
+
+`--yes` skips the question; with no terminal and no `--yes` nothing is done.
+A `config.nu` that does not point at this checkout is some other
+configuration and is left alone. The script imports nothing, so it runs when
+the checkout no longer parses; the terminal and Claude Code steps each run in
+a child and are reported, not required.
+
+## By hand
+
 Nothing the distro did is hidden. It wrote one file into Nushell's config
 directory, one file plus one line into the terminal's, and everything else it
-owns is under the checkout or under `.state/`. Undoing it is removing those,
-in this order.
+owns is under the checkout or under `.state/`. Undoing it without the script
+is removing those, in this order.
 
-## 1. The terminal, if you let it in
+### 1. The terminal, if you let it in
 
 ```nu
 terminal status              # what the distro wrote: theme, icon, command, font — and into which terminal
@@ -22,10 +52,10 @@ reset` and `wezterm reset` name one, for a machine that had both.
 when it first added the line stays for you to compare. Do this while the
 module is still loadable — it is the distro's command.
 
-## 2. The pointer
+### 2. The pointer
 
 ```nu
-rm $nu.config-path           # the three-line config.nu; the previous one is beside it as config.nu.backup-<stamp>
+rm $nu.config-path           # the three-line config.nu; what was there before is in .backup/<stamp>/
 ```
 
 That is the uninstall. Nushell now starts with no configuration — its own
@@ -35,16 +65,17 @@ scratch directory: `install-status` was `split` before, and after removing
 `config.nu` a `nu -l` had no `nu-config` command and nothing else of the
 distro's.
 
-If you had a `config.nu` before, `mv config.nu.backup-<stamp> config.nu` is
-the way back to it.
+If you had a configuration before, it is in `.backup/<stamp>/` with a
+manifest naming each entry (`config.nu.backup-<stamp>` beside `config.nu`
+for an install before 2026-10-01); moving the entries back is the way back.
 
-## 3. The checkout
+### 3. The checkout
 
 ```nu
 rm -rf ~/.local/share/nustro     # or wherever `nu-config distro-root` said
 ```
 
-## 4. What is left, and yours
+### 4. What is left, and yours
 
 Everything else in your config directory is yours, and the distro never
 needed any of it removed:

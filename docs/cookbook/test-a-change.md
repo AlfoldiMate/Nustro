@@ -87,7 +87,7 @@ write one.
 | a completion | `commandline complete --detailed` on the slots, `timeit` on each ([Debug Tab](debug-tab.md)) |
 | a theme template or palette | `theme resolve <name>`, `theme roles <name>` — nothing written; then `theme sync` |
 | anything on the startup path | `nu-config startup-time` before and after, or the `--config` form of it: `1..15 \| each { ^$nu.current-exe -l --config /tmp/nu-scratch/config.nu -c '$nu.startup-time' \| into duration } \| math min` |
-| the installer | `nu install.nu --dry-run`, then a real run with `XDG_CONFIG_HOME` pointed at a scratch directory |
+| the installer | `nu install.nu --dry-run`, then a real run with `XDG_CONFIG_HOME` and `XDG_DATA_HOME` pointed at scratch directories and `--skip-deps --skip-terminal --skip-harness`; `nu uninstall.nu --yes --skip-harness` in the same environment takes it back |
 | the docs | every command in the page, run as written |
 | anything with a test | `nu tests/run.nu <its name>`, then the whole suite before the commit |
 

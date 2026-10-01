@@ -13,7 +13,8 @@ user-root` prints it.
 | | written by | what |
 |---|---|---|
 | `config.nu` | `install.nu`, once | three lines: `const DISTRO = …; source ($DISTRO \| path join distro.nu)` |
-| `config.nu.backup-<stamp>` | `install.nu` | the previous `config.nu`, when there was one |
+| `.backup/<stamp>/` | `install.nu` | the configuration that was there before, moved whole (or only its `config.nu`, with `--keep-existing`), with `.nustro-backup.nuon` — what it holds and where each entry came from; `uninstall.nu` puts it back. Installs before 2026-10-01 left `config.nu.backup-<stamp>` instead |
+| `.backup/nustro-<stamp>/` | `uninstall.nu` | what the distro had written — `config.nu`, `.state/`, the generated init files, and the scaffold when a previous configuration was restored or with `--purge` — set aside, never deleted |
 | `README.md` | `nu-config user init`, when missing | what every file and directory here is, and whose |
 | `settings.nu` | `nu-config user init`, when missing; then you | every knob in `defaults.nu` and every module's `meta.nuon`, commented out at its shipped value — generated, not copied; uncomment to override. Sourced right after `defaults.nu` |
 | `settings.nu.backup-<stamp>` | `nu-config user init --force settings.nu` | the one replaced |

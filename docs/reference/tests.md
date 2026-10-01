@@ -35,7 +35,7 @@ tests/
   harness.test.nu     the harness tested with itself
   completion/         engine, smart, specs, cost — the engine behind Tab
   terminal/           ghostty, wezterm, registry, theme, font — against a fake ghostty and a fake wezterm
-  config/             layering, modules, upgrade, install, tools — the distro's own mechanics
+  config/             layering, modules, upgrade, install, uninstall, deps, tools — the distro's own mechanics
   pty/                harness.py and menu.test.nu — Tab in a real terminal
   worktree/           the bare-worktree layout: init, add, remove, apply, discard, which
   claude-code/        the marketplace, the plugins' manifests and hooks against a real layout
@@ -167,9 +167,9 @@ A file costs two `nu -n` starts (one lists the tests, one runs them) and a
 test that starts a shell against a user directory costs one `nu -l`: about
 60 ms with the distro loaded, 105 ms on the 0.115.1 release build
 (2026-09-19, M-series Mac). The harness file alone, six tests, four of them
-starting a shell: 332 ms. The whole suite, 222 tests in twenty-one files:
-31 s concurrent on 0.116.0 (2026-09-28; the pty file is the long pole at
-15 s), 18 s for 137 tests in fourteen files on 2026-09-19, 38 s `--serial`
+starting a shell: 332 ms. The whole suite, 242 tests in twenty-one files:
+33 s concurrent on 0.116.0 (2026-10-01; 222 tests were 31 s on 2026-09-28;
+the pty file is the long pole at 15 s), 18 s for 137 tests in fourteen files on 2026-09-19, 38 s `--serial`
 then (0.55 s for
 the harness alone on the Linux runner, 1.4 s on the macOS one). The slow
 tests are the ones that clone this repository (`config/upgrade`: one

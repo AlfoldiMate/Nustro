@@ -3,10 +3,13 @@
 #   irm https://raw.githubusercontent.com/AlfoldiMate/Nustro/main/bootstrap/install.ps1 | iex
 #   .\install.ps1 -Yes                      take every default, ask nothing
 #   .\install.ps1 -Dir C:\src\nu-distro     clone somewhere else
+#   .\install.ps1 -Pass '--minimal','--skip-deps'   anything install.nu takes is handed on to it
 #
 # The Windows half of bootstrap/install.sh, and it has the same two jobs: make
 # sure `nu` exists, and put the distro on disk. Everything after that is
 # Nushell — install.nu is the installer, written in the shell it installs.
+# A `nu` older than the distro requires is upgraded first: install.nu would
+# refuse it.
 #
 # Piped into `iex` there are no parameters, so every one of them also reads an
 # environment variable: NUSTRO_REPO, NUSTRO_DIR,
@@ -19,11 +22,16 @@ param(
   [string] $Ref     = $env:NUSTRO_REF,
   [string] $Version = $env:NUSHELL_VERSION,
   [string] $BinDir  = $env:NUSHELL_BIN_DIR,
+  [string[]] $Pass  = @(),
   [switch] $Yes,
   [switch] $NoInstall
 )
 
 $ErrorActionPreference = 'Stop'
+
+# The oldest Nushell the distro runs on — nustro.nuon's `requires_nu`, which
+# cannot be read before the clone. Raised together with it and the CI pin.
+$MinNu = [version]'0.116'
 
 if (-not $Repo)   { $Repo   = 'https://github.com/AlfoldiMate/Nustro.git' }
 if (-not $Dir)    { $Dir    = Join-Path $env:LOCALAPPDATA 'nustro' }
@@ -51,7 +59,15 @@ function Latest-Nu {
   # is verified against rather than failing.
   try {
     (Invoke-RestMethod 'https://api.github.com/repos/nushell/nushell/releases/latest').tag_name
-  } catch { '0.116.0' }
+  } catch { "$MinNu.0" }
+}
+
+# Major and minor, as numbers: 0.99 is older than 0.116.
+function New-Enough($nu) {
+  $text = (& $nu --version 2>$null | Select-Object -First 1)
+  $v = $null
+  if (-not [version]::TryParse(($text -replace '[^0-9.].*$', ''), [ref]$v)) { return $false }
+  return ($v.Major -gt $MinNu.Major) -or ($v.Major -eq $MinNu.Major -and $v.Minor -ge $MinNu.Minor)
 }
 
 function Install-NuZip {
@@ -84,7 +100,20 @@ function Ensure-Nu {
   if (Have 'nu') {
     $nu = (Get-Command nu).Source
     Info "$(& $nu --version) at $nu"
-    return $nu
+    if (New-Enough $nu) { return $nu }
+    Info "the distro needs $MinNu or later"
+    if ((Have 'winget') -and (Ask 'upgrade it with winget?')) {
+      winget upgrade --id Nushell.Nushell --source winget --accept-package-agreements --accept-source-agreements
+      if (New-Enough $nu) { return $nu }
+      Note 'winget finished but that nu is still the old one — falling back to the release build'
+    }
+    if (Ask "download the official release build into $BinDir?") {
+      $nu = Install-NuZip
+      if (-not (New-Enough $nu)) { Die "$nu is still older than $MinNu — set NUSHELL_VERSION to a release that is not" }
+      if ((Get-Command nu).Source -ne $nu) { Note "$((Get-Command nu).Source) is still first on PATH — put $BinDir ahead of it, or remove the old one" }
+      return $nu
+    }
+    Die "Nushell $MinNu or later is required — https://www.nushell.sh/book/installation.html"
   }
   Info 'not installed'
   # winget first: it is what will also upgrade nu later. The release zip is
@@ -118,7 +147,11 @@ function Get-Distro {
     git clone --quiet $Repo $Dir
     if ($LASTEXITCODE -ne 0) { Die "clone failed" }
   }
-  if ($Ref) { git -C $Dir checkout --quiet $Ref; Info "checked out $Ref" }
+  if ($Ref) {
+    git -C $Dir checkout --quiet $Ref
+    if ($LASTEXITCODE -ne 0) { Die "$Ref is not a branch, tag or commit of $Repo" }
+    Info "checked out $Ref"
+  }
   if (-not (Test-Path (Join-Path $Dir 'install.nu'))) {
     Die "$Dir has no install.nu — is $Repo the right repository?"
   }
@@ -138,7 +171,10 @@ if ($NoInstall) {
   Step 'Next'
   Info "$nu $installer"
 } elseif ($Yes) {
-  & $nu $installer --defaults
+  & $nu $installer --defaults @Pass
 } else {
-  & $nu $installer
+  & $nu $installer @Pass
 }
+# The installer's verdict is this script's: a caller (CI, a provisioning
+# script) must not read a failed install as a success.
+if (-not $NoInstall -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

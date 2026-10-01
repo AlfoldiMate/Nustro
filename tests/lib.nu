@@ -151,6 +151,30 @@ export def wezterm-calls [fake: record]: nothing -> list<list<string>> {
   if ($fake.log | path exists) { open --raw $fake.log | lines | each {|l| $l | from nuon } } else { [] }
 }
 
+# A package manager that answers from a script: `brew install <x>` is logged,
+# and leaves an executable `<x>` beside the fake so `which` finds it — unless
+# <x> is in `fail`, which exits 1 the way a formula that will not build does.
+# Not on PATH by itself: a test puts `bin` there, alone, so that what this
+# machine has installed is out of the picture.
+export def fake-brew [--fail: list<string> = []]: nothing -> record {
+  let root = scratch
+  let bin = $root | path join bin
+  mkdir $bin
+  $"#!/bin/sh
+echo \"$@\" >> ($root | path join log | to nuon)
+case \" ($fail | str join ' ') \" in *\" $2 \"*\) exit 1 ;; esac
+printf '#!/bin/sh\\n' > ($bin | to nuon)/$2
+/bin/chmod +x ($bin | to nuon)/$2
+" | save ($bin | path join brew)
+  ^chmod +x ($bin | path join brew)
+  { root: $root, bin: $bin, log: ($root | path join log) }
+}
+
+# The lines the fake brew was called with so far.
+export def brew-calls [fake: record]: nothing -> list<string> {
+  if ($fake.log | path exists) { open --raw $fake.log | lines } else { [] }
+}
+
 # Stop this test with a reason instead of a verdict; run.nu counts it apart
 # from the failures. For a test that only makes sense with a tool installed
 # or on one platform, which says so rather than passing vacuously. Not

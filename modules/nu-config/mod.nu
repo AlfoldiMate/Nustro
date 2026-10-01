@@ -2,6 +2,7 @@
 #
 #   nu-config doctor              health check: roots, tools, plugins, parse
 #   nu-config knobs               every knob, its shipped default, and your value
+#   nu-config deps install        install the missing tools (starship, zoxide, atuin, carapace, vivid)
 #   nu-config tools setup         generate init files for installed tools (zoxide, atuin, ...)
 #   nu-config plugins add         register the plugins shipped next to `nu`
 #   nu-config fetch completion X  vendor a completion module into YOUR directory
@@ -17,6 +18,8 @@
 
 # Tool init files: `nu-config tools setup | status | remove | dir`
 export use tools.nu *
+# The tools themselves: `nu-config deps status | manager | install`
+export use deps.nu *
 # Your directory as a scaffold: `nu-config user init | status | render | set`
 export use user.nu *
 # Is the checkout behind its remote: `nu-config upgrade | check | status`
@@ -159,6 +162,13 @@ export def doctor []: nothing -> nothing {
     })
     print $"  ($m) ($t.tool | fill --width 9) ($t.state)"
   }
+  # The ones with no init file — starship, vivid — and the line that gets
+  # any missing one: `deps status` is five `which` calls, 1.2 ms (`timeit`, 2026-10-01).
+  let absent = (deps status | where not installed)
+  for t in ($absent | where tool not-in (tools status | get tool)) {
+    print $"  (ansi dark_gray)--(ansi reset) ($t.tool | fill --width 9) not installed"
+  }
+  if ($absent | is-not-empty) { print $"  (ansi dark_gray)install the missing ones with: nu-config deps install(ansi reset)" }
   print ""
 
   # The theme is read from its state file rather than through the terminal
