@@ -10,7 +10,7 @@ nustro module list           # every module: enabled, lazy, loaded in this shell
 | nu-complete | distro | true | false | true | carapace:ok | 2ms |
 | nustro | distro | true | false | true | — | 14ms |
 | odata | distro | true | true | false | — | 97ms |
-| terminal | distro | true | true | false | ghostty:ok wezterm:alt | 31ms |
+| terminal | distro | true | true | false | ghostty:ok wezterm:alt | 39ms |
 
 `loaded: false` on a lazy module means nothing has mentioned it yet in this
 shell. `cost` is the module's own declaration, measured the same way for all
@@ -49,7 +49,8 @@ const MODULES_LAZY = [agent odata worktree]  # terminal always loaded; the shipp
 files as parsed. Measured on 2026-09-19, minimum of fifteen cold starts of
 this checkout on an M-series Mac: **69.7 ms** with `terminal` eager against
 **53.4 ms** lazy — 16 ms, which is what its `meta.nuon` said then; it says
-31 ms since the WezTerm backend and the registry joined it (2026-09-20).
+31 ms since the WezTerm backend and the registry joined it (2026-09-20) and
+39 ms with the prompt generator (2026-10-02).
 
 The other direction — making a module lazy that ships eager — is the same
 line with the name added, and works for any module whose commands are never

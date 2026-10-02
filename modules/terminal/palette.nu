@@ -48,7 +48,7 @@
 # theme file, and a render on top runs vivid and rasterizes the icon:
 #
 #   theme.nuon        the roles, plus the theme name, tier and the bat theme
-#   starship.toml     themes/starship.toml with [palettes.distro] filled in
+#   starship.toml     the prompt style in use (prompt.nu) with [palettes.distro] filled in
 #   ls_colors         vivid's output for the theme, a raw string
 #   ghostty/<slug>    the Ghostty theme file, for a palette with a `terminal` block
 #   icons/<slug>.png  the app icon (macOS)
@@ -58,6 +58,7 @@
 
 use theme.nu *
 use registry.nu *
+use prompt.nu ["terminal prompt render"]
 
 const DISTRO_ROOT = (path self | path dirname | path dirname | path dirname)
 const SHIPPED_PALETTES = ($DISTRO_ROOT | path join themes palettes)
@@ -459,18 +460,6 @@ export def "terminal theme starship-palette" [roles: record]: nothing -> record 
   $roles | items {|k, v| let s = (to-starship $v); if $s == null { {} } else { { $k: $s } } } | as-record
 }
 
-# The template with the palette filled in. Through `from toml`/`to toml`
-# rather than text: the block is replaced whole and the file stays valid
-# whatever the template's author did with whitespace. Comments do not survive
-# the round trip, which is fine for a rendered file — the template keeps them.
-def render-starship [roles: record]: nothing -> string {
-  let t = (open --raw (template-for starship.toml) | from toml)
-  $t
-  | upsert palette "distro"
-  | upsert palettes { distro: (terminal theme starship-palette $roles) }
-  | to toml
-}
-
 # LS_COLORS: vivid's own theme when the palette names one, otherwise
 # themes/vivid.yml with its `colors:` block rendered from the roles. Null
 # without vivid, and Nushell's built-in colours apply.
@@ -542,7 +531,9 @@ def --env render [t: record, --quiet]: nothing -> record {
     | merge { rendered: (date now), ls_colors: ($ls_colors != null) }
   )
   $state | to nuon --indent 2 | save -f ($dir | path join theme.nuon)
-  if (which starship | is-not-empty) { render-starship $t.roles | save -f ($dir | path join starship.toml) }
+  # The prompt's shape is prompt.nu's — a style, or a starship.toml of the
+  # user's own; the colours are this theme's.
+  if (which starship | is-not-empty) { terminal prompt render (terminal theme starship-palette $t.roles) | save -f ($dir | path join starship.toml) }
   if $ls_colors != null { $ls_colors | save -f ($dir | path join ls_colors) }
 
   terminal theme apply $state

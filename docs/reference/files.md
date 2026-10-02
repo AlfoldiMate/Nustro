@@ -50,6 +50,7 @@ comparing with what init would write today, never by mtime
 |---|---|---|
 | `theme/theme.nuon` | `terminal theme use`, `terminal theme sync` | `conf/theme.nu` at startup, 0.36 ms |
 | `theme/starship.toml` | same | starship, through `STARSHIP_CONFIG` (`conf/prompt.nu`) |
+| `theme/prompt.nuon` | `terminal prompt use`, `set`, `reset`: the style, and the options that differ from their defaults | the starship render; `conf/prompt.nu` at startup (`off`, `transient`) — 6 µs when absent, 0.10 ms |
 | `theme/ls_colors` | same, via vivid | `conf/theme.nu` → `LS_COLORS`, 0.09 ms |
 | `theme/vivid.yml` | same | vivid, when rendering |
 | `theme/ghostty/<slug>` | `terminal theme use` of a palette with a `terminal` block, Ghostty being configured | Ghostty, through `theme =` in the distro's included file |

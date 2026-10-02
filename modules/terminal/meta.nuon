@@ -1,11 +1,11 @@
 {
-  description: "The terminal itself: which one you have (`terminal`), its theme (`terminal theme`), its font (`terminal font`), its configuration (Ghostty or WezTerm)"
+  description: "The terminal itself: which one you have (`terminal`), its theme (`terminal theme`), its font (`terminal font`), the prompt's shape (`terminal prompt`), its configuration (Ghostty or WezTerm)"
   docs: "docs/reference/modules/terminal.md"
   # paid on the first `terminal`, not at startup.
-  # 93.1 ms of startup with it eager against 61.8 ms lazy, medians of 25,
-  # 2026-09-20, with the WezTerm backend and the registry (18 ms the day
-  # before, with Ghostty alone).
-  cost: 31ms
+  # 117.6 ms of startup with it eager against 78.3 ms lazy, medians of 25,
+  # 2026-10-02, with the prompt generator (31 ms on 2026-09-20 with the
+  # WezTerm backend and the registry, 18 ms the day before with Ghostty alone).
+  cost: 39ms
   # For commands a shell uses once in a while, so lazy: on `terminal`, the
   # word every one of its commands starts with.
   lazy: true

@@ -131,6 +131,7 @@ nustro               # where it stands: version, behind or not, and what needs a
 nustro doctor        # the long form: both directories, every path, parse, tools, theme, plugins, modules, startup time
 terminal theme       # a hundred palettes; the window you are in is the preview
 terminal font        # fifteen Nerd Fonts, installed on the spot, previewed in a window of their own
+terminal prompt      # the prompt's style and options: `use plain`, `set time right`, `set icons false`
 nustro edit          # your directory: a README in every directory, settings.nu with every knob commented out
 nustro knobs         # every value the distro ships, and whether you changed it
 nustro upgrade       # git pull; a shell tells you when there is something to pull
@@ -171,7 +172,7 @@ it.
 |---|---|---|
 | `nustro` | status, doctor, repair, upgrade, knobs, modules, tools, plugins, startup time | 17 ms |
 | `nu-complete` | the engine behind Tab: pipeline columns, specs per tool, carapace as the fallback | 2 ms |
-| `terminal` | `terminal theme`, `terminal font`, `terminal shell`: one palette rendered for the terminal — Ghostty, or WezTerm on Windows too — tables, `ls`, bat, the prompt and the app icon | 31 ms, lazy |
+| `terminal` | `terminal theme`, `terminal font`, `terminal shell`: one palette rendered for the terminal — Ghostty, or WezTerm on Windows too — tables, `ls`, bat, the prompt and the app icon; `terminal prompt` for the prompt's style and segments | 39 ms, lazy |
 | `agent` | Claude Code at the prompt: `ask`, `exec` (proposes; you run it), `skill`, `command`, `completion` | 18 ms, lazy |
 | `odata` | OData V2/V4 services as tables, `where`/`select`/`first` pushed to the server | 97 ms, lazy |
 | `worktree` | a bare repository with a directory per branch; the gitignored files each checkout needs, kept in profiles and placed into every worktree | 10 ms, lazy |

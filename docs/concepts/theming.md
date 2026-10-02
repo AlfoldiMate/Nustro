@@ -10,6 +10,7 @@ terminal theme roles            # every role, its colour, and which tier decided
 terminal theme status           # what is rendered, from which theme, and what Ghostty has
 terminal theme sync             # re-render after a `git pull` changed a template, or a copy of yours
 terminal theme icon [--off]     # the app icon again, or none
+terminal prompt                 # the prompt's shape: a style and its options — below
 ```
 
 There is one theme and everything is rendered from it. `terminal theme use` hands
@@ -104,7 +105,8 @@ keys back out. Off macOS nothing happens.
 | file | from | read by |
 |---|---|---|
 | `theme.nuon` | the resolved roles, name, tier, bat theme | `conf/theme.nu`, one `open` at startup — 0.36 ms |
-| `starship.toml` | `themes/starship.toml`, `[palettes.distro]` filled in | `conf/prompt.nu` sets `STARSHIP_CONFIG` to it |
+| `starship.toml` | the prompt style in use — `themes/starship.toml` is the powerline at its defaults — with `[palettes.distro]` filled in | `conf/prompt.nu` sets `STARSHIP_CONFIG` to it |
+| `prompt.nuon` | `terminal prompt use\|set\|reset`: the style and the options that differ from their defaults | the render, and `conf/prompt.nu` at startup for `off` and `transient` |
 | `ls_colors` | vivid, on `themes/vivid.yml` or the palette's named vivid theme | `conf/theme.nu` → `LS_COLORS` |
 | `ghostty/<slug>` | a palette's `terminal` block as a Ghostty theme file | Ghostty, through `theme =` in the distro's included file |
 | `wezterm/nustro-<slug>.toml` | the sixteen and the named colours as a WezTerm colour scheme | WezTerm, through `color_scheme_dirs` and `color_scheme =` in `nustro.lua` |
@@ -119,9 +121,70 @@ things a startup gets, from the same files.
 | template in `themes/` | rendered for |
 |---|---|
 | `nushell.nu` | `$env.config.color_config` and `explore`. Reads `$c`, the roles; sourced by `conf/theme.nu` at startup and by `terminal theme use` in the running session |
-| `starship.toml` | the prompt. Its own `[palettes.distro]` block is tier one, so it works unrendered |
+| `starship.toml` | the prompt: the powerline with every option at its default, which is what `terminal prompt` generates until told otherwise ([below](#the-prompt-has-a-shape-too)). Its own `[palettes.distro]` block is tier one, so it works unrendered |
 | `vivid.yml` | `LS_COLORS`. vivid's `ansi` rules with the `colors:` block rendered |
 | `icon.svg` | the app icon |
+
+## The prompt has a shape too
+
+```nu
+terminal prompt                 # the style, and every option with its value and default
+terminal prompt use plain       # powerline | plain | off
+terminal prompt set time right  # a segment left, right or off; icons, separator, lines, newline, depth, transient
+terminal prompt preview         # both styles as starship draws them here, nothing written
+terminal prompt reset           # the shipped prompt
+```
+
+A theme decides the prompt's colours and nothing else about it, and until
+2026-10-02 everything else was one file: `themes/starship.toml`, with "copy
+it and edit the copy" as the only way to drop the clock or to live without a
+Nerd Font. `modules/terminal/prompt.nu` generates starship's configuration
+instead, from a **style** and a few **options**
+([the table](../reference/modules/terminal.md#commands)):
+
+| style | |
+|---|---|
+| `powerline` | the shipped look: each segment a tinted surface (`tint_<hue>` with `on_tint` written on it), joined by separators |
+| `plain` | the same segments in the same hues as text (`text_<hue>`, the family that reads on a light background too), the path in bold, no surfaces |
+| `off` | no prompt: both sides empty, and what is left is Nushell's indicator of the vi mode (`: `, `〉`). Starship is not asked |
+
+Generated rather than templated because a powerline cannot be edited by
+option: a separator is painted in the colours of both its neighbours (`fg:tint_orange
+bg:tint_yellow` for the one between the path and the branch), so removing one segment rewrites
+two joints, and moving one to the right side mirrors every glyph. The
+generator holds the segments as data — name, hue, starship modules — and
+writes the format string from whichever are left on each side.
+
+Three things keep it from becoming a second source of truth. The generator
+with every option at its default **is** `themes/starship.toml`, and a test
+holds the two equal, so the file stays what a shell reads before the first
+render and what someone copies to write a prompt by hand. The styles are
+written in roles like every template, so `terminal theme use` recolours
+whichever is in use — both go through one render, `terminal prompt render`,
+which the theme calls with its palette and the prompt commands call with
+the palette of the last render. And a `starship.toml` in your own `themes/`
+still wins: `terminal prompt use` and `set` then refuse, naming the file,
+rather than write something that would not be read.
+
+The state is `.state/theme/prompt.nuon`, holding only what differs from the
+defaults, so a default that changes in a later version reaches a prompt that
+never set it. At startup `conf/prompt.nu` reads it for the two things that
+are Nushell's and not starship's: `off` sets `PROMPT_COMMAND` and its right
+side to empty strings, and `transient` sets `TRANSIENT_PROMPT_COMMAND` to a
+string — a `❯` in the theme's green — so a prompt that has run costs no
+fork to redraw. The blank line before a prompt is part of what is redrawn,
+so the mark carries one of its own (`true`) or the blocks close up
+(`compact`). Not
+having chosen anything costs a `path exists`, 6 µs; having chosen, 0.10 ms
+(2026-10-02). `conf/prompt.nu` also keeps starship's three closures in
+`$env.NUSTRO_PROMPTS`: a lazy module cannot reach a command defined in the
+config, and `terminal prompt use powerline` after an `off` in a running
+session needs them back.
+
+Without icons (`icons false`) no glyph from a Nerd Font is left in what
+starship is handed — a test greps the Private Use Areas — which means no OS
+segment, no separator shapes, and words where plain had symbols: `on main`,
+`via rust`, `took 2s`.
 
 ## Changing a template, or adding a palette
 
@@ -472,8 +535,8 @@ every shell does, so the window gets a login nu (`$nu.is-login == true`) with
 
 ### Why it is lazy
 
-Loading these files costs 31 ms (2026-09-20, with the WezTerm backend; 18 ms
-the day before), for commands a shell uses once in a while. `terminal` is
+Loading these files costs 39 ms (2026-10-02, with the prompt generator; 31 ms
+on 2026-09-20 with the WezTerm backend, 18 ms the day before), for commands a shell uses once in a while. `terminal` is
 the one word that loads it: every exported command starts with it, so the
 module has no trigger words (`MODULES_TRIGGERS` in `defaults.nu`), and
 typing `ghostty +list-themes` or `wezterm ls-fonts` — the terminals' own

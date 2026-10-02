@@ -6,12 +6,14 @@
 #   terminal shell         a new window of the terminal starts Nushell
 #   terminal theme         pick a palette, the terminal as preview; `terminal theme use <name>` by name
 #   terminal font          pick a Nerd Font, install it, and let a new window render it
+#   terminal prompt        the prompt's shape: `use powerline|plain|off`, `set <option> <value>`, `preview`
 #
 # One word, because of how this distro does colour: there is one theme and it
 # is the terminal's. `terminal theme use` writes the terminal's
 # configuration, repaints the running window, and renders the shell's own
 # colours — tables, ls, bat, the prompt — from the same palette. theme.nu reads
-# and paints, palette.nu resolves and renders, ghostty.nu and wezterm.nu each
+# and paints, palette.nu resolves and renders, prompt.nu generates the prompt
+# those colours are rendered into, ghostty.nu and wezterm.nu each
 # write one terminal's configuration, and registry.nu is the table of the
 # terminals — which is installed, which this session runs in, which one the
 # commands configure (`terminal target`).
@@ -21,7 +23,7 @@
 # files talk to each other, and the installer and the tests reach it by file
 # (`use terminal/registry.nu *`).
 #
-# Lazy, and measured: loading these files costs 18 ms (meta.nuon carries the
+# Lazy, and measured: loading these files costs 39 ms (meta.nuon carries the
 # number and docs/concepts/modules.md the method), for commands a shell uses once in a
 # while. `terminal` is the one word that loads it.
 
@@ -39,6 +41,9 @@ export use theme.nu ["terminal theme reset" "terminal theme slug"]
 export use font.nu [
   "terminal font" "terminal font use" "terminal font list" "terminal font install"
   "terminal font preview" "terminal font size" "terminal font specimen" "terminal font dir"
+]
+export use prompt.nu [
+  "terminal prompt" "terminal prompt use" "terminal prompt set" "terminal prompt reset" "terminal prompt preview"
 ]
 use registry.nu ["terminal status"]
 

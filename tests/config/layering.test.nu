@@ -101,8 +101,8 @@ def "test MODULES_LAZY in settings.nu makes a module eager or lazy" [] {
   let dir = user-dir --settings 'const MODULES_LAZY = [agent odata]'
   let ran = nu-l $dir 'print ("terminal" in $env.NU_MODULES_LAZY); nustro module list | where module == terminal | get 0 | select lazy loaded | to nuon | print; view files | get filename | where $it =~ "modules[/\\\\]terminal" | length | print'
   assert equal $ran.exit_code 0 $ran.stderr
-  # Every file of the module: mod, load, ghostty, wezterm, theme, registry, palette, font.
-  assert equal ($ran.stdout | lines) ["false" "{lazy: false, loaded: true}" "8"]
+  # Every file of the module: mod, load, ghostty, wezterm, theme, registry, palette, prompt, font.
+  assert equal ($ran.stdout | lines) ["false" "{lazy: false, loaded: true}" "9"]
 }
 
 def "test the lazy hook sources the module on a trigger word" [] {

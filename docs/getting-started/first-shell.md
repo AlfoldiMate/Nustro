@@ -47,6 +47,7 @@ to you; `git pull` updates it without touching your files
 | F1 | the help menu |
 | → | accept the inline history hint |
 | Ctrl+O | edit the line in `$EDITOR` |
+| Ctrl+W | macOS: accept the next word of the inline history hint, or with no hint jump forward over a word — Reedline's Ctrl+Right, which macOS keeps for Mission Control. Deleting the word, which is what Ctrl+W does elsewhere, is Reedline's Ctrl+Backspace (and Alt+Backspace in emacs mode) |
 | Alt+E | with the `agent` module: the line you are typing is a task, Claude's proposal replaces it |
 | Esc / `i` | vi mode: the cursor is a line while inserting, a block in normal mode. `$env.config.edit_mode = "emacs"` in `settings.nu` if you would rather not |
 
@@ -63,7 +64,7 @@ to you; `git pull` updates it without touching your files
 
 `terminal`, `agent`, `odata` and `worktree` are lazy: not parsed at startup,
 loaded on the first line that starts with the module's word — or, for
-`odata`, with its one trigger word, `expand` (31 ms, 18 ms, 97 ms and 10 ms, once — each
+`odata`, with its one trigger word, `expand` (39 ms, 18 ms, 97 ms and 10 ms, once — each
 module's `meta.nuon`, `terminal` measured 2026-09-20). That is why
 startup is 84 ms on an M-series Mac against 47 ms for Nushell with no config
 at all, and also why a lazy module is interactive-only — a script has to `use

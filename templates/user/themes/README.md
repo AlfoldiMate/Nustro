@@ -36,7 +36,9 @@ The four files a theme is rendered through — `nushell.nu` for
 `$env.config.color_config`, `starship.toml`, `vivid.yml`, `icon.svg` — are
 in the checkout's `themes/`. A copy here, under the same name, is the one
 used: edit it in roles, never hexes, so that every theme keeps fitting it,
-and `terminal theme sync` re-renders.
+and `terminal theme sync` re-renders. The prompt rarely needs it:
+`terminal prompt` chooses a style and which segments are drawn where, and a
+`starship.toml` here replaces all of that with what you wrote.
 
 - [Pick a theme and make it stick](../../../docs/cookbook/theme.md) — the picker, a palette from six colours, keeping it after a `git pull`
 - [Theming](../../../docs/concepts/theming.md) — the roles, the three tiers, how the terminal side works

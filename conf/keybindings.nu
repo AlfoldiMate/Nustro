@@ -2,7 +2,7 @@
 #
 # Nushell's defaults are in effect: the columnar completion menu on Tab,
 # history menu on Ctrl+R (atuin takes that key over when installed), help
-# menu on F1. Nothing is overridden here on purpose.
+# menu on F1. One key is overridden, on macOS: Ctrl+W, at the end of the file.
 #
 # Both lists merge into Nushell's defaults BY NAME: an entry with the same
 # name as a default replaces it, anything else is added. To add or change a
@@ -46,3 +46,20 @@ $env.config.menus ++= [{
     selected_match_text: green_reverse
   }
 }]
+
+# ── Keys ──────────────────────────────────────────────────────────────────────
+# macOS takes Ctrl+Right for Mission Control (the next Space), so what
+# Reedline has on that key never reaches the shell: accept the next word of
+# the history hint, or with no hint jump forward over a word. Ctrl+W does it
+# there instead, in every mode. The cost is Ctrl+W's own default, deleting
+# the word before the cursor: Reedline's other key for that is
+# Ctrl+Backspace (and Alt+Backspace in emacs mode).
+if $nu.os-info.name == "macos" {
+  $env.config.keybindings ++= [{
+    name: word_right
+    modifier: control
+    keycode: char_w
+    mode: [emacs vi_insert vi_normal]
+    event: { until: [{ send: historyhintwordcomplete } { edit: movewordright }] }
+  }]
+}

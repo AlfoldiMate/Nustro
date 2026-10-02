@@ -16,6 +16,8 @@ terminal theme roles           # what the shell made of it: every role, its colo
 terminal shell                 # a new window of the terminal starts Nushell
 terminal option left           # which Option key is Alt: none (the base), left, right, both
 terminal font use JetBrainsMono --size 15   # or `terminal font size 15` on its own
+terminal prompt use plain      # the prompt's style: powerline, plain, off
+terminal prompt set time right # one option: a segment left, right or off; icons, separator, lines, …
 terminal status                # what this distro has written into the terminal's config
 ```
 
@@ -24,7 +26,8 @@ one theme and it is the terminal's. `terminal theme use` writes the terminal's
 configuration, repaints the window you are sitting in, and renders the
 shell's own colours — tables, `ls`, bat, the prompt — from the same palette,
 so they follow in this window now and in every shell after. `theme.nu` reads
-and paints, `palette.nu` resolves and renders, `ghostty.nu` and `wezterm.nu`
+and paints, `palette.nu` resolves and renders, `prompt.nu` generates the
+prompt those colours are rendered into, `ghostty.nu` and `wezterm.nu`
 each write one terminal's configuration, and `registry.nu` is the table of
 terminals and the verbs that dispatch on the one being configured
 (`terminal target`).
@@ -96,6 +99,26 @@ The font:
 | `terminal font size [N] [--reset]` | the size alone: show what the terminal uses, set it (halves are fine, 4..72), or `--reset` to hand it back |
 | `terminal font dir` | where a user's own fonts go on this platform |
 
+The prompt:
+
+| Command | Does |
+|---|---|
+| `terminal prompt` | the style, whether starship is there, a `starship.toml` of your own if one is in the way, and every option with its value, its default and what it does |
+| `terminal prompt use <style>` | `powerline` (the shipped look: tinted segments joined by separators), `plain` (the same segments in the same hues as coloured text) or `off` (no prompt at all: only Nushell's indicator of the vi mode, `: ` and `〉`). Rendered, and switched in the session it is typed in. The options are kept, so `off` and back is the prompt you had |
+| `terminal prompt set <option> <value>` | one option, from the table below; Tab completes both |
+| `terminal prompt reset [option …]` | the named options back to their defaults; with none named, the style too — the shipped prompt |
+| `terminal prompt preview [style] [--with {…}]` | the styles as starship draws them in this directory, in the theme's colours, with the options as they are or as `--with { icons: false, time: right }` would make them; nothing written |
+
+| Option | Values | Default | |
+|---|---|---|---|
+| `os` `user` `directory` `git` `languages` `env` `time` `duration` | `left` `right` `off` | `left` | where a segment is drawn, or that it is not. On the right the powerline is mirrored; the duration has no surface and trails the left side or leads the right one |
+| `icons` | `true` `false` | `true` | Nerd Font symbols. `false` is for a font without them: words instead (`on main`, `via rust`, `took 2s` in plain), no OS icon, and the powerline's surfaces meet without a separator glyph |
+| `separator` | `arrow` `round` `slant` `flat` | `arrow` | powerline: the shape between two segments |
+| `lines` | `1` `2` | `2` | 2: you type on a line of your own; 1: after the segments |
+| `newline` | `true` `false` | `true` | a blank line before each prompt |
+| `depth` | a whole number | `3` | how many directories of the path are shown; 0 for all of it |
+| `transient` | `false` `true` `compact` | `false` | a prompt that has run is redrawn as a single `❯`, so scrollback is commands and their output: `true` with a blank line between one block and the next, `compact` without. Nushell's own, so it works with a `starship.toml` of yours; with `off` there is no prompt to collapse and it waits for a style |
+
 Theme names are Tab-completable everywhere they are taken: the palettes, or
 Ghostty's once `--ghostty` is on the line.
 
@@ -148,7 +171,7 @@ name them where the cost or the behaviour is one backend's.
 | `terminal nu-path` | the nu a terminal should start: the one on PATH |
 | `terminal face` / `preview` / `font-keys` / `write-theme` | the target's own, dispatched on its name — what `terminal theme use` and `terminal font use` call |
 
-`theme.nu`, `palette.nu`, `font.nu`:
+`theme.nu`, `palette.nu`, `prompt.nu`, `font.nu`:
 
 | Command | Does |
 |---|---|
@@ -157,6 +180,9 @@ name them where the cost or the behaviour is one backend's.
 | `terminal theme palettes` | every palette file: name, dark, kind, the Ghostty theme it extends — behind `terminal theme list` |
 | `terminal theme palette <name>` | one Ghostty theme file as data: `palette` 0-15 and the named colours |
 | `terminal theme paint` / `apply` / `read` / `swatch` / `state-dir` / `ghostty-file` / `wezterm-file` / `starship-palette` | the steps of `terminal theme use`: OSC painting, the state, a palette as each terminal's theme file |
+| `terminal prompt config <style> <options>` | a style and a full set of options as starship's configuration, in roles, without the palette block |
+| `terminal prompt render [palette]` | the text of the rendered `starship.toml`: the style in use, or your own template, with `[palettes.distro]` filled in — what `terminal theme use` writes |
+| `terminal prompt state` / `apply` | the saved style and options over the defaults; the same made this session's, with the starship prompt `conf/prompt.nu` keeps in `NUSTRO_PROMPTS` |
 | `terminal font face <family>` | the face the terminal would actually use for a family |
 
 ## Configuration
@@ -164,11 +190,13 @@ name them where the cost or the behaviour is one backend's.
 One knob, `NERD_FONTS_RELEASE`: where `terminal font install --archive` takes the
 archives from — the Nerd Fonts release by default, a mirror's URL, or a
 directory that already holds the assets (an offline machine; the tests).
-Two pieces of state: what `terminal theme use` renders into `<your
+Three pieces of state: what `terminal theme use` renders into `<your
 dir>/.state/theme/` — `theme.nuon`, `starship.toml`, `ls_colors`, a Ghostty
 theme file (`ghostty/<slug>`) or a WezTerm scheme (`wezterm/nustro-<slug>.toml`)
 and an icon per palette used — which `conf/theme.nu`, `conf/prompt.nu` and
-the terminal read (`terminal theme status` shows it); and the pin, `<your
+the terminal read (`terminal theme status` shows it); the prompt's style and the options that differ from their defaults,
+`<your dir>/.state/theme/prompt.nuon`, written by `terminal prompt use|set|reset`
+and read by the render and by `conf/prompt.nu` at startup; and the pin, `<your
 dir>/.state/terminal/target.nuon`, written by `terminal use`.
 A terminal's own configuration is read at the moment you ask, never cached.
 The templates being rendered live in `themes/` ([Theming](../../concepts/theming.md)),
@@ -201,7 +229,7 @@ Nushell 0.115.1, Ghostty 1.3.1, WezTerm 20240203, macOS, 2026-09-18 unless dated
 
 | What | Cost |
 |---|---|
-| the module, loaded | 31 ms — 93.1 ms of startup with it eager against 61.8 ms with it lazy, medians of 25 cold starts, 2026-09-20 with the WezTerm backend and the registry; 18 ms the day before with Ghostty alone (78.4 against 60.1) |
+| the module, loaded | 39 ms — 117.6 ms of startup with it eager against 78.3 ms with it lazy, medians of 25 cold starts, 2026-10-02 with the prompt generator (30 ms the same day without it, 109.5 against 79.3); 31 ms on 2026-09-20 with the WezTerm backend and the registry (93.1 against 61.8); 18 ms the day before with Ghostty alone (78.4 against 60.1) |
 | parsing the module | 20.8 ms — `nu -n -c 'use terminal *'` against an empty run, medians of 21, 2026-09-20; 15.3 ms for the Ghostty-only module the same day, so WezTerm and the registry are 5.5 ms of parse |
 | a registry of closures | 130 ms of eager startup, 2026-09-20 — the first registry was thirty-four closures in a table, 28 ms to parse after `nustro` was in scope and worse in the whole distro, because a closure is analysed for captures against everything visible; the verbs are `match` arms now, which cost nothing measurable |
 | `wezterm ls-fonts` | 116 ms with the config loaded (`wezterm live font_family`), 50 ms with `--config font=…` alone (`wezterm face`), 2026-09-20 |
@@ -214,6 +242,9 @@ Nushell 0.115.1, Ghostty 1.3.1, WezTerm 20240203, macOS, 2026-09-18 unless dated
 | `terminal theme sync` | 44 ms: the resolve, vivid, three files written |
 | `terminal theme use` | 320 ms: the resolve, the icon through AppKit (`rasterize.js`, 100 ms), `ghostty set` validating through `+validate-config`, the paint, `ghostty reload` through osascript, then the render |
 | `ghostty reload` finding its Ghostty | 15 ms: `ps -o ppid=,comm=` once per ancestor from the shell up to the app, five hops from a login shell |
+| `terminal prompt use` / `set` | 6 ms: the state written, the configuration generated (1.7 ms) and rendered with the palette of the last render (2.9 ms), the session switched; medians of 11, 2026-10-02 |
+| `terminal prompt preview` | 97 ms for both styles: starship drawn four times, a left and a right side each, 2026-10-02 |
+| the prompt's state at startup | a `path exists`, 6 µs, when no style or option was ever chosen; 0.10 ms to open `prompt.nuon` when one was (medians of 21, 2026-10-02). The transient mark is a string, so nothing is forked for it |
 | reading the render at startup | 0.36 ms for `theme.nuon` (1 kB), 0.09 ms for `ls_colors` (6 kB), medians of 21 |
 | reading all 463 files | 39 ms; `(?m)` over the whole file rather than `lines` halves the parse, 49 ms against 109 ms |
 | one swatch | bit shifts rather than splitting the hex into pairs: 95 ms over all 463 against 380 ms |
@@ -230,6 +261,7 @@ load.nu      `use terminal *` + activate
 meta.nuon    description, the ghostty-or-wezterm dependency group, one knob
 theme.nu     listing, reading and painting Ghostty's themes; a palette as a Ghostty or WezTerm theme file
 palette.nu   roles, the three tiers, rendering, the picker, `terminal theme use`
+prompt.nu    the prompt's styles and options as starship's configuration, the state, `terminal prompt`
 font.nu      the Nerd Font registry, installing, and the preview window
 ghostty.nu   finding Ghostty and its config, the one line we add to it, the shell, faces, the preview window
 wezterm.nu   the same for WezTerm: nustro.lua, the line before `return`, `ls-fonts` for faces
@@ -242,8 +274,22 @@ registry.nu  the terminal registry: installed, running, the target, and the verb
   terminal *` first, because `pre_execution` does not fire for `nu -c`.
 - A hand-written `~/.config/starship.toml` is not read any more: the distro
   owns starship's configuration and points `STARSHIP_CONFIG` at the rendered
-  one. The way to change the prompt is a copy of `themes/starship.toml` in your
-  own `themes/`.
+  one. The way to change the prompt is `terminal prompt`, or for one written
+  by hand a copy of `themes/starship.toml` in your own `themes/` — and with
+  that copy there `terminal prompt use <style>` and `set` refuse and say why
+  (`off` and `transient` still work: they are Nushell's).
+- The mark that ends the prompt is empty in both styles, as it was: Nushell's
+  indicators say which vi mode the line is in, and a failed command is not
+  marked in the prompt.
+- A powerline segment with nothing to say — no repository, no toolchain —
+  still paints the joint between its neighbours, as the shipped prompt
+  always did.
+- A session started before starship was installed has no starship prompt to
+  switch to: `terminal prompt use <style>` is saved and says "from the next
+  shell". `off` needs nothing and is immediate.
+- The transient mark is written in the theme's green as it was when the
+  shell started or `terminal prompt` last ran; after a `terminal theme use`
+  it follows in the next shell.
 - The user's copy of a template is picked at parse time for `terminal theme use` in the
   running session (`source` needs a constant), so a `themes/nushell.nu` dropped
   in after the module loaded is seen by the next shell.
@@ -292,8 +338,8 @@ registry.nu  the terminal registry: installed, running, the target, and the verb
 
 ## Tests
 
-`nu tests/run.nu terminal` — 70 tests in `tests/terminal/` (4.4 s on an
-M-series Mac, 2026-09-20) against a fake `ghostty` (`tests/fixtures/ghostty/fake.nu`,
+`nu tests/run.nu terminal/` — 87 tests in `tests/terminal/` (2026-10-02;
+70 took 4.4 s on an M-series Mac on 2026-09-20) against a fake `ghostty` (`tests/fixtures/ghostty/fake.nu`,
 put first on PATH by `fake-ghostty` in `tests/lib.nu`) that answers
 `+show-config` from the config chain the way Ghostty settles it,
 `+show-face` from a list of families, `+validate-config` from the themes it
@@ -311,7 +357,13 @@ that answers `ls-fonts` the way the real one does and logs `start`: the
 config search, the line before `return` (and the refusal when there is no
 named return), `set`/`reset`/`live`/`shell`, the Lua escaping of a Windows
 path, validation through `ls-fonts`, and `terminal theme use`/`terminal font use`/`terminal font
-preview` with WezTerm as the target. `registry` covers the target order
+preview` with WezTerm as the target. `prompt` holds the generated powerline
+equal to `themes/starship.toml`, then each option against what starship is
+handed (a hidden segment's separators, the mirrored right side, no Nerd
+Font glyph left without icons, every colour a role the palette block has),
+runs the real starship over six configurations when it is installed, and
+starts shells against a user directory of its own to see `off` and
+`transient` at startup. `registry` covers the target order
 (`NUSTRO_TERMINAL`, the session's terminal, the pin, the first installed)
 and the error without one — two of its tests skip on a machine that has a
 real terminal installed. Nothing here needs a Ghostty or a WezTerm

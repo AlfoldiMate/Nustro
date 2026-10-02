@@ -101,8 +101,10 @@ nustro repair                  # or every wiring step, this one among them
 under `attention`; `nustro doctor`'s Theme line shows when the render was
 made.
 
-To change a template rather than a palette — a different prompt layout, say
-— copy it into your `themes/` and edit the copy there. It is picked up over
+The prompt's layout is not a template to edit: `terminal prompt` has the
+styles and the options ([Shape the prompt](prompt.md)). To change a template
+rather than a palette — the table colours in `nushell.nu`, say, or a prompt
+written entirely by hand — copy it into your `themes/` and edit the copy there. It is picked up over
 the shipped one, `terminal theme sync` renders it, and it must be written in roles,
 never hexes, so that every theme keeps fitting it. The user's copy is chosen
 at parse time for `terminal theme use` in the running session, so a template dropped

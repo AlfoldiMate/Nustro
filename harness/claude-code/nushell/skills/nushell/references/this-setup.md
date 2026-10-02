@@ -86,6 +86,7 @@ what Nushell loads when.
 | `terminal` (lazy) | the terminal itself — Ghostty or WezTerm, `terminal target` says which: `status` (also bare `terminal`), `list`, `current`, `target`, `default`, `use`, `install`, `shell`, `option`, `settings`, `set`, `reset`, `reload`, `live` |
 | `terminal theme` (lazy) | the picker (interactive); `use <name>`, `list`, `preview`, `reset`, `sync`, `icon`, `current`, `roles`, `resolve`, `status`, `slug` |
 | `terminal font` (lazy) | the picker (interactive); `use <name>`, `list`, `install`, `preview`, `size`, `specimen`, `dir` |
+| `terminal prompt` (lazy) | the prompt's shape — bare: the style and every option; `use powerline\|plain\|off` (off: no prompt, only the vi-mode indicator), `set <option> <value>` (segments `os user directory git languages env time duration` each `left\|right\|off`; `icons`, `separator`, `lines`, `newline`, `depth`, `transient` `false\|true\|compact`), `reset [option …]`, `preview [style]` |
 | `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |
 | `odata` | OData V2/V4 services as tables (lazy) |
 | `worktree` | bare repo + a directory per branch, gitignored files from profiles: `init`, `add`, `remove`, `apply`, `discard`, `which` (lazy) |
@@ -137,7 +138,10 @@ step, `nustro bootstrap tools setup`), from the registry in
 generated, absent → pruned, so presence on PATH is the switch. vivid and
 starship are the theme's: `terminal theme use` renders LS_COLORS and a
 starship.toml into `.state/theme/`, and starship is wired by hand in
-`conf/prompt.nu`. Homebrew's `command_not_found` and direnv are in
+`conf/prompt.nu`. The starship.toml is generated from the style and options
+`terminal prompt` saved (`.state/theme/prompt.nuon`); never edit the rendered
+file, and a hand-written prompt is a copy of `themes/starship.toml` in the
+user's `themes/`. Homebrew's `command_not_found` and direnv are in
 `conf/tools.nu`, each guarded with `which`.
 
 `nu -l -c` does **not** load the vendor autoload directory, so carapace and

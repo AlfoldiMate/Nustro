@@ -39,6 +39,21 @@ opens a window of its own. `terminal font use` installs from Homebrew's cask on 
 and from the Nerd Fonts release archive elsewhere, then reloads the terminal
 (Ghostty on macOS, WezTerm anywhere).
 
+## The prompt
+
+```nu
+terminal prompt                # the style, and every option with its value and default
+terminal prompt preview        # powerline and plain, drawn here in the theme's colours
+terminal prompt use plain      # coloured text instead of tinted segments; `off` is no prompt at all
+terminal prompt set time off   # a segment: left, right or off
+terminal prompt set icons false  # for a font without Nerd Font symbols
+terminal prompt reset          # the shipped prompt again
+```
+
+The theme colours the prompt; this is its shape. Each change is rendered
+and switched in the window you typed it in
+([Shape the prompt](../cookbook/prompt.md)).
+
 ## The terminal starts Nushell
 
 If you said yes on the installer's terminal screen, this is done. Otherwise:

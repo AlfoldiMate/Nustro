@@ -23,7 +23,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 1. [Install](getting-started/install.md) — the two bootstrap lines, the seven screens, an existing configuration, what is written where
 2. [Your first shell](getting-started/first-shell.md) — `nustro`, `nustro doctor`, the keys, the two directories
 3. [Your first setting](getting-started/first-setting.md) — `settings.nu`, knobs, values against behaviour
-4. [Your first theme](getting-started/first-theme.md) — `terminal theme`, `terminal font`, `terminal shell`
+4. [Your first theme](getting-started/first-theme.md) — `terminal theme`, `terminal font`, `terminal prompt`, `terminal shell`
 5. [Updating](getting-started/updating.md) — `nustro upgrade`, the notice, `nustro repair`, after a Nushell upgrade
 
 ## Concepts
@@ -55,7 +55,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | **Modules** | |
 | [nustro](reference/modules/nustro.md) | `status`, `doctor`, `repair`, `upgrade`, `edit`, `set`, `knobs`, `module`, `deps`, `plugins`, `completion`, `harness`, `startup-time`; the plumbing under `bootstrap` |
 | [nu-complete](reference/modules/nu-complete.md) | the engine behind Tab: `run`, `external`, `smart`, `quote`, `cache`, `status` |
-| [terminal](reference/modules/terminal.md) | `terminal`, `terminal theme`, `terminal font` — every command, with costs; the Ghostty and WezTerm backends by file |
+| [terminal](reference/modules/terminal.md) | `terminal`, `terminal theme`, `terminal font`, `terminal prompt` — every command, with costs; the Ghostty and WezTerm backends by file |
 | [agent](reference/modules/agent.md) | `ask`, `exec`, `skill`, `command`, `completion`; the exec menu; the knobs |
 | [odata](reference/modules/odata.md) | every command and flag, the query-option table, completion, knobs, testing |
 | [worktree](reference/modules/worktree.md) | `init`, `add`, `remove`, `apply`, `discard`, `which`; the profile format and its hooks; the rules apply keeps |
@@ -72,6 +72,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Write an autoload drop-in](cookbook/autoload.md) | an alias, a hook, a keybinding, a secret — and when it is `settings.nu` instead |
 | [Your directory](cookbook/user-directory.md) | what is there and whose, switching an example on, getting a README back, the knobs an upgrade added |
 | [Pick a theme and make it stick](cookbook/theme.md) | the picker, a palette of your own from six colours, keeping it after a `git pull` |
+| [Shape the prompt](cookbook/prompt.md) | `terminal prompt`: a style, segments left, right or off, no icons, a transient prompt — and back |
 | [Pin a font](cookbook/font.md) | `terminal font use`, and installing one by hand on Linux and Windows |
 | [Enable a module, make it lazy, see what it costs](cookbook/modules.md) | `module enable`, `MODULES_LAZY`, `startup-time`, `loaded-files` |
 | [Debug Tab](cookbook/debug-tab.md) | `nustro completion explain`, `commandline complete --detailed`, `nu-complete smart`, the error the `try` hides |
