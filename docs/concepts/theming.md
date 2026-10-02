@@ -128,8 +128,9 @@ things a startup gets, from the same files.
 ## The prompt has a shape too
 
 ```nu
-terminal prompt                 # the style, and every option with its value and default
-terminal prompt use plain       # powerline | plain | off
+terminal prompt                 # the picker: every style drawn here, then choose
+terminal prompt status          # the style, and every option with its value and default
+terminal prompt use plain       # powerline | plain | bracketed | minimal | off
 terminal prompt set time right  # a segment left, right or off; icons, separator, lines, newline, depth, transient
 terminal prompt preview         # both styles as starship draws them here, nothing written
 terminal prompt reset           # the shipped prompt
@@ -146,6 +147,8 @@ instead, from a **style** and a few **options**
 |---|---|
 | `powerline` | the shipped look: each segment a tinted surface (`tint_<hue>` with `on_tint` written on it), joined by separators |
 | `plain` | the same segments in the same hues as text (`text_<hue>`, the family that reads on a light background too), the path in bold, no surfaces |
+| `bracketed` | plain, each segment in brackets (`[main]`), which needs no connecting words without icons |
+| `minimal` | plain with only the path, the branch, a failed exit code and the duration — whatever the other segments are set to |
 | `off` | no prompt: both sides empty, and what is left is Nushell's indicator of the vi mode (`: `, `〉`). Starship is not asked |
 
 Generated rather than templated because a powerline cannot be edited by
@@ -153,7 +156,12 @@ option: a separator is painted in the colours of both its neighbours (`fg:tint_o
 bg:tint_yellow` for the one between the path and the branch), so removing one segment rewrites
 two joints, and moving one to the right side mirrors every glyph. The
 generator holds the segments as data — name, hue, starship modules — and
-writes the format string from whichever are left on each side.
+writes the format string from whichever are left on each side. Neighbours
+of one hue share a surface (`os` and `user`; `docker` and `env`), and three
+segments have none: `status` (the exit code of a failed command, `✘ 1`,
+nothing otherwise), `jobs` and `duration` are text that trails the left
+side or leads the right one — a surface that is empty most of the time
+would leave a coloured joint in the prompt for good.
 
 Three things keep it from becoming a second source of truth. The generator
 with every option at its default **is** `themes/starship.toml`, and a test

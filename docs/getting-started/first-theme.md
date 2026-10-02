@@ -42,9 +42,9 @@ and from the Nerd Fonts release archive elsewhere, then reloads the terminal
 ## The prompt
 
 ```nu
-terminal prompt                # the style, and every option with its value and default
-terminal prompt preview        # powerline and plain, drawn here in the theme's colours
-terminal prompt use plain      # coloured text instead of tinted segments; `off` is no prompt at all
+terminal prompt                # the picker: powerline, plain, bracketed and minimal drawn here, then choose
+terminal prompt status         # the style, and every option with its value and default
+terminal prompt use plain      # by name: coloured text instead of tinted segments; `off` is no prompt at all
 terminal prompt set time off   # a segment: left, right or off
 terminal prompt set icons false  # for a font without Nerd Font symbols
 terminal prompt reset          # the shipped prompt again

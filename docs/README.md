@@ -72,7 +72,7 @@ hundred seconds of the shipped defaults in a real Ghostty window, recorded
 | [Write an autoload drop-in](cookbook/autoload.md) | an alias, a hook, a keybinding, a secret — and when it is `settings.nu` instead |
 | [Your directory](cookbook/user-directory.md) | what is there and whose, switching an example on, getting a README back, the knobs an upgrade added |
 | [Pick a theme and make it stick](cookbook/theme.md) | the picker, a palette of your own from six colours, keeping it after a `git pull` |
-| [Shape the prompt](cookbook/prompt.md) | `terminal prompt`: a style, segments left, right or off, no icons, a transient prompt — and back |
+| [Shape the prompt](cookbook/prompt.md) | `terminal prompt`: pick a style, segments left, right or off, no icons, a transient prompt — and back |
 | [Pin a font](cookbook/font.md) | `terminal font use`, and installing one by hand on Linux and Windows |
 | [Enable a module, make it lazy, see what it costs](cookbook/modules.md) | `module enable`, `MODULES_LAZY`, `startup-time`, `loaded-files` |
 | [Debug Tab](cookbook/debug-tab.md) | `nustro completion explain`, `commandline complete --detailed`, `nu-complete smart`, the error the `try` hides |

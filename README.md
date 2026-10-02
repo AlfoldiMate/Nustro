@@ -131,7 +131,7 @@ nustro               # where it stands: version, behind or not, and what needs a
 nustro doctor        # the long form: both directories, every path, parse, tools, theme, plugins, modules, startup time
 terminal theme       # a hundred palettes; the window you are in is the preview
 terminal font        # fifteen Nerd Fonts, installed on the spot, previewed in a window of their own
-terminal prompt      # the prompt's style and options: `use plain`, `set time right`, `set icons false`
+terminal prompt      # pick the prompt's style; `set time right`, `set icons false` for its options
 nustro edit          # your directory: a README in every directory, settings.nu with every knob commented out
 nustro knobs         # every value the distro ships, and whether you changed it
 nustro upgrade       # git pull; a shell tells you when there is something to pull

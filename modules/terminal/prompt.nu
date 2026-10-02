@@ -1,7 +1,8 @@
 # prompt — the prompt's shape: a style and a handful of options, generated for starship
 #
-#   terminal prompt                       the style, and every option with its value and its default
-#   terminal prompt use <style>           powerline | plain | off
+#   terminal prompt                       the picker: every style drawn here, then choose
+#   terminal prompt status                the style, and every option with its value and its default
+#   terminal prompt use <style>           powerline | plain | bracketed | minimal | off
 #   terminal prompt set <option> <value>  one option: `icons false`, `time right`, `git off`
 #   terminal prompt reset [option …]      those options back to their defaults; none named: the shipped prompt
 #   terminal prompt preview [style]       the styles as they would look here, nothing written
@@ -16,6 +17,9 @@
 #
 #   powerline   the shipped look: tinted segments joined by separators
 #   plain       the same segments in the same hues as coloured text, no surfaces
+#   bracketed   plain, each segment in brackets
+#   minimal     plain with only the path, the branch and what the last command
+#               did — whatever the other segments are set to
 #   off         no prompt: only Nushell's indicator of the vi mode
 #
 # `terminal prompt config powerline <defaults>` IS themes/starship.toml — a test
@@ -34,7 +38,11 @@ use theme.nu ["terminal theme state-dir"]
 const DISTRO_ROOT = (path self | path dirname | path dirname | path dirname)
 const SHIPPED = ($DISTRO_ROOT | path join themes starship.toml)
 
-const STYLES = [powerline plain off]
+const STYLES = [powerline plain bracketed minimal off]
+# The styles that are text; powerline is the one with surfaces.
+const TEXT_STYLES = [plain bracketed minimal]
+# What minimal does not draw, whatever the options say.
+const NOT_MINIMAL = { os: off, user: off, languages: off, docker: off, env: off, kubernetes: off, time: off, jobs: off }
 
 # Every option. `values: null` is a whole number, zero or more.
 const OPTIONS = [
@@ -50,15 +58,18 @@ const OPTIONS = [
   [directory  left   [left right off]         "segment: the path"]
   [git        left   [left right off]         "segment: the branch and its status"]
   [languages  left   [left right off]         "segment: the toolchain of the project you are in, with its version"]
+  [docker     off    [left right off]         "segment: the docker context"]
   [env        left   [left right off]         "segment: the conda environment"]
+  [kubernetes off    [left right off]         "segment: the kubernetes context"]
   [time       left   [left right off]         "segment: the clock"]
+  [status     left   [left right off]         "segment: the exit code of the last command, when it failed"]
+  [jobs       off    [left right off]         "segment: how many background jobs are running"]
   [duration   left   [left right off]         "segment: how long the last command took"]
 ]
 
 # The segments in the order they are drawn, each with its hue — the tint_ role
 # behind it in powerline, the text_ role it is written in in plain — and the
-# starship modules it stands for. `duration` is not here: it has no surface,
-# it trails the left side or leads the right one.
+# starship modules it stands for. Neighbours of one hue share a surface.
 const SEGMENTS = [
   [name hue vars];
   [os         red         '$os']
@@ -66,8 +77,18 @@ const SEGMENTS = [
   [directory  orange      '$directory']
   [git        yellow      '$git_branch$git_status']
   [languages  green       '$c$rust$golang$nodejs$php$java$kotlin$haskell$python']
+  [docker     teal        '$docker_context']
   [env        teal        '$conda']
+  [kubernetes blue        '$kubernetes']
   [time       accent_alt  '$time']
+]
+
+# What has no surface: text that trails the left side or leads the right one.
+const TRAILERS = [
+  [name vars];
+  [status    '$status']
+  [jobs      '$jobs']
+  [duration  '$cmd_duration']
 ]
 
 # Powerline glyphs (U+E0B0…, in every Nerd Font). `lead` opens the left side,
@@ -261,77 +282,117 @@ def powerline-modules [o: record]: nothing -> record {
       show_notifications: false
       min_time_to_notify: 45000
     }
-  } | merge $languages
+  } | merge $languages | merge (trailer-modules $o false)
+  | merge (if $o.docker == off { {} } else { { docker_context: {
+      symbol: (if $o.icons { "\u{f308}" } else { "docker" })
+      style: "bg:tint_teal"
+      format: '[[ $symbol( $context) ](fg:on_tint bg:tint_teal)]($style)'
+    } } })
+  | merge (if $o.kubernetes == off { {} } else { { kubernetes: {
+      disabled: false
+      symbol: (if $o.icons { "\u{2638}" } else { "k8s" })
+      style: "bg:tint_blue"
+      format: '[[ $symbol( $context) ](fg:on_tint bg:tint_blue)]($style)'
+    } } })
+}
+
+# One segment as text: followed by a space, or in brackets.
+def cell [content: string, bracketed: bool]: nothing -> string {
+  if $bracketed { '[\[' + $content + '\]]($style) ' } else { '[' + $content + ' ]($style)' }
+}
+
+# The segments without a surface are the same text in every style: a failed
+# command's exit code in red — nothing when it succeeded — and the count of
+# background jobs. starship ships both switched off or silent, so `jobs`
+# is only configured when it is drawn.
+def trailer-modules [o: record, bracketed: bool]: nothing -> record {
+  { status: { disabled: false, symbol: "\u{2718} ", style: "bold fg:text_red", format: (cell '$symbol$status' $bracketed) } }
+  | merge (if $o.jobs == off { {} } else { { jobs: { style: "bold fg:text_accent", format: (cell '$symbol$number' $bracketed) } } })
 }
 
 # The same segments as text: each in the text_ role of its hue, which reads on
-# the background of a light theme too (palette.nu), the path in bold.
-def plain-modules [o: record]: nothing -> record {
-  let words = (not $o.icons)
+# the background of a light theme too (palette.nu), the path in bold. In
+# brackets for the bracketed style, which needs no connecting words.
+def text-modules [o: record, bracketed: bool]: nothing -> record {
+  let words = (not $o.icons and not $bracketed)
   let languages = ($LANGUAGES | reduce -f {} {|l, acc|
     let extra = (if $l.module == python { '( \($virtualenv\))' } else { "" })
     $acc | insert $l.module {
       symbol: (if $o.icons { $l.symbol } else { $l.word })
       style: "fg:text_green"
-      format: ((word "via" $words) + '[$symbol( $version)' + $extra + ' ]($style)')
+      format: ((word "via" $words) + (cell ('$symbol( $version)' + $extra) $bracketed))
     }
   })
   {
-    os: { disabled: false, style: "fg:text_red", format: '[$symbol ]($style)', symbols: $OS_SYMBOLS }
-    username: { show_always: true, style_user: "fg:text_red", style_root: "bold fg:text_red", format: '[$user ]($style)' }
+    os: { disabled: false, style: "fg:text_red", format: (cell '$symbol' $bracketed), symbols: $OS_SYMBOLS }
+    username: { show_always: true, style_user: "fg:text_red", style_root: "bold fg:text_red", format: (cell '$user' $bracketed) }
     directory: ({
       style: "bold fg:text_orange"
-      format: ((word "in" ($words and $o.user != off and $o.user == $o.directory)) + '[$path ]($style)')
+      format: ((word "in" ($words and $o.user != off and $o.user == $o.directory)) + (cell '$path' $bracketed))
       truncation_length: $o.depth
       truncation_symbol: "\u{2026}/"
     } | merge (if $o.icons { { substitutions: $DIRECTORY_ICONS } } else { {} }))
     git_branch: {
       symbol: (if $o.icons { "\u{f418}" } else { "" })
       style: "fg:text_yellow"
-      format: (if $o.icons { '[$symbol $branch ]($style)' } else { (word "on" true) + '[$branch ]($style)' })
+      format: (if $o.icons { cell '$symbol $branch' $bracketed } else { (word "on" $words) + (cell '$branch' $bracketed) })
     }
-    git_status: { style: "fg:text_yellow", format: '[($all_status$ahead_behind )]($style)' }
+    git_status: { style: "fg:text_yellow", format: (if $bracketed { '([\[$all_status$ahead_behind\]]($style) )' } else { '[($all_status$ahead_behind )]($style)' }) }
     conda: {
       symbol: (if $o.icons { "\u{f10c} " } else { "conda " })
       style: "fg:text_teal"
-      format: ((word "via" $words) + '[$symbol$environment ]($style)')
+      format: ((word "via" $words) + (cell '$symbol$environment' $bracketed))
       ignore_base: false
     }
     time: {
       disabled: false
       time_format: "%R"
       style: "fg:text_accent_alt"
-      format: (if $o.icons { "[\u{f43a} $time ]($style)" } else { (word "at" true) + '[$time ]($style)' })
+      format: (if $o.icons { cell "\u{f43a} $time" $bracketed } else { (word "at" $words) + (cell '$time' $bracketed) })
     }
     cmd_duration: {
       show_milliseconds: true
-      format: (if $o.icons { "[\u{eaf4} $duration ]($style)" } else { (word "took" true) + '[$duration ]($style)' })
+      format: (if $o.icons { cell "\u{eaf4} $duration" $bracketed } else { (word "took" $words) + (cell '$duration' $bracketed) })
       style: "fg:fg_muted"
       disabled: false
       show_notifications: false
       min_time_to_notify: 45000
     }
-  } | merge $languages
+  } | merge $languages | merge (trailer-modules $o $bracketed)
+  | merge (if $o.docker == off { {} } else { { docker_context: {
+      symbol: (if $o.icons { "\u{f308}" } else { "docker" })
+      style: "fg:text_teal"
+      format: (cell '$symbol( $context)' $bracketed)
+    } } })
+  | merge (if $o.kubernetes == off { {} } else { { kubernetes: {
+      disabled: false
+      symbol: (if $o.icons { "\u{2638}" } else { "k8s" })
+      style: "fg:text_blue"
+      format: (cell '$symbol( $context)' $bracketed)
+    } } })
 }
 
 # A style and a full set of options as starship's configuration, written in
 # roles and without the palette block (`terminal prompt render` adds it).
 # Without icons there is no glyph to draw the OS or a separator with, so `os`
 # is off — its table of symbols left out with it — and the separator flat,
-# whatever the options say.
+# whatever the options say; minimal leaves out what it does not draw the
+# same way.
 export def "terminal prompt config" [style: string, options: record]: nothing -> record {
   let o = (if $options.icons { $options } else { $options | merge { os: off, separator: flat } })
+  let o = (if $style == minimal { $o | merge $NOT_MINIMAL } else { $o })
+  let text = ($style in $TEXT_STYLES)
   let left = (on-side $o left)
   let right = (on-side $o right)
-  let sides = (if $style == plain {
+  let sides = (if $text {
     { left: ($left | get vars | str join), right: ($right | get vars | str join) }
   } else {
     let sep = ($SEPARATORS | get $o.separator)
     { left: (powerline-left $left $sep), right: (powerline-right $right $sep) }
   })
-  let first = ($sides.left + (if $o.duration == left { '$cmd_duration' } else { "" }))
+  let first = ($sides.left + ($TRAILERS | where {|t| ($o | get $t.name) == left } | get vars | str join))
   let format = ($first + (if $o.lines == 2 and ($first | is-not-empty) { '$line_break' } else { "" }) + '$character')
-  let right_format = ((if $o.duration == right { '$cmd_duration' } else { "" }) + $sides.right)
+  let right_format = (($TRAILERS | where {|t| ($o | get $t.name) == right } | get vars | str join) + $sides.right)
   {
     "$schema": "https://starship.rs/config-schema.json"
     format: $format
@@ -341,8 +402,8 @@ export def "terminal prompt config" [style: string, options: record]: nothing ->
   }
   | merge (if ($right_format | is-empty) { {} } else { { right_format: $right_format } })
   | merge (if $o.newline { {} } else { { add_newline: false } })
-  | merge (if $style == plain { plain-modules $o } else { powerline-modules $o })
-  | if $o.icons { $in } else { $in | reject os }
+  | merge (if $text { text-modules $o ($style == bracketed) } else { powerline-modules $o })
+  | if $o.os == off { $in | reject os } else { $in }
 }
 
 # ── Rendering ─────────────────────────────────────────────────────────────────
@@ -428,6 +489,8 @@ def styles []: nothing -> table {
   [
     { value: powerline, description: "tinted segments joined by separators — the shipped look" }
     { value: plain, description: "the same segments as coloured text" }
+    { value: bracketed, description: "plain, each segment in brackets" }
+    { value: minimal, description: "only the path, the branch and what the last command did" }
     { value: off, description: "no prompt: only the indicator of the vi mode" }
   ]
 }
@@ -462,7 +525,7 @@ def refuse-yours [what: string]: nothing -> nothing {
 def checked [name: string, value: any, span: any]: nothing -> any {
   let o = ($OPTIONS | where name == $name | get -o 0)
   if $o == null {
-    error make { msg: $"no prompt option called '($name)' — `terminal prompt` lists them", label: { text: "unknown option", span: $span } }
+    error make { msg: $"no prompt option called '($name)' — `terminal prompt status` lists them", label: { text: "unknown option", span: $span } }
   }
   let v = (if ($value | describe) != "string" { $value } else if $value in [true false] { $value == "true" } else if $value =~ '^\d+$' { $value | into int } else { $value })
   let ok = (if $o.values == null { ($v | describe) == "int" and $v >= 0 } else { $v in $o.values })
@@ -477,8 +540,28 @@ def said [applied: bool]: nothing -> string {
   if $applied { "this session and every shell after" } else { "from the next shell" }
 }
 
+# The picker: every style drawn in this directory, in the theme's colours and
+# with the options as they are, then one question. Not a list that repaints
+# as you move through it, for the reason the theme picker is not: `input
+# list` cannot call back on cursor movement. So all of them are on screen
+# before the question is asked. Named in full: `main` here would be a
+# command called `prompt`.
+export def --env "terminal prompt" []: nothing -> nothing {
+  if not ((is-terminal --stdin) and (is-terminal --stdout)) {
+    error make { msg: "`terminal prompt` is the interactive picker and needs a terminal on both ends; `terminal prompt status` and `terminal prompt use <style>` are not" }
+  }
+  let now = (terminal prompt status | get style)
+  if (which starship | is-not-empty) { terminal prompt preview }
+  let pick = (styles | input list --display {|s| $"($s.value) — ($s.description)" } $"the prompt is ($now) — which style")
+  if $pick == null {
+    print "unchanged"
+    return
+  }
+  terminal prompt use $pick.value
+}
+
 # What the prompt is: the style, and every option with its value and default.
-export def "terminal prompt" []: nothing -> record {
+export def "terminal prompt status" []: nothing -> record {
   let s = (terminal prompt state)
   let yours = (user-template)
   {
@@ -491,7 +574,7 @@ export def "terminal prompt" []: nothing -> record {
 
 # Choose the style. The options are kept, so `off` and back is the prompt you had.
 export def --env "terminal prompt use" [
-  style: string@styles   # powerline | plain | off
+  style: string@styles   # powerline | plain | bracketed | minimal | off
 ]: nothing -> nothing {
   if $style not-in $STYLES {
     error make { msg: $"no prompt style called '($style)': ($STYLES | str join ', ')", label: { text: "unknown style", span: (metadata $style).span } }
@@ -507,7 +590,7 @@ export def --env "terminal prompt use" [
 
 # Set one option: `terminal prompt set icons false`, `terminal prompt set time right`.
 export def --env "terminal prompt set" [
-  option: string@option-names   # which one — `terminal prompt` lists them
+  option: string@option-names   # which one — `terminal prompt status` lists them
   value: any@option-values      # its new value
 ]: nothing -> nothing {
   let v = (checked $option $value (metadata $option).span)
@@ -540,7 +623,7 @@ export def --env "terminal prompt reset" [
 # with the options as they are — or as `--with` would make them. Nothing is
 # written: each is rendered to a temporary file starship is pointed at.
 export def "terminal prompt preview" [
-  style?: string@styles   # one style; both when omitted
+  style?: string@styles   # one style; all of them when omitted
   --with: record          # options to try: --with { icons: false, time: right }
 ]: nothing -> nothing {
   require-starship
@@ -551,7 +634,7 @@ export def "terminal prompt preview" [
   let o = (terminal prompt state | get options | merge $tried)
   let pal = (current-palette)
   let width = (try { (term size).columns } catch { 80 })
-  for st in (if $style == null { [powerline plain] } else { [$style] }) {
+  for st in (if $style == null { $STYLES | where $it != off } else { [$style] }) {
     print $"(ansi attr_dimmed)($st)(ansi reset)"
     if $st == off {
       print $"  nothing but the indicator: ($env.PROMPT_INDICATOR_VI_INSERT? | default ': ')"

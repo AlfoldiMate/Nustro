@@ -52,8 +52,7 @@ $env.config.menus ++= [{
 # Reedline has on that key never reaches the shell: accept the next word of
 # the history hint, or with no hint jump forward over a word. Ctrl+W does it
 # there instead, in every mode. The cost is Ctrl+W's own default, deleting
-# the word before the cursor: Reedline's other key for that is
-# Ctrl+Backspace (and Alt+Backspace in emacs mode).
+# the word before the cursor, which Alt+Backspace does below.
 if $nu.os-info.name == "macos" {
   $env.config.keybindings ++= [{
     name: word_right
@@ -63,3 +62,17 @@ if $nu.os-info.name == "macos" {
     event: { until: [{ send: historyhintwordcomplete } { edit: movewordright }] }
   }]
 }
+
+# Delete the word before the cursor: Alt+Backspace (Option+Backspace on a
+# Mac), on every platform. Reedline has it on that key in emacs mode only,
+# and on Ctrl+W and Ctrl+Backspace in vi insert — one taken above, the other
+# the same byte as Backspace to a terminal without the Kitty keyboard
+# protocol. Alt+Backspace arrives as ESC DEL whatever the Option keys are
+# set to type (`terminal option`).
+$env.config.keybindings ++= [{
+  name: delete_word_left
+  modifier: alt
+  keycode: backspace
+  mode: [vi_insert vi_normal]
+  event: { edit: backspaceword }
+}]

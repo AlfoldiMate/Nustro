@@ -6,7 +6,7 @@
 #   terminal shell         a new window of the terminal starts Nushell
 #   terminal theme         pick a palette, the terminal as preview; `terminal theme use <name>` by name
 #   terminal font          pick a Nerd Font, install it, and let a new window render it
-#   terminal prompt        the prompt's shape: `use powerline|plain|off`, `set <option> <value>`, `preview`
+#   terminal prompt        pick the prompt's style; `use <style>`, `set <option> <value>`, `status`, `preview`
 #
 # One word, because of how this distro does colour: there is one theme and it
 # is the terminal's. `terminal theme use` writes the terminal's
@@ -43,7 +43,7 @@ export use font.nu [
   "terminal font preview" "terminal font size" "terminal font specimen" "terminal font dir"
 ]
 export use prompt.nu [
-  "terminal prompt" "terminal prompt use" "terminal prompt set" "terminal prompt reset" "terminal prompt preview"
+  "terminal prompt" "terminal prompt status" "terminal prompt use" "terminal prompt set" "terminal prompt reset" "terminal prompt preview"
 ]
 use registry.nu ["terminal status"]
 

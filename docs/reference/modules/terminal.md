@@ -16,7 +16,8 @@ terminal theme roles           # what the shell made of it: every role, its colo
 terminal shell                 # a new window of the terminal starts Nushell
 terminal option left           # which Option key is Alt: none (the base), left, right, both
 terminal font use JetBrainsMono --size 15   # or `terminal font size 15` on its own
-terminal prompt use plain      # the prompt's style: powerline, plain, off
+terminal prompt                # pick the prompt's style: every one drawn here, then choose
+terminal prompt use plain      # or name it: powerline, plain, bracketed, minimal, off
 terminal prompt set time right # one option: a segment left, right or off; icons, separator, lines, …
 terminal status                # what this distro has written into the terminal's config
 ```
@@ -103,15 +104,17 @@ The prompt:
 
 | Command | Does |
 |---|---|
-| `terminal prompt` | the style, whether starship is there, a `starship.toml` of your own if one is in the way, and every option with its value, its default and what it does |
-| `terminal prompt use <style>` | `powerline` (the shipped look: tinted segments joined by separators), `plain` (the same segments in the same hues as coloured text) or `off` (no prompt at all: only Nushell's indicator of the vi mode, `: ` and `〉`). Rendered, and switched in the session it is typed in. The options are kept, so `off` and back is the prompt you had |
+| `terminal prompt` | the picker: every style drawn in this directory in the theme's colours, with the options as they are, then one question |
+| `terminal prompt status` | the style, whether starship is there, a `starship.toml` of your own if one is in the way, and every option with its value, its default and what it does |
+| `terminal prompt use <style>` | `powerline` (the shipped look: tinted segments joined by separators), `plain` (the same segments in the same hues as coloured text), `bracketed` (plain, each segment in brackets), `minimal` (plain with only the path, the branch, a failed exit code and the duration, whatever the other segments are set to) or `off` (no prompt at all: only Nushell's indicator of the vi mode, `: ` and `〉`). Rendered, and switched in the session it is typed in. The options are kept, so `off` and back is the prompt you had |
 | `terminal prompt set <option> <value>` | one option, from the table below; Tab completes both |
 | `terminal prompt reset [option …]` | the named options back to their defaults; with none named, the style too — the shipped prompt |
 | `terminal prompt preview [style] [--with {…}]` | the styles as starship draws them in this directory, in the theme's colours, with the options as they are or as `--with { icons: false, time: right }` would make them; nothing written |
 
 | Option | Values | Default | |
 |---|---|---|---|
-| `os` `user` `directory` `git` `languages` `env` `time` `duration` | `left` `right` `off` | `left` | where a segment is drawn, or that it is not. On the right the powerline is mirrored; the duration has no surface and trails the left side or leads the right one |
+| `os` `user` `directory` `git` `languages` `env` `time` `status` `duration` | `left` `right` `off` | `left` | where a segment is drawn, or that it is not. On the right the powerline is mirrored. `status` is the exit code of the last command in red, `✘ 1`, and nothing when it succeeded; it and the duration have no surface and trail the left side or lead the right one |
+| `docker` `kubernetes` `jobs` | `left` `right` `off` | `off` | three more segments, off until asked for: the docker context (on the conda segment's surface), the kubernetes context (a surface of its own before the clock), the count of background jobs (no surface, like `status`) |
 | `icons` | `true` `false` | `true` | Nerd Font symbols. `false` is for a font without them: words instead (`on main`, `via rust`, `took 2s` in plain), no OS icon, and the powerline's surfaces meet without a separator glyph |
 | `separator` | `arrow` `round` `slant` `flat` | `arrow` | powerline: the shape between two segments |
 | `lines` | `1` `2` | `2` | 2: you type on a line of your own; 1: after the segments |
@@ -278,9 +281,12 @@ registry.nu  the terminal registry: installed, running, the target, and the verb
   by hand a copy of `themes/starship.toml` in your own `themes/` — and with
   that copy there `terminal prompt use <style>` and `set` refuse and say why
   (`off` and `transient` still work: they are Nushell's).
-- The mark that ends the prompt is empty in both styles, as it was: Nushell's
-  indicators say which vi mode the line is in, and a failed command is not
-  marked in the prompt.
+- The mark that ends the prompt is empty in every style, as it was: Nushell's
+  indicators say which vi mode the line is in. A failed command is marked by
+  the `status` segment instead.
+- `terminal prompt` alone cannot repaint as you move through its list
+  (`input list` has no callback), so it draws every style first and asks
+  once.
 - A powerline segment with nothing to say — no repository, no toolchain —
   still paints the joint between its neighbours, as the shipped prompt
   always did.
@@ -338,7 +344,7 @@ registry.nu  the terminal registry: installed, running, the target, and the verb
 
 ## Tests
 
-`nu tests/run.nu terminal/` — 87 tests in `tests/terminal/` (2026-10-02;
+`nu tests/run.nu terminal/` — 92 tests in `tests/terminal/` (2026-10-02;
 70 took 4.4 s on an M-series Mac on 2026-09-20) against a fake `ghostty` (`tests/fixtures/ghostty/fake.nu`,
 put first on PATH by `fake-ghostty` in `tests/lib.nu`) that answers
 `+show-config` from the config chain the way Ghostty settles it,
@@ -360,8 +366,11 @@ path, validation through `ls-fonts`, and `terminal theme use`/`terminal font use
 preview` with WezTerm as the target. `prompt` holds the generated powerline
 equal to `themes/starship.toml`, then each option against what starship is
 handed (a hidden segment's separators, the mirrored right side, no Nerd
-Font glyph left without icons, every colour a role the palette block has),
-runs the real starship over six configurations when it is installed, and
+Font glyph left without icons, every colour a role the palette block has,
+the brackets, what minimal leaves out, the three segments that are off
+until asked for),
+runs the real starship over twelve configurations when it is installed, and
+over each style with a failed and a clean exit code, and
 starts shells against a user directory of its own to see `off` and
 `transient` at startup. `registry` covers the target order
 (`NUSTRO_TERMINAL`, the session's terminal, the pin, the first installed)

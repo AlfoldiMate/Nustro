@@ -86,7 +86,7 @@ what Nushell loads when.
 | `terminal` (lazy) | the terminal itself — Ghostty or WezTerm, `terminal target` says which: `status` (also bare `terminal`), `list`, `current`, `target`, `default`, `use`, `install`, `shell`, `option`, `settings`, `set`, `reset`, `reload`, `live` |
 | `terminal theme` (lazy) | the picker (interactive); `use <name>`, `list`, `preview`, `reset`, `sync`, `icon`, `current`, `roles`, `resolve`, `status`, `slug` |
 | `terminal font` (lazy) | the picker (interactive); `use <name>`, `list`, `install`, `preview`, `size`, `specimen`, `dir` |
-| `terminal prompt` (lazy) | the prompt's shape — bare: the style and every option; `use powerline\|plain\|off` (off: no prompt, only the vi-mode indicator), `set <option> <value>` (segments `os user directory git languages env time duration` each `left\|right\|off`; `icons`, `separator`, `lines`, `newline`, `depth`, `transient` `false\|true\|compact`), `reset [option …]`, `preview [style]` |
+| `terminal prompt` (lazy) | the prompt's shape — bare: the picker (interactive); `status`: the style and every option; `use powerline\|plain\|bracketed\|minimal\|off` (off: no prompt, only the vi-mode indicator), `set <option> <value>` (segments `os user directory git languages docker env kubernetes time status jobs duration` each `left\|right\|off`; `icons`, `separator`, `lines`, `newline`, `depth`, `transient` `false\|true\|compact`), `reset [option …]`, `preview [style]` |
 | `agent` | Claude Code in the shell: `ask`, `exec`, `skill`, `command`, `completion` (lazy) |
 | `odata` | OData V2/V4 services as tables (lazy) |
 | `worktree` | bare repo + a directory per branch, gitignored files from profiles: `init`, `add`, `remove`, `apply`, `discard`, `which` (lazy) |

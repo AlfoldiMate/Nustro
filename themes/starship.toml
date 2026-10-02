@@ -52,6 +52,7 @@ $conda\
 [](fg:tint_teal bg:tint_accent_alt)\
 $time\
 [ ](fg:tint_accent_alt)\
+$status\
 $cmd_duration\
 $line_break$character"""
 
@@ -167,6 +168,12 @@ disabled = false
 time_format = "%R"
 style = "bg:tint_accent_alt"
 format = '[[  $time ](fg:on_tint bg:tint_accent_alt)]($style)'
+
+[status]
+disabled = false
+symbol = "✘ "
+style = "bold fg:text_red"
+format = '[$symbol$status ]($style)'
 
 [line_break]
 disabled = false

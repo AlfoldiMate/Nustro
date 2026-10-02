@@ -51,7 +51,10 @@ def "test a settings.nu and a state directory from before the rename still load 
   let dir = user-dir --settings "const MODULES = [nu-config nu-complete terminal]\nconst MODULES_LAZY = [terminal]\n"
   let old = $dir.data | path join .state nu-config
   mkdir $old
-  "{ last_good: \"abc\" }" | save ($old | path join upgrade.nuon)
+  # `previous`, not `last_good`: repair ends with doctor's parse check, which
+  # records HEAD as last_good in a git checkout (not in a worktree, whose
+  # .git is a file — which is why this passed there and failed on main).
+  "{ previous: \"abc\" }" | save ($old | path join upgrade.nuon)
   # The old name still enables the module, under its new name.
   let before = nu-l $dir '$env.NU_MODULES | to nuon'
   assert equal $before.exit_code 0 $before.stderr
@@ -62,7 +65,7 @@ def "test a settings.nu and a state directory from before the rename still load 
   let line = open --raw ($dir.config | path join settings.nu) | lines | where $it =~ '^const MODULES ='
   assert equal $line ["const MODULES = [nustro nu-complete terminal]"]
   assert not ($old | path exists)
-  assert equal (open ($dir.data | path join .state nustro upgrade.nuon) | get last_good) abc
+  assert equal (open ($dir.data | path join .state nustro upgrade.nuon) | get previous) abc
 }
 
 def "test repair --hard is the installer with every default and --reset wants a terminal" [] {

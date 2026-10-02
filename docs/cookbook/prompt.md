@@ -9,8 +9,9 @@ shell after.
 ## Look first
 
 ```nu
-terminal prompt           # the style, and every option with its value, its default and what it does
-terminal prompt preview   # powerline and plain as starship draws them in this directory, nothing written
+terminal prompt           # the picker: every style as starship draws it in this directory, then choose one
+terminal prompt status    # the style, and every option with its value, its default and what it does
+terminal prompt preview   # the drawing alone, nothing asked and nothing written
 ```
 
 The preview is in the theme's colours, with a made-up 2.4 s command so the
@@ -25,6 +26,8 @@ terminal prompt preview powerline --with { separator: round, git: right }
 
 ```nu
 terminal prompt use plain       # the segments as coloured text, the path in bold, no surfaces
+terminal prompt use bracketed   # plain, each segment in brackets
+terminal prompt use minimal     # only the path, the branch, a failed exit code and the duration
 terminal prompt use powerline   # tinted segments joined by separators — the shipped look
 terminal prompt use off         # no prompt at all: only the indicator of the vi mode, `: ` and `〉`
 ```
@@ -34,13 +37,16 @@ had.
 
 ## What is drawn, and where
 
-Eight segments — `os`, `user`, `directory`, `git`, `languages`, `env`,
-`time`, `duration` — each `left`, `right` or `off`:
+Nine segments are drawn until told otherwise — `os`, `user`, `directory`,
+`git`, `languages`, `env`, `time`, `status` (a failed command's exit code,
+`✘ 1`; nothing when it succeeded), `duration` — and three are off until
+asked for: `docker`, `kubernetes`, `jobs`. Each is `left`, `right` or `off`:
 
 ```nu
 terminal prompt set time right      # the clock at the right edge
 terminal prompt set languages off   # no toolchain versions
 terminal prompt set os off          # the name without the logo
+terminal prompt set kubernetes left # the current context, before the clock
 ```
 
 Tab completes the option and then its values. On the right a powerline is
@@ -69,7 +75,7 @@ terminal prompt reset               # the shipped prompt: powerline, every optio
 ## Check
 
 ```nu
-terminal prompt | get options | where {|o| $o.value != $o.default }   # what you changed
+terminal prompt status | get options | where {|o| $o.value != $o.default }   # what you changed
 open ($nu.data-dir | path join .state theme prompt.nuon)              # the same, as it is kept
 ```
 
@@ -86,14 +92,19 @@ The preview drew `Matthew in …/wt on prompt-command !? took 2s400ms` with
 `echo hi` followed by Enter left `❯ echo hi` above its output, a blank
 line between one block and the next, and none with `transient compact`;
 with `use off` the screen held `: echo hi`, `hi`, and a `: ` waiting. `reset`
-removed the file and left nothing listed.
+removed the file and left nothing listed. The same day, after the styles
+and segments grew: `terminal prompt` drew powerline, plain, bracketed
+(`[Matthew] […/wt2] [ prompt-more] [!]`) and minimal (`…/wt2  prompt-more
+!`) and Enter on the first answered `prompt is powerline`; `^false` put `✘
+1` after the segments of the next prompt and a command that succeeded put
+nothing.
 
 ## A prompt written by hand
 
 The styles are generated; when none of them is the prompt you want, copy
 `themes/starship.toml` from the checkout into your `themes/` and edit the
 copy — in roles, never hexes, so every theme keeps fitting it — then
-`terminal theme sync`. Yours is the prompt from then on, `terminal prompt`
-shows its path as `template`, and `use <style>` and `set` refuse and say
+`terminal theme sync`. Yours is the prompt from then on, `terminal prompt
+status` shows its path as `template`, and `use <style>` and `set` refuse and say
 why until it is moved away. `use off` and `set transient` still work: they
 are Nushell's, not starship's ([Theming](../concepts/theming.md#the-prompt-has-a-shape-too)).

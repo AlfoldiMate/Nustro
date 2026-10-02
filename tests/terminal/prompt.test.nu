@@ -38,7 +38,7 @@ def "test a hidden segment takes its separators with it" [] {
   let g = terminal prompt config powerline ($o | merge { os: off, user: off }) | get format
   assert ($g | str starts-with "[\u{e0b6}](fg:tint_orange)$directory") $g
   # Nothing on the first line: no line break before the mark.
-  let none = [os user directory git languages env time duration] | reduce -f $o {|s, acc| $acc | upsert $s off }
+  let none = [os user directory git languages env time status duration] | reduce -f $o {|s, acc| $acc | upsert $s off }
   assert equal (terminal prompt config powerline $none | get format) '$character'
 }
 
@@ -47,7 +47,7 @@ def "test a segment on the right is drawn mirrored, the duration leading" [] {
   let c = terminal prompt config powerline ($o | merge { git: right, time: right, duration: right })
   assert equal $c.right_format "$cmd_duration[\u{e0b2}](fg:tint_yellow)$git_branch$git_status[\u{e0b2}](fg:tint_accent_alt bg:tint_yellow)$time"
   assert not ($c.format | str contains '$time')
-  assert ($c.format | str ends-with "$conda[\u{e0b4} ](fg:tint_teal)$line_break$character") $c.format
+  assert ($c.format | str ends-with "$conda[\u{e0b4} ](fg:tint_teal)$status$line_break$character") $c.format
   assert equal (terminal prompt config powerline $o | get -o right_format) null "nothing on the right, no right_format"
   let p = terminal prompt config plain ($o | merge { time: right })
   assert equal $p.right_format '$time'
@@ -76,7 +76,7 @@ def "test without icons no style holds a Nerd Font glyph" [] {
 def "test plain writes the hues as text and paints no surface" [] {
   let o = fresh
   let c = terminal prompt config plain $o
-  assert equal $c.format '$os$username$directory$git_branch$git_status$c$rust$golang$nodejs$php$java$kotlin$haskell$python$conda$time$cmd_duration$line_break$character'
+  assert equal $c.format '$os$username$directory$git_branch$git_status$c$rust$golang$nodejs$php$java$kotlin$haskell$python$conda$time$status$cmd_duration$line_break$character'
   assert not (($c | to toml) =~ 'bg:|tint_') "no surface in plain"
   assert equal $c.directory.style "bold fg:text_orange"
 }
@@ -104,7 +104,7 @@ def "test starship reads what each style generates without complaint" [] {
   if (which starship | is-empty) { skip-test "starship is not installed" }
   let o = fresh
   let dir = scratch
-  for it in ([powerline plain] | each {|s| [$o ($o | merge { icons: false, separator: slant }) ($o | merge { git: right, duration: right, lines: 1 })] | each {|x| { style: $s, o: $x } } } | flatten) {
+  for it in ([powerline plain bracketed minimal] | each {|s| [$o ($o | merge { icons: false, separator: slant }) ($o | merge { git: right, duration: right, lines: 1, docker: left, kubernetes: right, jobs: left })] | each {|x| { style: $s, o: $x } } } | flatten) {
     let f = $dir | path join starship.toml
     terminal prompt config $it.style $it.o | upsert palettes { distro: (shipped | get palettes.distro) } | to toml | save -f $f
     let drawn = [[] [--right]] | each {|side|
@@ -125,8 +125,8 @@ def "test set keeps only what differs, reset takes it back" [] {
   terminal prompt set depth "4"
   let f = terminal theme state-dir | path join prompt.nuon
   assert equal (open $f) { style: plain, options: { icons: false, time: right, depth: 4 } }
-  assert equal (terminal prompt | select style template) { style: plain, template: null }
-  assert equal (terminal prompt | get options | where option == time | get 0 | select value default) { value: right, default: left }
+  assert equal (terminal prompt status | select style template) { style: plain, template: null }
+  assert equal (terminal prompt status | get options | where option == time | get 0 | select value default) { value: right, default: left }
   terminal prompt set time left
   assert equal (open $f | get options) { icons: false, depth: 4 }
   terminal prompt reset depth
@@ -190,7 +190,7 @@ def "test a starship.toml of the user is the prompt and the styles say so" [] {
   let toml = terminal prompt render | from toml
   assert equal $toml.format '$directory$character'
   assert equal $toml.palettes.distro.tint_red red
-  assert equal (terminal prompt | select style template) { style: yours, template: $yours }
+  assert equal (terminal prompt status | select style template) { style: yours, template: $yours }
   let err = try { terminal prompt use plain; null } catch {|e| $e.msg }
   assert ($err | str contains "a starship.toml of your own wins") $err
   let set = try { terminal prompt set icons false; null } catch {|e| $e.msg }
@@ -198,7 +198,7 @@ def "test a starship.toml of the user is the prompt and the styles say so" [] {
   # Off is not a style of starship's, and the transient option is Nushell's.
   terminal prompt set transient true
   terminal prompt use off
-  assert equal (terminal prompt | get style) off
+  assert equal (terminal prompt status | get style) off
   fresh
 }
 
@@ -233,4 +233,55 @@ def "test a shell starts with the prompt the state names" [] {
   assert ($compact.stdout | str contains ('"' + "\u{276f}" + ' "')) $compact.stdout
   let reset = nu-l $dir 'use terminal *; terminal prompt reset; print ($env.TRANSIENT_PROMPT_COMMAND? | describe)'
   assert ($reset.stdout | str contains "nothing") $reset.stdout
+}
+
+def "test bracketed is plain in brackets, without the connecting words" [] {
+  let o = fresh
+  let c = terminal prompt config bracketed ($o | merge { icons: false })
+  assert equal $c.format (terminal prompt config plain $o | get format | str replace '$os' '')
+  assert equal $c.git_branch.format '[\[$branch\]]($style) '
+  assert equal $c.directory.format '[\[$path\]]($style) '
+  assert not (($c | to toml) =~ 'fg_muted\)\[') "no `on`, `via`, `took` between brackets"
+}
+
+def "test minimal draws the path, the branch and what the last command did" [] {
+  let o = fresh
+  let c = terminal prompt config minimal ($o | merge { time: right, docker: left })
+  assert equal $c.format '$directory$git_branch$git_status$status$cmd_duration$line_break$character'
+  assert equal ($c | get -o right_format) null
+  assert equal ($c | get -o os) null
+  assert equal $c.directory.style "bold fg:text_orange"
+}
+
+def "test docker, kubernetes and jobs are off until asked for and then configured" [] {
+  let o = fresh
+  let c = terminal prompt config powerline $o
+  assert equal ([docker_context kubernetes jobs] | where {|m| ($c | get -o $m) != null }) []
+  let on = terminal prompt config powerline ($o | merge { docker: left, kubernetes: left, jobs: right })
+  # docker shares the conda surface; kubernetes has one of its own before the clock.
+  assert ($on.format | str contains "$docker_context$conda[\u{e0b0}](fg:tint_teal bg:tint_blue)$kubernetes[\u{e0b0}](fg:tint_blue bg:tint_accent_alt)$time") $on.format
+  assert equal $on.right_format '$jobs'
+  assert equal $on.kubernetes.disabled false
+  assert equal (terminal prompt config plain ($o | merge { icons: false, kubernetes: left }) | get kubernetes.symbol) k8s
+}
+
+def "test a failed command is marked and a clean one is not" [] {
+  if (which starship | is-empty) { skip-test "starship is not installed" }
+  let o = fresh
+  let f = scratch | path join starship.toml
+  for style in [powerline plain bracketed minimal] {
+    terminal prompt config $style $o | upsert palettes { distro: (shipped | get palettes.distro) } | to toml | save -f $f
+    let failed = with-env { STARSHIP_CONFIG: $f, STARSHIP_SHELL: nu } { ^starship prompt --status 3 --terminal-width 120 | complete }
+    let clean = with-env { STARSHIP_CONFIG: $f, STARSHIP_SHELL: nu } { ^starship prompt --status 0 --terminal-width 120 | complete }
+    assert equal ($failed.stderr | str trim) "" $"($style): ($failed.stderr)"
+    assert ($failed.stdout | ansi strip | str contains "\u{2718} 3") $"($style) marks exit code 3"
+    assert not ($clean.stdout | ansi strip | str contains "\u{2718}") $"($style) is silent on success"
+  }
+  let off = terminal prompt config powerline ($o | merge { status: off }) | get format
+  assert not ($off | str contains '$status')
+}
+
+def "test the picker needs a terminal and says what does not" [] {
+  let err = try { terminal prompt; null } catch {|e| $e.msg }
+  assert ($err | str contains "terminal prompt status") $err
 }

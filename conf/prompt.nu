@@ -1,7 +1,7 @@
 # prompt.nu — prompt
 #
 # Starship owns the prompt when it is installed, and the distro owns starship's
-# configuration: a style chosen with `terminal prompt use` (powerline, plain;
+# configuration: a style chosen with `terminal prompt` (powerline, plain, …;
 # modules/terminal/prompt.nu generates it), written in the theme's roles and
 # rendered by `terminal theme use` into <your dir>/.state/theme/starship.toml.
 # STARSHIP_CONFIG points at the rendered file, or at themes/starship.toml — the

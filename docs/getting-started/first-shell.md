@@ -47,7 +47,8 @@ to you; `git pull` updates it without touching your files
 | F1 | the help menu |
 | → | accept the inline history hint |
 | Ctrl+O | edit the line in `$EDITOR` |
-| Ctrl+W | macOS: accept the next word of the inline history hint, or with no hint jump forward over a word — Reedline's Ctrl+Right, which macOS keeps for Mission Control. Deleting the word, which is what Ctrl+W does elsewhere, is Reedline's Ctrl+Backspace (and Alt+Backspace in emacs mode) |
+| Ctrl+W | macOS: accept the next word of the inline history hint, or with no hint jump forward over a word — Reedline's Ctrl+Right, which macOS keeps for Mission Control. Deleting the word, which is what Ctrl+W does elsewhere, is Alt+Backspace |
+| Alt+Backspace | delete the word before the cursor (Option+Backspace on a Mac), in vi mode too |
 | Alt+E | with the `agent` module: the line you are typing is a task, Claude's proposal replaces it |
 | Esc / `i` | vi mode: the cursor is a line while inserting, a block in normal mode. `$env.config.edit_mode = "emacs"` in `settings.nu` if you would rather not |
 
